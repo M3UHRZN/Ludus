@@ -19,8 +19,11 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
-    [SerializeField] private float groundCheckRadius = 0.2f;
-    [SerializeField] private LayerMask groundMask;
+    [SerializeField] private float groundCheckRadius = 0.3f;
+    [SerializeField] private LayerMask groundMask = ~0; // varsayılan: her şeyi algıla
+
+    [Header("Crouch Visual")]
+    [SerializeField] private Transform visualMesh; // kapsülün mesh objesi
 
     private CharacterController _controller;
     private Vector3 _velocity;
@@ -43,7 +46,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void CheckGround()
     {
-        _isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask);
+        // groundMask atanmamışsa CharacterController'ın kendi kontrolünü de kullan
+        _isGrounded = _controller.isGrounded ||
+                      Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask);
 
         if (_isGrounded && _velocity.y < 0f)
             _velocity.y = -2f;
@@ -62,10 +67,18 @@ public class PlayerMovement : MonoBehaviour
         float targetHeight = _isCrouching ? crouchHeight : standingHeight;
         _controller.height = Mathf.Lerp(_controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
 
-        // Keep controller grounded while crouching
         Vector3 center = _controller.center;
         center.y = _controller.height / 2f;
         _controller.center = center;
+
+        // Görsel mesh'i de küçült (atanmışsa)
+        if (visualMesh != null)
+        {
+            float targetScaleY = _isCrouching ? 0.5f : 1f;
+            Vector3 s = visualMesh.localScale;
+            s.y = Mathf.Lerp(s.y, targetScaleY, Time.deltaTime * crouchTransitionSpeed);
+            visualMesh.localScale = s;
+        }
     }
 
     private bool CanStandUp()
