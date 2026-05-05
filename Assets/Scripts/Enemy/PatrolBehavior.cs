@@ -16,13 +16,17 @@ public class PatrolBehavior : IEnemyBehavior
         if (!enemy.Agent.isOnNavMesh) return;
         if (enemy.Agent.pathPending) return;
 
+        if (enemy.CanSeePlayer())
+        {
+            enemy.SwitchBehavior(new ChaseBehavior());
+            return;
+        }
+
         if (enemy.Agent.remainingDistance < ReachThreshold)
         {
             enemy.CurrentWaypointIndex = (enemy.CurrentWaypointIndex + 1) % enemy.PatrolWaypoints.Length;
             MoveToWaypoint(enemy);
         }
-
-        // TODO Sprint 1: if (enemy.HeardNoise) enemy.SwitchBehavior(new ChaseBehavior());
     }
 
     public void Exit(EnemyController enemy)
