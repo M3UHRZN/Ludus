@@ -15,6 +15,7 @@ public class EnemyController : MonoBehaviour
 
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
+    public Transform PlayerTransform { get; private set; }
     public Transform CurrentTarget { get; set; }
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
@@ -28,7 +29,30 @@ public class EnemyController : MonoBehaviour
 
     private void Start()
     {
+        var playerObj = GameObject.FindWithTag("Player");
+        if (playerObj != null)
+            PlayerTransform = playerObj.transform;
+        else
+            Debug.LogWarning("[EnemyController] 'Player' tag'li obje bulunamadı.");
+
         SwitchBehavior(new PatrolBehavior());
+    }
+
+    public bool CanSeePlayer()
+    {
+        if (PlayerTransform == null) return false;
+
+        Vector3 eyePos = transform.position + Vector3.up * 1.5f;
+        Vector3 targetPos = PlayerTransform.position + Vector3.up;
+        Vector3 direction = targetPos - eyePos;
+        float distance = direction.magnitude;
+
+        if (distance > _sightRange) return false;
+
+        if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
+            return hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform);
+
+        return true;
     }
 
     private void Update()
@@ -69,11 +93,14 @@ public class EnemyController : MonoBehaviour
                 Gizmos.DrawLine(_patrolWaypoints[i].position, _patrolWaypoints[next].position);
         }
 
-        if (CurrentTarget != null)
+        if (PlayerTransform != null && CanSeePlayer())
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawLine(transform.position, CurrentTarget.position);
+            Gizmos.DrawLine(transform.position + Vector3.up * 1.5f, PlayerTransform.position + Vector3.up);
         }
+
+        Gizmos.color = new Color(1f, 1f, 0f, 0.08f);
+        Gizmos.DrawSphere(transform.position, _sightRange);
 
         Gizmos.color = new Color(1f, 0.5f, 0f, 0.15f);
         Gizmos.DrawSphere(transform.position, _noiseDetectionRadius);
