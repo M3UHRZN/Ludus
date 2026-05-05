@@ -39,6 +39,7 @@ public class EnemyController : MonoBehaviour
     private void OnDestroy()
     {
         _current?.Exit(this);
+        GameEventBus.Publish(new EnemyDiedEvent(GetInstanceID(), transform.position));
     }
 
     public void SwitchBehavior(IEnemyBehavior next)
@@ -52,4 +53,30 @@ public class EnemyController : MonoBehaviour
     {
         // TODO Sprint 2: FleeBehavior entegrasyonu
     }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        if (_patrolWaypoints == null) return;
+
+        Gizmos.color = Color.cyan;
+        for (int i = 0; i < _patrolWaypoints.Length; i++)
+        {
+            if (_patrolWaypoints[i] == null) continue;
+            Gizmos.DrawSphere(_patrolWaypoints[i].position, 0.25f);
+            int next = (i + 1) % _patrolWaypoints.Length;
+            if (_patrolWaypoints[next] != null)
+                Gizmos.DrawLine(_patrolWaypoints[i].position, _patrolWaypoints[next].position);
+        }
+
+        if (CurrentTarget != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(transform.position, CurrentTarget.position);
+        }
+
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.15f);
+        Gizmos.DrawSphere(transform.position, _noiseDetectionRadius);
+    }
+#endif
 }
