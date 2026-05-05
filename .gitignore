@@ -73,3 +73,14 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+.DS_Store
+.obsidian/app.json
+.obsidian/appearance.json
+.obsidian/core-plugins.json
+.obsidian/workspace.json
+ObsidianKasa/Vault/.obsidian/app.json
+ObsidianKasa/Vault/.obsidian/appearance.json
+ObsidianKasa/Vault/.obsidian/core-plugins.json
+ObsidianKasa/Vault/.obsidian/graph.json
+ObsidianKasa/Vault/.obsidian/workspace.json
+ObsidianKasa/Vault/Hoş geldiniz.md
