@@ -128,3 +128,31 @@ public struct PlayerDiedEvent
         DeathPosition = deathPosition;
     }
 }
+
+public enum SessionEndReason { TimeUp, AllDead, Escaped }
+
+/// <summary>Oyun oturumu başladığında yayınlanır.</summary>
+public struct SessionStartedEvent
+{
+    public int PlayerCount;
+    public float SessionDuration;
+
+    public SessionStartedEvent(int playerCount, float sessionDuration)
+    {
+        PlayerCount = playerCount;
+        SessionDuration = sessionDuration;
+    }
+}
+
+/// <summary>Oyun oturumu sona erdiğinde yayınlanır.</summary>
+public struct SessionEndedEvent
+{
+    public SessionEndReason Reason;
+    public float TotalCreditCollected;
+
+    public SessionEndedEvent(SessionEndReason reason, float totalCredit)
+    {
+        Reason = reason;
+        TotalCreditCollected = totalCredit;
+    }
+}

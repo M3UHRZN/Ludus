@@ -1,69 +1,57 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class MockTest : MonoBehaviour
 {
     void Update()
     {
-        // --- 1. ADIM: OYUNCU SAYISINI AYARLAMA ---
-        // Klavyeden '4' tuþuna basarsak 4 kiþilik oyun baþlasýn
-        if (Input.GetKeyDown(KeyCode.Alpha4))
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        // --- Session BaÅŸlatma ---
+        if (kb.digit4Key.wasPressedThisFrame && GameSessionManager.Instance != null)
         {
-            FindObjectOfType<HUDController>().SetPlayerCount(4);
-            Debug.Log("Oyun 4 kiþi baþladý!");
+            GameSessionManager.Instance.StartSession(4);
+            Debug.Log("Oyun 4 kiÅŸi baÅŸladÄ±!");
+        }
+        if (kb.digit6Key.wasPressedThisFrame && GameSessionManager.Instance != null)
+        {
+            GameSessionManager.Instance.StartSession(6);
+            Debug.Log("Oyun 6 kiÅŸi baÅŸladÄ±!");
         }
 
-        // Klavyeden '6' tuþuna basarsak 6 kiþilik oyun baþlasýn
-        if (Input.GetKeyDown(KeyCode.Alpha6))
-        {
-            FindObjectOfType<HUDController>().SetPlayerCount(6);
-            Debug.Log("Oyun 6 kiþi baþladý!");
-        }
-
-        // --- 2. ADIM: ÖLÜM TESTLERÝ ---
-        // 'K' tuþu -> 1. oyuncuyu öldür (Ýndeks 0)
-        if (Input.GetKeyDown(KeyCode.K))
+        // --- Ã–lÃ¼m Testleri ---
+        if (kb.kKey.wasPressedThisFrame)
         {
             GameEventBus.Publish(new PlayerDiedEvent(0, Vector3.zero));
-            Debug.Log("1. Oyuncu öldü!");
+            Debug.Log("1. Oyuncu Ã¶ldÃ¼!");
         }
-
-        // 'L' tuþu -> 2. oyuncuyu öldür (Ýndeks 1)
-        if (Input.GetKeyDown(KeyCode.L))
+        if (kb.lKey.wasPressedThisFrame)
         {
             GameEventBus.Publish(new PlayerDiedEvent(1, Vector3.zero));
-            Debug.Log("2. Oyuncu öldü!");
+            Debug.Log("2. Oyuncu Ã¶ldÃ¼!");
         }
-
-        // 'M' tuþu -> 4. oyuncuyu öldür (Ýndeks 3)
-        if (Input.GetKeyDown(KeyCode.M))
+        if (kb.mKey.wasPressedThisFrame)
         {
             GameEventBus.Publish(new PlayerDiedEvent(3, Vector3.zero));
-            Debug.Log("4. Oyuncu öldü!");
+            Debug.Log("4. Oyuncu Ã¶ldÃ¼!");
         }
 
-        // --- 3. ADIM: AÐIRLIK BARI TESTLERÝ ---
-        // GDD'ye göre aðýrlýklar: Small = 1, Medium = 3, Large = 6
-
-        // Klavyeden 'Z' tuþuna basarsak Küçük (Small) eþya alalým (Aðýrlýk: 1)
-        if (Input.GetKeyDown(KeyCode.Z))
+        // --- AÄŸÄ±rlÄ±k BarÄ± Testleri ---
+        if (kb.zKey.wasPressedThisFrame)
         {
-            // ItemPickedUpEvent struct'ýn 3 parametre istiyordu: isim, aðýrlýk, kredi deðeri
-            GameEventBus.Publish(new ItemPickedUpEvent("Küçük Hurda", 1, 10f));
-            Debug.Log("Mock: Küçük eþya alýndý (+1 Aðýrlýk)");
+            GameEventBus.Publish(new ItemPickedUpEvent("KÃ¼Ã§Ã¼k Hurda", 1, 10f));
+            Debug.Log("Mock: KÃ¼Ã§Ã¼k eÅŸya alÄ±ndÄ± (+1 AÄŸÄ±rlÄ±k)");
         }
-
-        // Klavyeden 'X' tuþuna basarsak Orta (Medium) eþya alalým (Aðýrlýk: 3)
-        if (Input.GetKeyDown(KeyCode.X))
+        if (kb.xKey.wasPressedThisFrame)
         {
             GameEventBus.Publish(new ItemPickedUpEvent("Orta Boy Motor", 3, 40f));
-            Debug.Log("Mock: Orta eþya alýndý (+3 Aðýrlýk)");
+            Debug.Log("Mock: Orta eÅŸya alÄ±ndÄ± (+3 AÄŸÄ±rlÄ±k)");
         }
-
-        // Klavyeden 'C' tuþuna basarsak Büyük (Large) eþya alalým (Aðýrlýk: 6)
-        if (Input.GetKeyDown(KeyCode.C))
+        if (kb.cKey.wasPressedThisFrame)
         {
-            GameEventBus.Publish(new ItemPickedUpEvent("Aðýr Çekirdek", 6, 100f));
-            Debug.Log("Mock: Büyük eþya alýndý (+6 Aðýrlýk)");
+            GameEventBus.Publish(new ItemPickedUpEvent("AÄŸÄ±r Ã‡ekirdek", 6, 100f));
+            Debug.Log("Mock: BÃ¼yÃ¼k eÅŸya alÄ±ndÄ± (+6 AÄŸÄ±rlÄ±k)");
         }
     }
 }
