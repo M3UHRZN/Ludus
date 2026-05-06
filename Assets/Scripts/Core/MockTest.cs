@@ -65,5 +65,27 @@ public class MockTest : MonoBehaviour
             GameEventBus.Publish(new ItemPickedUpEvent("Aðýr Çekirdek", 6, 100f));
             Debug.Log("Mock: Büyük eþya alýndý (+6 Aðýrlýk)");
         }
+
+
+
+
+
+
+        // --- SPRINT 2: EXTRACTION EKRANI TESTÝ ---
+        // 'E' tuþuna basarsak Baþarýlý ve Cezalý bir tur sonu görelim
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            // Senaryo: Baþarýlý, 450 kredi topladýk, 112 ceza yedik, Kota %80 doldu (0.8f)
+            FindObjectOfType<ExtractionUIController>().ShowExtractionScreen(true, 450, 112, 0.8f);
+            Debug.Log("Mock: Baþarýlý tur sonu ekraný açýldý!");
+        }
+
+        // 'R' tuþuna basarsak Baþarýsýz ve Cezasýz bir tur sonu görelim
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            // Senaryo: Baþarýsýz, 120 kredi topladýk, 0 ceza, Kota %30 doldu (0.3f)
+            FindObjectOfType<ExtractionUIController>().ShowExtractionScreen(false, 120, 0, 0.3f);
+            Debug.Log("Mock: Baþarýsýz tur sonu ekraný açýldý!");
+        }
     }
 }
