@@ -3415,7 +3415,6 @@ GameObject:
   - component: {fileID: 1543111028}
   - component: {fileID: 1543111027}
   - component: {fileID: 1543111031}
-  - component: {fileID: 1543111030}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -3512,19 +3511,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1543111030
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1543111025}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0473991278dd400bbe4bf77256deb818, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Multiplayer.Center.NetcodeForGameObjectsExample::Unity.Multiplayer.Center.NetcodeForGameObjectsExample.DistributedAuthority.ConnectionManager
-  m_MaxPlayers: 5
 --- !u!114 &1543111031
 MonoBehaviour:
   m_ObjectHideFlags: 0

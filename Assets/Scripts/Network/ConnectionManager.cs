@@ -14,6 +14,9 @@ public class ConnectionManager : MonoBehaviour
    private ConnectionState _state = ConnectionState.Disconnected;
    private ISession _session;
    private NetworkManager m_NetworkManager;
+   private Task _initializeTask;
+   private Task _connectTask;
+   private bool _isQuitting;
 
    private enum ConnectionState
    {
@@ -22,12 +25,12 @@ public class ConnectionManager : MonoBehaviour
        Connected,
    }
 
-    private async void Awake()
+    private void Awake()
     {
         m_NetworkManager = GetComponent<NetworkManager>();
         m_NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
         m_NetworkManager.OnSessionOwnerPromoted += OnSessionOwnerPromoted;
-        await UnityServices.InitializeAsync();
+        _initializeTask = UnityServices.InitializeAsync();
     }
 
     private void OnSessionOwnerPromoted(ulong sessionOwnerPromoted)
@@ -69,23 +72,43 @@ public class ConnectionManager : MonoBehaviour
 
        if (GUILayout.Button("Create or Join Session"))
        {
-           CreateOrJoinSessionAsync();
+           _connectTask = CreateOrJoinSessionAsync();
        }
    }
 
    private void OnDestroy()
    {
-       _session?.LeaveAsync();
+       if (m_NetworkManager != null)
+       {
+           m_NetworkManager.OnClientConnectedCallback -= OnClientConnectedCallback;
+           m_NetworkManager.OnSessionOwnerPromoted -= OnSessionOwnerPromoted;
+       }
+
+       if (!_isQuitting && _session != null)
+       {
+           _ = LeaveSessionAsync();
+       }
+   }
+
+   private void OnApplicationQuit()
+   {
+       _isQuitting = true;
    }
 
    private async Task CreateOrJoinSessionAsync()
    {
+       if (_connectTask != null && !_connectTask.IsCompleted)
+       {
+           return;
+       }
+
        _state = ConnectionState.Connecting;
 
        try
        {
-           AuthenticationService.Instance.SwitchProfile(_profileName);
-           await AuthenticationService.Instance.SignInAnonymouslyAsync();
+           await _initializeTask;
+
+           await SignInWithProfileAsync();
 
             var options = new SessionOptions() {
                 Name = _sessionName,
@@ -100,6 +123,65 @@ public class ConnectionManager : MonoBehaviour
        {
            _state = ConnectionState.Disconnected;
            Debug.LogException(e);
+           await ResetNetworkManagerAfterFailedStartAsync();
+       }
+   }
+
+   private async Task SignInWithProfileAsync()
+   {
+       var authenticationService = AuthenticationService.Instance;
+
+       if (authenticationService.IsSignedIn)
+       {
+           if (authenticationService.Profile == _profileName)
+           {
+               return;
+           }
+
+           authenticationService.SignOut(true);
+       }
+
+       if (authenticationService.Profile != _profileName)
+       {
+           authenticationService.SwitchProfile(_profileName);
+       }
+
+       await authenticationService.SignInAnonymouslyAsync();
+   }
+
+   private async Task ResetNetworkManagerAfterFailedStartAsync()
+   {
+       if (m_NetworkManager == null)
+       {
+           return;
+       }
+
+       if (!m_NetworkManager.ShutdownInProgress &&
+           (m_NetworkManager.IsListening || m_NetworkManager.IsClient || m_NetworkManager.IsServer))
+       {
+           m_NetworkManager.Shutdown();
+       }
+
+       while (m_NetworkManager.ShutdownInProgress)
+       {
+           await Task.Yield();
+       }
+   }
+
+   private async Task LeaveSessionAsync()
+   {
+       try
+       {
+           await _session.LeaveAsync();
+       }
+       catch (Exception e)
+       {
+           Debug.LogException(e);
+       }
+       finally
+       {
+           _session = null;
+           _state = ConnectionState.Disconnected;
        }
    }
 }

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5480481212665827536}
   - component: {fileID: 3290203178950835307}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: CameraFollow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -61,7 +61,7 @@ GameObject:
   - component: {fileID: 6135342651553365051}
   - component: {fileID: 8831570973908026955}
   - component: {fileID: 2973934217596550557}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -170,7 +170,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4828638660955861928}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: isGround
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 2099237618975453050}
   - component: {fileID: 2801984453304445709}
   - component: {fileID: 6320860155922842016}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlayerVisual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -320,7 +320,7 @@ GameObject:
   - component: {fileID: 6204935761286219471}
   - component: {fileID: 937270318674644225}
   - component: {fileID: 1405195538219752916}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Player-v0.01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -436,8 +436,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   NetworkTransformExpanded: 0
   AutoOwnerAuthorityTickOffset: 1
-  PositionInterpolationType: 0
-  RotationInterpolationType: 0
+  PositionInterpolationType: 1
+  RotationInterpolationType: 1
   ScaleInterpolationType: 0
   PositionLerpSmoothing: 1
   PositionMaxInterpolationTime: 0.1
@@ -452,17 +452,17 @@ MonoBehaviour:
   SyncPositionY: 1
   SyncPositionZ: 1
   SyncRotAngleX: 0
-  SyncRotAngleY: 0
-  SyncRotAngleZ: 0
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
   SyncScaleX: 0
   SyncScaleY: 0
   SyncScaleZ: 0
   PositionThreshold: 0.001
-  RotAngleThreshold: 0.01
+  RotAngleThreshold: 0.00001
   ScaleThreshold: 0.01
   UseQuaternionSynchronization: 0
   UseQuaternionCompression: 0
-  UseHalfFloatPrecision: 0
+  UseHalfFloatPrecision: 1
   InLocalSpace: 0
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
