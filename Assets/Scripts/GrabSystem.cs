@@ -51,14 +51,20 @@ public class GrabSystem : MonoBehaviour
     private bool isChargingThrow = false;
     private float chargeStartTime = 0f;
 
+    private Unity.Netcode.NetworkObject _netObj;
+
     void Awake()
     {
         if (playerCamera == null)
             playerCamera = Camera.main;
+
+        _netObj = GetComponentInParent<Unity.Netcode.NetworkObject>();
     }
 
     void Update()
     {
+        if (_netObj != null && !_netObj.IsOwner) return;
+
         HandleLook();
         HandleInput();
         UpdateHoldDistance();

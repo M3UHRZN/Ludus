@@ -1,6 +1,8 @@
+using Unity.Cinemachine;
+using Unity.Netcode;
 using UnityEngine;
 
-public class PlayerLook : MonoBehaviour
+public class PlayerLook : NetworkBehaviour
 {
     [Header("Hassasiyet")]
     [SerializeField] private float mouseSensitivity = 200f;
@@ -15,10 +17,23 @@ public class PlayerLook : MonoBehaviour
 
     private float xRotation = 0f;
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
+        if (!IsOwner)
+        {
+            enabled = false;
+            return;
+        }
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        var cm = FindAnyObjectByType<CinemachineCamera>();
+        if (cm != null && cameraTarget != null)
+        {
+            cm.Follow = cameraTarget;
+            cm.LookAt = cameraTarget;
+        }
     }
 
     private void Update()
