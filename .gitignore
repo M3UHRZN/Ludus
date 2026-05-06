@@ -106,3 +106,8 @@ ObsidianKasa/Vault/Singleton Pattern.md
 ObsidianKasa/Vault/Sprint Plani.md
 ObsidianKasa/Vault/Strategy Pattern.md
 ObsidianKasa/Vault/Lobby Sistemi.md
+
+# OS and tool generated files
+.DS_Store
+.claude/
+Thumbs.db
