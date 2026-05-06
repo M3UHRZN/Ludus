@@ -2,10 +2,18 @@ using UnityEngine;
 
 public class PlayerLook : MonoBehaviour
 {
+    [Header("Hassasiyet")]
     [SerializeField] private float mouseSensitivity = 200f;
-    [SerializeField] private Transform playerBody;
 
-    private float _xRotation;
+    [Header("Referanslar")]
+    [SerializeField] private Transform playerBody;     // yaw
+    [SerializeField] private Transform cameraTarget;   // pitch (CinemachineCamera bunu takip eder)
+
+    [Header("Pitch Sınırları")]
+    [SerializeField] private float minPitch = -85f;
+    [SerializeField] private float maxPitch = 85f;
+
+    private float xRotation = 0f;
 
     private void Start()
     {
@@ -18,10 +26,10 @@ public class PlayerLook : MonoBehaviour
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        _xRotation -= mouseY;
-        _xRotation = Mathf.Clamp(_xRotation, -90f, 90f);
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, minPitch, maxPitch);
 
-        transform.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
+        cameraTarget.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         playerBody.Rotate(Vector3.up * mouseX);
     }
 }
