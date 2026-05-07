@@ -87,6 +87,32 @@ public class PlayerInventory : NetworkBehaviour
             ActiveSlot.Value = newSlot;
     }
 
+    public void RequestFlashbang(Vector3 origin, float radius, float duration)
+    {
+        if (!IsOwner) return;
+        FlashbangServerRpc(origin, radius, duration);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void FlashbangServerRpc(Vector3 origin, float radius, float duration)
+    {
+        if (!IsServer) return;
+        if (radius <= 0f || radius > 50f) return;
+        if (duration <= 0f || duration > 30f) return;
+        if (float.IsNaN(origin.x) || float.IsNaN(origin.y) || float.IsNaN(origin.z)) return;
+
+        // Anti-cheat: origin oyuncuya yakin mi?
+        if (Vector3.Distance(transform.position, origin) > radius + 2f) return;
+
+        Collider[] hits = Physics.OverlapSphere(origin, radius);
+        foreach (var hit in hits)
+        {
+            var enemy = hit.GetComponent<EnemyController>();
+            if (enemy == null) continue;
+            enemy.SetBlinded(true, duration);
+        }
+    }
+
     private void UseActiveItem()
     {
         if (Slots.Count == 0) return;

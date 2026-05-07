@@ -1,19 +1,46 @@
 // Assets/Scripts/Core/GameSessionManager.cs
+using Unity.Netcode;
 using UnityEngine;
 
-public class GameSessionManager : Singleton<GameSessionManager>
+[RequireComponent(typeof(NetworkObject))]
+public class GameSessionManager : NetworkBehaviour
 {
     [Header("Oturum Ayarları")]
     [SerializeField] private float sessionDuration = 60f;
 
-    public int PlayerCount { get; private set; }
-    public float RemainingTime { get; private set; }
-    public bool IsSessionActive { get; private set; }
-    public float TotalCreditCollected { get; private set; }
+    public static GameSessionManager Instance { get; private set; }
 
-    protected override void Awake()
+    public readonly NetworkVariable<float> NetRemainingTime = new(
+        0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<float> NetTotalCredit = new(
+        0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<bool> NetIsActive = new(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<int> NetPlayerCount = new(
+        0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public float RemainingTime => NetRemainingTime.Value;
+    public bool IsSessionActive => NetIsActive.Value;
+    public float TotalCreditCollected => NetTotalCredit.Value;
+    public int PlayerCount => NetPlayerCount.Value;
+
+    private void Awake()
     {
-        base.Awake();
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+        if (Instance == this) Instance = null;
     }
 
     private void OnEnable()
@@ -28,39 +55,89 @@ public class GameSessionManager : Singleton<GameSessionManager>
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
     }
 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsServer)
+        {
+            NetRemainingTime.OnValueChanged += OnTimerChanged;
+            NetIsActive.OnValueChanged += OnSessionActiveChanged;
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (!IsServer)
+        {
+            NetRemainingTime.OnValueChanged -= OnTimerChanged;
+            NetIsActive.OnValueChanged -= OnSessionActiveChanged;
+        }
+    }
+
     public void StartSession(int playerCount)
     {
-        PlayerCount = playerCount;
-        RemainingTime = sessionDuration;
-        TotalCreditCollected = 0f;
-        IsSessionActive = true;
+        if (NetworkManager.Singleton == null || !IsSpawned)
+        {
+            Debug.LogWarning("[GameSessionManager] StartSession network'e baglanmadi.");
+            return;
+        }
+        if (!IsServer)
+        {
+            Debug.LogWarning("[GameSessionManager] StartSession host-only.");
+            return;
+        }
+
+        NetPlayerCount.Value = playerCount;
+        NetRemainingTime.Value = sessionDuration;
+        NetTotalCredit.Value = 0f;
+        NetIsActive.Value = true;
 
         GameEventBus.Publish(new SessionStartedEvent(playerCount, sessionDuration));
     }
 
+    public void EndSession(SessionEndReason reason)
+    {
+        if (!IsServer) return;
+        if (!NetIsActive.Value) return;
+
+        NetIsActive.Value = false;
+        NetRemainingTime.Value = 0f;
+        GameEventBus.Publish(new SessionEndedEvent(reason, NetTotalCredit.Value));
+        BroadcastSessionEndedRpc((byte)reason, NetTotalCredit.Value);
+    }
+
+    [Rpc(SendTo.NotServer)]
+    private void BroadcastSessionEndedRpc(byte reason, float totalCredit)
+    {
+        GameEventBus.Publish(new SessionEndedEvent((SessionEndReason)reason, totalCredit));
+    }
+
     private void Update()
     {
-        if (!IsSessionActive) return;
+        if (!IsSpawned || !IsServer) return;
+        if (!NetIsActive.Value) return;
 
-        RemainingTime -= Time.deltaTime;
-        GameEventBus.Publish(new TimerEventTriggered(RemainingTime));
+        NetRemainingTime.Value = Mathf.Max(0f, NetRemainingTime.Value - Time.deltaTime);
+        GameEventBus.Publish(new TimerEventTriggered(NetRemainingTime.Value));
 
-        if (RemainingTime <= 0f)
+        if (NetRemainingTime.Value <= 0f)
             EndSession(SessionEndReason.TimeUp);
     }
 
-    public void EndSession(SessionEndReason reason)
+    private void OnTimerChanged(float previous, float current)
     {
-        if (!IsSessionActive) return;
+        GameEventBus.Publish(new TimerEventTriggered(current));
+    }
 
-        IsSessionActive = false;
-        RemainingTime = 0f;
-        GameEventBus.Publish(new SessionEndedEvent(reason, TotalCreditCollected));
+    private void OnSessionActiveChanged(bool previous, bool current)
+    {
+        if (current)
+            GameEventBus.Publish(new SessionStartedEvent(NetPlayerCount.Value, sessionDuration));
     }
 
     private void OnItemPickedUp(ItemPickedUpEvent evt)
     {
-        TotalCreditCollected += evt.CreditValue;
+        if (!IsServer) return;
+        NetTotalCredit.Value += evt.CreditValue;
     }
 
     private void OnPlayerDied(PlayerDiedEvent evt)

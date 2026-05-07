@@ -85,7 +85,15 @@ public class EnemyController : MonoBehaviour
 
     public void SetBlinded(bool blinded, float duration)
     {
-        // TODO Sprint 2: FleeBehavior entegrasyonu
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
+        var netState = GetComponent<EnemyNetState>();
+        if (netState != null && blinded)
+            netState.ServerSetBlinded(duration);
+
+        // Sprint 2: FleeBehavior. Simdilik chase'i kes, patrol'a don.
+        if (blinded && _current is ChaseBehavior)
+            SwitchBehavior(new PatrolBehavior());
     }
 
 #if UNITY_EDITOR

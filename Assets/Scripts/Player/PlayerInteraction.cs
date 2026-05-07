@@ -27,7 +27,7 @@ public class PlayerInteraction : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
-    private IGrabbable _heldObject;
+    private PhysicsObject _heldObject;
     private IInteractable _lookedInteractable;
     private bool _isChargingThrow;
     private float _chargeStartTime;
@@ -71,8 +71,10 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void FixedUpdate()
     {
-        if (_heldObject != null)
-            UpdateHeldObject();
+        if (_heldObject == null) return;
+        Vector3 targetPos = playerCamera.transform.position
+                          + playerCamera.transform.forward * holdDistance;
+        _heldObject.MoveTowards(targetPos);
     }
 
     private void HandleLook()
@@ -143,66 +145,106 @@ public class PlayerInteraction : NetworkBehaviour
     private void TryGrab()
     {
         if (_lookedInteractable == null) return;
+        var component = _lookedInteractable as Component;
+        if (component == null) return;
 
-        var grabbable = (_lookedInteractable as Component)?.GetComponent<IGrabbable>();
-        if (grabbable != null && !grabbable.IsHeld)
+        if (component.TryGetComponent<PhysicsObject>(out var physObj))
         {
-            _heldObject = grabbable;
-            _heldObject.OnGrab(_machine);
-            SetHoldingServerRpc(true);
-
-            if (grabbable.Weight >= 6f && _machine != null)
-                _machine.ChangeState(new CarryingState());
-
+            if (physObj.NetIsHeld.Value) return;
+            if (physObj.NetworkObject == null) return;
+            RequestGrabServerRpc(new NetworkObjectReference(physObj.NetworkObject));
             return;
         }
 
+        // PhysicsObject olmayan IInteractable'lar (kapilar, switchler) — Phase 5.5 (Sprint 2).
         _lookedInteractable.Interact(_machine);
     }
 
     public void DropObject()
     {
         if (_heldObject == null) return;
-
-        _heldObject.OnRelease();
-        _heldObject = null;
-        _isChargingThrow = false;
-        SetHoldingServerRpc(false);
-
-        if (_machine != null && _machine.LocalState == PlayerStateEnum.Carrying)
-            _machine.ChangeState(new AliveState());
+        if (_heldObject.NetworkObject == null) return;
+        RequestDropServerRpc(new NetworkObjectReference(_heldObject.NetworkObject));
+        // _heldObject NotifyReleased ile temizlenir (server-driven).
     }
 
     private void ThrowObject()
     {
         if (_heldObject == null) return;
+        if (_heldObject.NetworkObject == null) return;
 
         float chargeRatio = Mathf.Clamp01((Time.time - _chargeStartTime) / maxChargeTime);
         Vector3 throwDir = playerCamera.transform.forward;
 
-        _heldObject.Throw(throwDir, chargeRatio);
+        RequestThrowServerRpc(new NetworkObjectReference(_heldObject.NetworkObject), throwDir, chargeRatio);
+        _isChargingThrow = false;
+        // _heldObject NotifyReleased ile temizlenir.
+    }
+
+    // PhysicsObject.NetGrabberClientId.OnValueChanged'dan gelen callback (owner-side).
+    public void NotifyGrabbed(PhysicsObject physObj)
+    {
+        if (!IsOwner || physObj == null) return;
+        _heldObject = physObj;
+
+        if (physObj.Weight >= 6f && _machine != null)
+            _machine.ChangeState(new CarryingState());
+    }
+
+    public void NotifyReleased(PhysicsObject physObj)
+    {
+        if (!IsOwner) return;
+        if (_heldObject != physObj) return;
+
         _heldObject = null;
         _isChargingThrow = false;
-        SetHoldingServerRpc(false);
 
         if (_machine != null && _machine.LocalState == PlayerStateEnum.Carrying)
             _machine.ChangeState(new AliveState());
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void SetHoldingServerRpc(bool value)
+    private void RequestGrabServerRpc(NetworkObjectReference targetRef, RpcParams rpcParams = default)
     {
-        IsHolding.Value = value;
+        if (!IsServer) return;
+        if (!targetRef.TryGet(out var targetNob)) return;
+        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj)) return;
+        if (physObj.NetIsHeld.Value) return;
+
+        // Mesafe kontrolu (anti-cheat): grabber bu mesafede mi?
+        float dist = Vector3.Distance(transform.position, physObj.transform.position);
+        if (dist > interactRange + 1.5f) return;
+
+        physObj.ServerStartHold(rpcParams.Receive.SenderClientId);
+        IsHolding.Value = true;
     }
 
-    private void UpdateHeldObject()
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestDropServerRpc(NetworkObjectReference targetRef, RpcParams rpcParams = default)
     {
-        Vector3 targetPos = playerCamera.transform.position
-                          + playerCamera.transform.forward * holdDistance;
+        if (!IsServer) return;
+        if (!targetRef.TryGet(out var targetNob)) return;
+        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj)) return;
+        if (physObj.NetGrabberClientId.Value != rpcParams.Receive.SenderClientId) return;
 
-        var comp = _heldObject as Component;
-        if (comp != null && comp.TryGetComponent<PhysicsObject>(out var po))
-            po.MoveTowards(targetPos);
+        physObj.ServerStopHold();
+        IsHolding.Value = false;
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestThrowServerRpc(NetworkObjectReference targetRef, Vector3 direction, float chargeRatio, RpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        if (!targetRef.TryGet(out var targetNob)) return;
+        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj)) return;
+        if (physObj.NetGrabberClientId.Value != rpcParams.Receive.SenderClientId) return;
+
+        // Sanity check
+        if (float.IsNaN(direction.x) || float.IsNaN(direction.y) || float.IsNaN(direction.z)) return;
+        if (direction.sqrMagnitude < 0.0001f) return;
+
+        physObj.ServerThrow(direction, chargeRatio);
+        IsHolding.Value = false;
     }
 
     private void ShowPrompt(bool active)
