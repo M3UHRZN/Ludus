@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -29,6 +30,15 @@ public class EnemyController : MonoBehaviour
 
     private void Start()
     {
+        // Host-Client topology: AI yalnizca server'da kosar.
+        // Sprint 2 TODO: NetworkBehaviour'a cevir, NetworkTransform ile pozisyon sync et.
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer)
+        {
+            if (Agent != null) Agent.enabled = false;
+            this.enabled = false;
+            return;
+        }
+
         var playerObj = GameObject.FindWithTag("Player");
         if (playerObj != null)
             PlayerTransform = playerObj.transform;
