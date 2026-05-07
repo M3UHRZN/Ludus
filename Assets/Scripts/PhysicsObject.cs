@@ -1,124 +1,105 @@
 using UnityEngine;
 
-/// <summary>
-/// Tutulabilir her eşyaya ekle.
-/// Rigidbody ile çalışır; GrabSystem tarafından yönetilir.
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class PhysicsObject : MonoBehaviour
+public class PhysicsObject : MonoBehaviour, IGrabbable, IInteractable
 {
-    [Header("Grab Ayarları")]
-    [Tooltip("Eşyanın tutulabileceği maksimum mesafe (metre)")]
+    [Header("Grab Ayarlari")]
     public float grabDistance = 4f;
-
-    [Tooltip("Eşya tutulurken ne kadar hızlı hedefe yaklaşır (yay katsayısı)")]
     public float holdSpringStrength = 150f;
-
-    [Tooltip("Yay titreşimini önlemek için sönümleme")]
     public float holdDamping = 12f;
-
-    [Tooltip("Fırlatma kuvveti çarpanı")]
     public float throwForceMultiplier = 12f;
 
-    [Header("Görsel Geribildirim")]
-    [Tooltip("Highlight materyali (opsiyonel)")]
+    [Header("Item")]
+    [SerializeField] private float weight = 1f;
+
+    [Header("Gorsel Geribildirim")]
     public Material highlightMaterial;
 
-    // ── İç Durum ──────────────────────────────────────────────────────────────
-    [HideInInspector] public bool isHeld = false;
-    [HideInInspector] public bool isHighlighted = false;
+    private bool _isHeld;
+    private bool _isHighlighted;
+    private Rigidbody _rb;
+    private Material _originalMaterial;
+    private Renderer _rend;
+    private float _originalDrag;
+    private float _originalAngularDrag;
+    private PlayerStateMachine _grabber;
 
-    private Rigidbody rb;
-    private Material originalMaterial;
-    private Renderer rend;
+    // --- IGrabbable ---
+    public float Weight => weight;
+    public bool IsHeld => _isHeld;
 
-    // Eşyanın tutulduğunda uçmasını önlemek için orijinal drag değerleri
-    private float originalDrag;
-    private float originalAngularDrag;
+    // --- IInteractable ---
+    public string InteractPrompt => "E — Pick up";
+    public bool CanInteract(PlayerStateMachine player) => !_isHeld;
 
-    void Awake()
+    public void Interact(PlayerStateMachine player)
     {
-        rb = GetComponent<Rigidbody>();
-        rend = GetComponent<Renderer>();
-
-        originalDrag = rb.linearDamping;
-        originalAngularDrag = rb.angularDamping;
-
-        if (rend != null)
-            originalMaterial = rend.material;
+        OnGrab(player);
     }
 
-    // ── Highlight (Vurgulama) ──────────────────────────────────────────────────
+    private void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+        _rend = GetComponent<Renderer>();
+
+        _originalDrag = _rb.linearDamping;
+        _originalAngularDrag = _rb.angularDamping;
+
+        if (_rend != null)
+            _originalMaterial = _rend.material;
+    }
+
     public void SetHighlight(bool active)
     {
-        if (rend == null || highlightMaterial == null) return;
-        if (isHighlighted == active) return;
+        if (_rend == null || highlightMaterial == null) return;
+        if (_isHighlighted == active) return;
 
-        isHighlighted = active;
-        rend.material = active ? highlightMaterial : originalMaterial;
+        _isHighlighted = active;
+        _rend.material = active ? highlightMaterial : _originalMaterial;
     }
 
-    // ── Tutma / Bırakma ───────────────────────────────────────────────────────
-    public void OnGrab()
+    public void OnGrab(PlayerStateMachine grabber)
     {
-        isHeld = true;
-
-        // Tutulurken daha fazla hava direnci → daha kontrollü hareket
-        rb.linearDamping = 8f;
-        rb.angularDamping = 8f;
-
-        // Gravity kapatmak isteğe bağlı; yorum satırını kaldırarak aktif edebilirsin
-        // rb.useGravity = false;
+        _isHeld = true;
+        _grabber = grabber;
+        _rb.linearDamping = 8f;
+        _rb.angularDamping = 8f;
     }
 
     public void OnRelease()
     {
-        isHeld = false;
-        rb.linearDamping = originalDrag;
-        rb.angularDamping = originalAngularDrag;
-        // rb.useGravity = true;
-
+        _isHeld = false;
+        _grabber = null;
+        _rb.linearDamping = _originalDrag;
+        _rb.angularDamping = _originalAngularDrag;
         SetHighlight(false);
     }
 
-    // ── Fizik Güncellemesi (GrabSystem çağırır) ───────────────────────────────
-    /// <summary>
-    /// Eşyayı hedef pozisyona Spring (yay) kuvvetiyle çeker.
-    /// FixedUpdate'ten çağrılmalıdır.
-    /// </summary>
     public void MoveTowards(Vector3 targetPosition)
     {
-        Vector3 direction = targetPosition - rb.position;
+        Vector3 direction = targetPosition - _rb.position;
         float distance = direction.magnitude;
 
-        // Yay kuvveti: F = k * x   (k = holdSpringStrength, x = mesafe)
         Vector3 springForce = direction * holdSpringStrength;
+        Vector3 dampingForce = -_rb.linearVelocity * holdDamping;
+        _rb.AddForce(springForce + dampingForce, ForceMode.Force);
 
-        // Sönümleme: mevcut hızın tersine orantılı kuvvet
-        Vector3 dampingForce = -rb.linearVelocity * holdDamping;
-
-        rb.AddForce(springForce + dampingForce, ForceMode.Force);
-
-        // Eşya çok uzaklaşırsa kendiliğinden bırak (güvenlik kontrolü)
-        if (distance > grabDistance * 2.5f)
+        if (distance > grabDistance * 2.5f && _grabber != null)
         {
-            GrabSystem grabSystem = FindObjectOfType<GrabSystem>();
-            if (grabSystem != null)
-                grabSystem.DropObject();
+            var interaction = _grabber.Interaction;
+            if (interaction != null)
+                interaction.DropObject();
         }
     }
 
-    // ── Fırlatma ──────────────────────────────────────────────────────────────
-    public void Throw(Vector3 throwDirection, float chargeRatio)
+    public void Throw(Vector3 direction, float chargeRatio)
     {
         OnRelease();
 
-        // Charge oranı 0-1 arası; tam şarj daha güçlü fırlatır
         float force = throwForceMultiplier * (1f + chargeRatio * 2f);
-        rb.AddForce(throwDirection.normalized * force, ForceMode.Impulse);
+        _rb.AddForce(direction.normalized * force, ForceMode.Impulse);
 
-        // Hafif rastgele rotasyon → daha gerçekçi fırlatma
         Vector3 randomTorque = Random.insideUnitSphere * force * 0.3f;
-        rb.AddTorque(randomTorque, ForceMode.Impulse);
+        _rb.AddTorque(randomTorque, ForceMode.Impulse);
     }
 }
