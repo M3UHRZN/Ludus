@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ca3f718c6d098c4084b931b4f7b8d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLook
+  ShowTopMostFoldoutHeaderGroup: 1
   mouseSensitivity: 200
   playerBody: {fileID: 6701460826182415937}
   cameraTarget: {fileID: 5480481212665827536}
@@ -317,8 +318,8 @@ GameObject:
   m_Component:
   - component: {fileID: 6701460826182415937}
   - component: {fileID: 3857249885342073518}
-  - component: {fileID: 6204935761286219471}
   - component: {fileID: 937270318674644225}
+  - component: {fileID: 6204935761286219471}
   - component: {fileID: 1405195538219752916}
   m_Layer: 6
   m_Name: Player-v0.01
@@ -370,32 +371,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &6204935761286219471
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8753592736034584811}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 515003ae7b002754fba8055d49912b80, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  walkSpeed: 5
-  runSpeed: 10
-  crouchSpeed: 2.5
-  jumpHeight: 1.5
-  gravity: -20
-  standingHeight: 2
-  crouchHeight: 1
-  crouchTransitionSpeed: 10
-  groundCheck: {fileID: 4828638660955861928}
-  groundCheckRadius: 0.12
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  visualMesh: {fileID: 9028350390082660458}
 --- !u!114 &937270318674644225
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -421,6 +396,33 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &6204935761286219471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 515003ae7b002754fba8055d49912b80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
+  ShowTopMostFoldoutHeaderGroup: 1
+  walkSpeed: 5
+  runSpeed: 10
+  crouchSpeed: 2.5
+  jumpHeight: 1.5
+  gravity: -20
+  standingHeight: 2
+  crouchHeight: 1
+  crouchTransitionSpeed: 10
+  groundCheck: {fileID: 4828638660955861928}
+  groundCheckRadius: 0.12
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  visualMesh: {fileID: 9028350390082660458}
 --- !u!114 &1405195538219752916
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -445,7 +447,7 @@ MonoBehaviour:
   RotationMaxInterpolationTime: 0.1
   ScaleLerpSmoothing: 1
   ScaleMaxInterpolationTime: 0.1
-  AuthorityMode: 0
+  AuthorityMode: 1
   TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1

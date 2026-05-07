@@ -98,25 +98,28 @@ public class ConnectionManager : MonoBehaviour
    private async Task CreateOrJoinSessionAsync()
    {
        if (_connectTask != null && !_connectTask.IsCompleted)
-       {
            return;
-       }
 
        _state = ConnectionState.Connecting;
 
        try
        {
            await _initializeTask;
-
            await SignInWithProfileAsync();
 
-            var options = new SessionOptions() {
-                Name = _sessionName,
-                MaxPlayers = _maxPlayers
-            }.WithDistributedAuthorityNetwork();
+           // Önceki session tam temizlenmeden yeni bağlantı açılırsa SDK task cancel atar
+           if (_session != null)
+           {
+               await LeaveSessionAsync();
+               await ResetNetworkManagerAfterFailedStartAsync();
+           }
 
-            _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(_sessionName, options);
+           var options = new SessionOptions() {
+               Name = _sessionName,
+               MaxPlayers = _maxPlayers
+           }.WithDistributedAuthorityNetwork();
 
+           _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(_sessionName, options);
            _state = ConnectionState.Connected;
        }
        catch (Exception e)
