@@ -48,6 +48,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
     {
         if (!IsOwner)
         {
+            if (PlayerInput != null) PlayerInput.enabled = false;
             enabled = false;
             return;
         }

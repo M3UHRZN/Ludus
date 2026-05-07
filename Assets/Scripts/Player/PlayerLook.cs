@@ -20,11 +20,16 @@ public class PlayerLook : NetworkBehaviour
 
     private float _xRotation;
     private InputAction _lookAction;
+    private CinemachineCamera _vcam;
 
     public override void OnNetworkSpawn()
     {
+        if (cameraTarget != null)
+            _vcam = cameraTarget.GetComponent<CinemachineCamera>();
+
         if (!IsOwner)
         {
+            if (_vcam != null) _vcam.enabled = false;
             enabled = false;
             return;
         }
@@ -35,12 +40,8 @@ public class PlayerLook : NetworkBehaviour
         var input = GetComponent<PlayerInput>();
         _lookAction = input.actions["Gameplay/Look"];
 
-        var cm = FindAnyObjectByType<CinemachineCamera>();
-        if (cm != null && cameraTarget != null)
-        {
-            cm.Follow = cameraTarget;
-            cm.LookAt = cameraTarget;
-        }
+        // Bu oyuncunun vcam'ini aktif et — CinemachineBrain otomatik devralir
+        if (_vcam != null) _vcam.enabled = true;
     }
 
     private void Update()
@@ -48,13 +49,10 @@ public class PlayerLook : NetworkBehaviour
         if (_lookAction == null) return;
         Vector2 delta = _lookAction.ReadValue<Vector2>();
 
-        float mouseX = delta.x * mouseSensitivity;
-        float mouseY = delta.y * mouseSensitivity;
-
-        _xRotation -= mouseY;
+        _xRotation -= delta.y * mouseSensitivity;
         _xRotation = Mathf.Clamp(_xRotation, minPitch, maxPitch);
 
         cameraTarget.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
-        playerBody.Rotate(Vector3.up * mouseX);
+        playerBody.Rotate(Vector3.up * (delta.x * mouseSensitivity));
     }
 }
