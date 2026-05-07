@@ -25,7 +25,7 @@ public class PlayerInteraction : NetworkBehaviour
     public readonly NetworkVariable<bool> IsHolding = new(
         false,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner);
+        NetworkVariableWritePermission.Server);
 
     private IGrabbable _heldObject;
     private IInteractable _lookedInteractable;

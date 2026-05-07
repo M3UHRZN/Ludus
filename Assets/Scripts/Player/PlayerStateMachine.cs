@@ -18,12 +18,12 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
     public readonly NetworkVariable<byte> NetState = new(
         (byte)PlayerStateEnum.Alive,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner);
+        NetworkVariableWritePermission.Server);
 
     public readonly NetworkVariable<float> NetHealth = new(
         100f,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner);
+        NetworkVariableWritePermission.Server);
 
     private IPlayerState _currentState;
 

@@ -11,7 +11,7 @@ public class PlayerInventory : NetworkBehaviour
     public readonly NetworkVariable<byte> ActiveSlot = new(
         0,
         NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner);
+        NetworkVariableWritePermission.Server);
 
     private InputAction _scrollAction;
     private InputAction _useAction;
