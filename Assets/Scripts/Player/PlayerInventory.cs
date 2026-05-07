@@ -33,6 +33,7 @@ public class PlayerInventory : NetworkBehaviour
 
     private void Update()
     {
+        if (_scrollAction == null) return;
         HandleScroll();
 
         if (_useAction.WasPressedThisFrame())

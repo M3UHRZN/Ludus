@@ -45,6 +45,7 @@ public class PlayerLook : NetworkBehaviour
 
     private void Update()
     {
+        if (_lookAction == null) return;
         Vector2 delta = _lookAction.ReadValue<Vector2>();
 
         float mouseX = delta.x * mouseSensitivity;

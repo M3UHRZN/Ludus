@@ -63,6 +63,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void Update()
     {
+        if (_interactAction == null) return;
         HandleLook();
         HandleInput();
         UpdateHoldDistance();

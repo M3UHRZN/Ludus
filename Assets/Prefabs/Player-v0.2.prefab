@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5480481212665827536}
-  - component: {fileID: 3290203178950835307}
   m_Layer: 6
   m_Name: CameraFollow
   m_TagString: Untagged
@@ -32,24 +31,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 6701460826182415937}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3290203178950835307
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2970259971449008719}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ca3f718c6d098c4084b931b4f7b8d9f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerLook
-  ShowTopMostFoldoutHeaderGroup: 1
-  mouseSensitivity: 200
-  playerBody: {fileID: 6701460826182415937}
-  cameraTarget: {fileID: 5480481212665827536}
-  minPitch: -85
-  maxPitch: 85
 --- !u!1 &4773000985901477451
 GameObject:
   m_ObjectHideFlags: 0
@@ -182,6 +163,7 @@ GameObject:
   - component: {fileID: 9028350390082660458}
   - component: {fileID: 2099237618975453050}
   - component: {fileID: 2801984453304445709}
+  - component: {fileID: 8743005702567114075}
   m_Layer: 6
   m_Name: PlayerVisual
   m_TagString: Untagged
@@ -262,6 +244,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &8743005702567114075
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7071066419008824420}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &8753592736034584811
 GameObject:
   m_ObjectHideFlags: 0
@@ -271,12 +275,16 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6701460826182415937}
-  - component: {fileID: 3857249885342073518}
   - component: {fileID: 937270318674644225}
+  - component: {fileID: 7808715681403315721}
+  - component: {fileID: 3857249885342073518}
   - component: {fileID: 6204935761286219471}
   - component: {fileID: 1405195538219752916}
   - component: {fileID: 6495747602510889587}
   - component: {fileID: 2400360376121833173}
+  - component: {fileID: 2143027042600200302}
+  - component: {fileID: 2741744310393051947}
+  - component: {fileID: 6091811720626873971}
   m_Layer: 6
   m_Name: Player-v0.2
   m_TagString: Player
@@ -302,6 +310,49 @@ Transform:
   - {fileID: 9028350390082660458}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &937270318674644225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 519307579
+  InScenePlacedSourceGlobalObjectIdHash: 1333462533
+  DeferredDespawnTick: 0
+  Ownership: 8
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &7808715681403315721
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ca3f718c6d098c4084b931b4f7b8d9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerLook
+  ShowTopMostFoldoutHeaderGroup: 1
+  mouseSensitivity: 0.15
+  playerBody: {fileID: 6701460826182415937}
+  cameraTarget: {fileID: 5480481212665827536}
+  minPitch: -85
+  maxPitch: 85
 --- !u!143 &3857249885342073518
 CharacterController:
   m_ObjectHideFlags: 0
@@ -327,31 +378,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &937270318674644225
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8753592736034584811}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1232547530
-  InScenePlacedSourceGlobalObjectIdHash: 1333462533
-  DeferredDespawnTick: 0
-  Ownership: 8
-  AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
-  ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 0
-  SpawnWithObservers: 1
-  DontDestroyWithOwner: 0
-  AutoObjectParentSync: 1
-  SyncOwnerTransformWhenParented: 1
-  AllowOwnerToParent: 0
 --- !u!114 &6204935761286219471
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -469,3 +495,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateMachine
   ShowTopMostFoldoutHeaderGroup: 1
   maxHealth: 100
+--- !u!114 &2143027042600200302
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 708222a22293092498c177ad6e8e02ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
+  ShowTopMostFoldoutHeaderGroup: 1
+  playerCamera: {fileID: 0}
+  holdDistance: 2.5
+  minHoldDistance: 1
+  maxHoldDistance: 5
+  maxChargeTime: 1.5
+  interactLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  interactRange: 4
+  interactPromptUI: {fileID: 0}
+--- !u!114 &2741744310393051947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed326ba33b3984245b5571b98f1a71e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpectatorController
+  ShowTopMostFoldoutHeaderGroup: 1
+  freeCamSpeed: 5
+  freeCamSensitivity: 0.15
+--- !u!114 &6091811720626873971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8753592736034584811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3355c9cb17b594105bb92de403d4b2a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
+  ShowTopMostFoldoutHeaderGroup: 1

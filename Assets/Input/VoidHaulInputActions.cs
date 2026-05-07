@@ -232,7 +232,7 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                 {
                     ""name"": ""WASD"",
                     ""id"": ""f9a78899-684f-48f8-b6e3-15aed02fd0b4"",
-                    ""path"": """",
+                    ""path"": ""2DVector"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -564,7 +564,7 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                 {
                     ""name"": ""WASD"",
                     ""id"": ""d4e5f6a7-7777-8888-9999-aaaaaaaaaaaa"",
-                    ""path"": """",
+                    ""path"": ""2DVector"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

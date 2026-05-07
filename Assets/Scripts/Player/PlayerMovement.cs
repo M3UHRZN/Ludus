@@ -60,6 +60,7 @@ public class PlayerMovement : NetworkBehaviour
 
     private void Update()
     {
+        if (_moveAction == null) return;
         CheckGround();
         HandleCrouch();
         HandleMovement();
