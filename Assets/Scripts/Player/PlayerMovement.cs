@@ -33,6 +33,11 @@ public class PlayerMovement : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Owner);
 
+    public readonly NetworkVariable<bool> NetGrounded = new(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
@@ -101,6 +106,22 @@ public class PlayerMovement : NetworkBehaviour
         ApplyGravity();
     }
 
+    public bool IsGrounded => _isGrounded;
+    public float RunSpeed   => runSpeed;
+
+    // 0=dur, 0–0.5=yürü, 0.5–0.75=slowrun, 1=koş — animatör için
+    public float NormalizedSpeed
+    {
+        get
+        {
+            if (_moveAction == null) return 0f;
+            if (_moveAction.ReadValue<Vector2>().magnitude < 0.1f) return 0f;
+            if (_isCrouching)  return crouchSpeed / runSpeed;
+            if (_sprintAction != null && _sprintAction.IsPressed()) return 1f;
+            return walkSpeed / runSpeed;
+        }
+    }
+
     public void SetSpeedMultiplier(float multiplier)
     {
         _speedMultiplier = multiplier;
@@ -113,6 +134,9 @@ public class PlayerMovement : NetworkBehaviour
 
         if (_isGrounded && _velocity.y < 0f)
             _velocity.y = -2f;
+
+        if (NetGrounded.Value != _isGrounded)
+            NetGrounded.Value = _isGrounded;
     }
 
     private void HandleCrouch()

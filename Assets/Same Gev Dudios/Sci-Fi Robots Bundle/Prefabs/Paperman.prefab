@@ -661,6 +661,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6824302251668638172}
   - component: {fileID: 3129268991297307321}
+  - component: {fileID: 7398448975579265501}
   m_Layer: 0
   m_Name: Paperman
   m_TagString: Untagged
@@ -769,6 +770,28 @@ MonoBehaviour:
   - {fileID: 4321529352318726124}
   - {fileID: 6115942627223861973}
   - {fileID: 2542228771088107382}
+--- !u!95 &7398448975579265501
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907917438950286612}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: a7fa87652e796e149bcf74bfcbfdef8f, type: 3}
+  m_Controller: {fileID: 9100000, guid: 0197deda1b3471142935b01992dbc366, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &2049983525113804763
 GameObject:
   m_ObjectHideFlags: 0
