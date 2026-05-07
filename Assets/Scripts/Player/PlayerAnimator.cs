@@ -50,15 +50,19 @@ public class PlayerAnimator : NetworkBehaviour
         float speed;
         if (IsOwner)
         {
-            speed = _movement.NormalizedSpeed;
+            speed = _movement.CurrentSpeed;
         }
         else
         {
-            float delta = (transform.position - _prevPos).magnitude;
-            speed = Mathf.Clamp01(delta / Time.deltaTime / _movement.RunSpeed);
+            speed = (transform.position - _prevPos).magnitude / Time.deltaTime;
             _prevPos = transform.position;
         }
 
-        _animator.SetFloat(SpeedHash, speed, 0.1f, Time.deltaTime);
+        if (speed < 0.05f) speed = 0f;
+
+        if (speed == 0f && _animator.GetFloat(SpeedHash) < 0.05f)
+            _animator.SetFloat(SpeedHash, 0f);
+        else
+            _animator.SetFloat(SpeedHash, speed, 0.1f, Time.deltaTime);
     }
 }

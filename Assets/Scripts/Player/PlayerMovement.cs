@@ -109,16 +109,16 @@ public class PlayerMovement : NetworkBehaviour
     public bool IsGrounded => _isGrounded;
     public float RunSpeed   => runSpeed;
 
-    // 0=dur, 0–0.5=yürü, 0.5–0.75=slowrun, 1=koş — animatör için
-    public float NormalizedSpeed
+    // Aktif yatay hız (m/s) — animatör blend tree direkt bunu okur
+    public float CurrentSpeed
     {
         get
         {
             if (_moveAction == null) return 0f;
             if (_moveAction.ReadValue<Vector2>().magnitude < 0.1f) return 0f;
-            if (_isCrouching)  return crouchSpeed / runSpeed;
-            if (_sprintAction != null && _sprintAction.IsPressed()) return 1f;
-            return walkSpeed / runSpeed;
+            if (_isCrouching)  return crouchSpeed;
+            if (_sprintAction != null && _sprintAction.IsPressed()) return runSpeed;
+            return walkSpeed;
         }
     }
 
