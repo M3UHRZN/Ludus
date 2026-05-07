@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -27,16 +28,25 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Crouch Visual")]
     [SerializeField] private Transform visualMesh;
 
+    public readonly NetworkVariable<bool> NetCrouching = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isCrouching;
+    private bool _wantCrouch;
     private float _speedMultiplier = 1f;
 
     private InputAction _moveAction;
     private InputAction _jumpAction;
     private InputAction _crouchAction;
     private InputAction _sprintAction;
+
+    private Action<InputAction.CallbackContext> _onCrouchStarted;
+    private Action<InputAction.CallbackContext> _onCrouchCanceled;
 
     private void Awake()
     {
@@ -47,16 +57,39 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!IsOwner)
         {
+            NetCrouching.OnValueChanged += OnNetCrouchingChanged;
             enabled = false;
             return;
         }
 
         var input = GetComponent<PlayerInput>();
-        _moveAction = input.actions["Gameplay/Move"];
-        _jumpAction = input.actions["Gameplay/Jump"];
+        _moveAction   = input.actions["Gameplay/Move"];
+        _jumpAction   = input.actions["Gameplay/Jump"];
         _crouchAction = input.actions["Gameplay/Crouch"];
         _sprintAction = input.actions["Gameplay/Sprint"];
+
+        _onCrouchStarted  = _ => _wantCrouch = true;
+        _onCrouchCanceled = _ => _wantCrouch = false;
+        _crouchAction.started  += _onCrouchStarted;
+        _crouchAction.canceled += _onCrouchCanceled;
     }
+
+    public override void OnNetworkDespawn()
+    {
+        if (!IsOwner)
+        {
+            NetCrouching.OnValueChanged -= OnNetCrouchingChanged;
+            return;
+        }
+
+        if (_crouchAction != null)
+        {
+            if (_onCrouchStarted  != null) _crouchAction.started  -= _onCrouchStarted;
+            if (_onCrouchCanceled != null) _crouchAction.canceled -= _onCrouchCanceled;
+        }
+    }
+
+    private void OnNetCrouchingChanged(bool prev, bool current) { }
 
     private void Update()
     {
@@ -84,12 +117,16 @@ public class PlayerMovement : NetworkBehaviour
 
     private void HandleCrouch()
     {
-        bool wantCrouch = _crouchAction.IsPressed();
+        bool shouldCrouch = _wantCrouch;
 
-        if (_isCrouching && !wantCrouch && !CanStandUp())
-            wantCrouch = true;
+        if (_isCrouching && !shouldCrouch && !CanStandUp())
+            shouldCrouch = true;
 
-        _isCrouching = wantCrouch;
+        bool prev = _isCrouching;
+        _isCrouching = shouldCrouch;
+
+        if (_isCrouching != prev)
+            NetCrouching.Value = _isCrouching;
 
         float targetHeight = _isCrouching ? crouchHeight : standingHeight;
         _controller.height = Mathf.Lerp(_controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
@@ -98,18 +135,14 @@ public class PlayerMovement : NetworkBehaviour
         center.y = _controller.height / 2f;
         _controller.center = center;
 
-        if (visualMesh != null)
-        {
-            float targetScaleY = _isCrouching ? 0.5f : 1f;
-            Vector3 s = visualMesh.localScale;
-            s.y = Mathf.Lerp(s.y, targetScaleY, Time.deltaTime * crouchTransitionSpeed);
-            visualMesh.localScale = s;
-        }
     }
 
     private bool CanStandUp()
     {
-        return !Physics.Raycast(transform.position, Vector3.up, standingHeight + 0.1f);
+        // Capsule'ın tepesinden başla — transform.position'dan başlarsa kendi kapsülüne çarpar
+        float capsuleTop = _controller.height + 0.05f;
+        float checkDist  = standingHeight - _controller.height;
+        return !Physics.Raycast(transform.position + Vector3.up * capsuleTop, Vector3.up, checkDist);
     }
 
     private void HandleMovement()
