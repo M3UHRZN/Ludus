@@ -5,6 +5,8 @@ using UnityEngine;
 [RequireComponent(typeof(NetworkObject))]
 public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 {
+    private const ulong NoGrabberClientId = ulong.MaxValue;
+
     [Header("Grab Ayarlari")]
     public float grabDistance = 4f;
     public float holdSpringStrength = 150f;
@@ -23,7 +25,7 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         NetworkVariableWritePermission.Server);
 
     public readonly NetworkVariable<ulong> NetGrabberClientId = new(
-        0UL,
+        NoGrabberClientId,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
@@ -65,6 +67,15 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
     public override void OnNetworkSpawn()
     {
+        if (IsServer)
+        {
+            NetIsHeld.Value = false;
+            NetGrabberClientId.Value = NoGrabberClientId;
+            _rb.linearDamping = _originalDrag;
+            _rb.angularDamping = _originalAngularDrag;
+            _serverHasHoldTarget = false;
+        }
+
         if (!IsServer)
         {
             // Client'lar fizik simule etmez; pozisyon NetworkTransform ile gelir.
@@ -139,7 +150,7 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         if (!NetIsHeld.Value) return;
 
         NetIsHeld.Value = false;
-        NetGrabberClientId.Value = 0UL;
+        NetGrabberClientId.Value = NoGrabberClientId;
         _rb.linearDamping = _originalDrag;
         _rb.angularDamping = _originalAngularDrag;
         _serverHasHoldTarget = false;

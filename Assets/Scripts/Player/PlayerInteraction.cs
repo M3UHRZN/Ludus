@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Cinemachine;
 
 public class PlayerInteraction : NetworkBehaviour
 {
@@ -18,6 +19,7 @@ public class PlayerInteraction : NetworkBehaviour
     [Header("Raycast")]
     [SerializeField] private LayerMask interactLayers = ~0;
     [SerializeField] private float interactRange = 4f;
+    [SerializeField] private bool debugInteraction;
 
     [Header("UI")]
     [SerializeField] private GameObject interactPromptUI;
@@ -39,6 +41,7 @@ public class PlayerInteraction : NetworkBehaviour
     private InputAction _dropAction;
 
     private PlayerStateMachine _machine;
+    private bool _loggedMissingCamera;
 
     public override void OnNetworkSpawn()
     {
@@ -48,8 +51,7 @@ public class PlayerInteraction : NetworkBehaviour
             return;
         }
 
-        if (playerCamera == null)
-            playerCamera = Camera.main;
+        playerCamera = ResolveInteractionCamera();
 
         _machine = GetComponent<PlayerStateMachine>();
 
@@ -64,6 +66,18 @@ public class PlayerInteraction : NetworkBehaviour
     private void Update()
     {
         if (_interactAction == null) return;
+        if (playerCamera == null)
+            playerCamera = ResolveInteractionCamera();
+        if (playerCamera == null)
+        {
+            if (debugInteraction && !_loggedMissingCamera)
+            {
+                Debug.LogWarning("[PlayerInteraction] No camera resolved for interaction raycast.", this);
+                _loggedMissingCamera = true;
+            }
+            return;
+        }
+        _loggedMissingCamera = false;
         HandleLook();
         HandleInput();
         UpdateHoldDistance();
@@ -71,6 +85,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void FixedUpdate()
     {
+        if (playerCamera == null) return;
         if (_heldObject == null) return;
         Vector3 targetPos = playerCamera.transform.position
                           + playerCamera.transform.forward * holdDistance;
@@ -82,7 +97,7 @@ public class PlayerInteraction : NetworkBehaviour
         if (_lookedInteractable != null && _lookedInteractable != _heldObject as IInteractable)
         {
             var ph = _lookedInteractable as Component;
-            if (ph != null && ph.TryGetComponent<PhysicsObject>(out var po))
+            if (ph != null && TryGetPhysicsObject(ph, out var po))
                 po.SetHighlight(false);
             _lookedInteractable = null;
         }
@@ -94,19 +109,41 @@ public class PlayerInteraction : NetworkBehaviour
         }
 
         Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        if (debugInteraction)
+            Debug.DrawRay(ray.origin, ray.direction * interactRange, Color.cyan);
+
         if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayers))
         {
-            var interactable = hit.collider.GetComponent<IInteractable>();
-            if (interactable != null && interactable.CanInteract(_machine))
+            var interactable = FindInteractable(hit.collider);
+            bool canInteract = interactable != null && interactable.CanInteract(_machine);
+            if (debugInteraction)
+            {
+                string interactableType = interactable?.GetType().Name ?? "null";
+                string interactableName = interactable is Component interactableComponent
+                    ? interactableComponent.name
+                    : interactable?.GetType().Name ?? "null";
+                string physicsState = string.Empty;
+                if (interactable is PhysicsObject physicsObject)
+                    physicsState = $" netIsHeld={physicsObject.NetIsHeld.Value} isSpawned={physicsObject.IsSpawned}";
+                Debug.Log($"[PlayerInteraction] Hit '{hit.collider.name}' interactable={interactableName} type={interactableType} canInteract={canInteract} distance={hit.distance:F2}{physicsState}", this);
+            }
+            if (canInteract)
             {
                 _lookedInteractable = interactable;
 
-                if (hit.collider.TryGetComponent<PhysicsObject>(out var po))
+                if (TryGetPhysicsObject(hit.collider, out var po))
                     po.SetHighlight(true);
 
                 ShowPrompt(true);
                 return;
             }
+
+            if (debugInteraction)
+                Debug.Log($"[PlayerInteraction] Hit '{hit.collider.name}' but interactable was null or CanInteract returned false.", this);
+        }
+        else if (debugInteraction)
+        {
+            Debug.Log("[PlayerInteraction] Raycast hit nothing.", this);
         }
 
         ShowPrompt(false);
@@ -144,14 +181,37 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void TryGrab()
     {
-        if (_lookedInteractable == null) return;
-        var component = _lookedInteractable as Component;
-        if (component == null) return;
-
-        if (component.TryGetComponent<PhysicsObject>(out var physObj))
+        if (_lookedInteractable == null)
         {
-            if (physObj.NetIsHeld.Value) return;
-            if (physObj.NetworkObject == null) return;
+            if (debugInteraction)
+                Debug.Log("[PlayerInteraction] TryGrab aborted: no looked interactable.", this);
+            return;
+        }
+        var component = _lookedInteractable as Component;
+        if (component == null)
+        {
+            if (debugInteraction)
+                Debug.LogWarning("[PlayerInteraction] TryGrab aborted: looked interactable is not a Component.", this);
+            return;
+        }
+
+        if (TryGetPhysicsObject(component, out var physObj))
+        {
+            if (physObj.NetIsHeld.Value)
+            {
+                if (debugInteraction)
+                    Debug.Log($"[PlayerInteraction] TryGrab aborted: '{physObj.name}' already held.", this);
+                return;
+            }
+            if (physObj.NetworkObject == null)
+            {
+                if (debugInteraction)
+                    Debug.LogWarning($"[PlayerInteraction] TryGrab aborted: '{physObj.name}' has no NetworkObject.", this);
+                return;
+            }
+
+            if (debugInteraction)
+                Debug.Log($"[PlayerInteraction] Requesting grab for '{physObj.name}'.", this);
             RequestGrabServerRpc(new NetworkObjectReference(physObj.NetworkObject));
             return;
         }
@@ -207,16 +267,38 @@ public class PlayerInteraction : NetworkBehaviour
     private void RequestGrabServerRpc(NetworkObjectReference targetRef, RpcParams rpcParams = default)
     {
         if (!IsServer) return;
-        if (!targetRef.TryGet(out var targetNob)) return;
-        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj)) return;
-        if (physObj.NetIsHeld.Value) return;
+        if (!targetRef.TryGet(out var targetNob))
+        {
+            if (debugInteraction)
+                Debug.LogWarning("[PlayerInteraction] Server grab rejected: targetRef could not resolve.", this);
+            return;
+        }
+        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj))
+        {
+            if (debugInteraction)
+                Debug.LogWarning($"[PlayerInteraction] Server grab rejected: '{targetNob.name}' has no PhysicsObject.", this);
+            return;
+        }
+        if (physObj.NetIsHeld.Value)
+        {
+            if (debugInteraction)
+                Debug.Log($"[PlayerInteraction] Server grab rejected: '{physObj.name}' already held.", this);
+            return;
+        }
 
         // Mesafe kontrolu (anti-cheat): grabber bu mesafede mi?
         float dist = Vector3.Distance(transform.position, physObj.transform.position);
-        if (dist > interactRange + 1.5f) return;
+        if (dist > interactRange + 1.5f)
+        {
+            if (debugInteraction)
+                Debug.Log($"[PlayerInteraction] Server grab rejected: distance {dist:F2} > {interactRange + 1.5f:F2}.", this);
+            return;
+        }
 
         physObj.ServerStartHold(rpcParams.Receive.SenderClientId);
         IsHolding.Value = true;
+        if (debugInteraction)
+            Debug.Log($"[PlayerInteraction] Server grab accepted for '{physObj.name}' by client {rpcParams.Receive.SenderClientId}.", this);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
@@ -251,5 +333,54 @@ public class PlayerInteraction : NetworkBehaviour
     {
         if (interactPromptUI != null)
             interactPromptUI.SetActive(active);
+    }
+
+    private static IInteractable FindInteractable(Component source)
+    {
+        if (source == null) return null;
+
+        var interactable = source.GetComponent<IInteractable>();
+        if (interactable != null) return interactable;
+
+        return source.GetComponentInParent<IInteractable>();
+    }
+
+    private static bool TryGetPhysicsObject(Component source, out PhysicsObject physicsObject)
+    {
+        physicsObject = null;
+        if (source == null) return false;
+
+        if (source.TryGetComponent(out physicsObject))
+            return true;
+
+        physicsObject = source.GetComponentInParent<PhysicsObject>();
+        return physicsObject != null;
+    }
+
+    private Camera ResolveInteractionCamera()
+    {
+        if (playerCamera != null)
+            return playerCamera;
+
+        var main = Camera.main;
+        if (main != null && main.isActiveAndEnabled)
+            return main;
+
+        var brains = FindObjectsByType<CinemachineBrain>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var brain in brains)
+        {
+            var cam = brain.GetComponent<Camera>();
+            if (cam != null && cam.isActiveAndEnabled)
+                return cam;
+        }
+
+        var cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var cam in cameras)
+        {
+            if (cam.isActiveAndEnabled)
+                return cam;
+        }
+
+        return null;
     }
 }
