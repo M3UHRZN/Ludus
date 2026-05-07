@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : NetworkBehaviour
@@ -21,25 +22,44 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.3f;
-    [SerializeField] private LayerMask groundMask = ~0; // varsayılan: her şeyi algıla
+    [SerializeField] private LayerMask groundMask = ~0;
 
     [Header("Crouch Visual")]
-    [SerializeField] private Transform visualMesh; // kapsülün mesh objesi
+    [SerializeField] private Transform visualMesh;
 
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isCrouching;
+    private float _speedMultiplier = 1f;
+
+    private InputAction _moveAction;
+    private InputAction _jumpAction;
+    private InputAction _crouchAction;
+    private InputAction _sprintAction;
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
     }
 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner)
+        {
+            enabled = false;
+            return;
+        }
+
+        var input = GetComponent<PlayerInput>();
+        _moveAction = input.actions["Gameplay/Move"];
+        _jumpAction = input.actions["Gameplay/Jump"];
+        _crouchAction = input.actions["Gameplay/Crouch"];
+        _sprintAction = input.actions["Gameplay/Sprint"];
+    }
+
     private void Update()
     {
-        if (!IsOwner) return;
-
         CheckGround();
         HandleCrouch();
         HandleMovement();
@@ -47,9 +67,13 @@ public class PlayerMovement : NetworkBehaviour
         ApplyGravity();
     }
 
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        _speedMultiplier = multiplier;
+    }
+
     private void CheckGround()
     {
-        // groundMask atanmamışsa CharacterController'ın kendi kontrolünü de kullan
         _isGrounded = _controller.isGrounded ||
                       Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask);
 
@@ -59,9 +83,8 @@ public class PlayerMovement : NetworkBehaviour
 
     private void HandleCrouch()
     {
-        bool wantCrouch = Input.GetKey(KeyCode.LeftControl);
+        bool wantCrouch = _crouchAction.IsPressed();
 
-        // Prevent standing up if blocked above
         if (_isCrouching && !wantCrouch && !CanStandUp())
             wantCrouch = true;
 
@@ -74,7 +97,6 @@ public class PlayerMovement : NetworkBehaviour
         center.y = _controller.height / 2f;
         _controller.center = center;
 
-        // Görsel mesh'i de küçült (atanmışsa)
         if (visualMesh != null)
         {
             float targetScaleY = _isCrouching ? 0.5f : 1f;
@@ -86,31 +108,28 @@ public class PlayerMovement : NetworkBehaviour
 
     private bool CanStandUp()
     {
-        // Spherecast upward to check for ceiling
         return !Physics.Raycast(transform.position, Vector3.up, standingHeight + 0.1f);
     }
 
     private void HandleMovement()
     {
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * h + transform.forward * v;
+        Vector2 input = _moveAction.ReadValue<Vector2>();
+        Vector3 move = transform.right * input.x + transform.forward * input.y;
 
         float speed;
         if (_isCrouching)
             speed = crouchSpeed;
-        else if (Input.GetKey(KeyCode.LeftShift))
+        else if (_sprintAction.IsPressed())
             speed = runSpeed;
         else
             speed = walkSpeed;
 
-        _controller.Move(move * (speed * Time.deltaTime));
+        _controller.Move(move * (speed * _speedMultiplier * Time.deltaTime));
     }
 
     private void HandleJump()
     {
-        if (Input.GetButtonDown("Jump") && _isGrounded && !_isCrouching)
+        if (_jumpAction.WasPressedThisFrame() && _isGrounded && !_isCrouching)
             _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
     }
 
