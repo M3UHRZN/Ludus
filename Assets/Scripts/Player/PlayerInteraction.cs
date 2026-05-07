@@ -149,7 +149,7 @@ public class PlayerInteraction : NetworkBehaviour
         {
             _heldObject = grabbable;
             _heldObject.OnGrab(_machine);
-            IsHolding.Value = true;
+            SetHoldingServerRpc(true);
 
             if (grabbable.Weight >= 6f && _machine != null)
                 _machine.ChangeState(new CarryingState());
@@ -167,9 +167,9 @@ public class PlayerInteraction : NetworkBehaviour
         _heldObject.OnRelease();
         _heldObject = null;
         _isChargingThrow = false;
-        IsHolding.Value = false;
+        SetHoldingServerRpc(false);
 
-        if (_machine != null && _machine.NetState.Value == (byte)PlayerStateEnum.Carrying)
+        if (_machine != null && _machine.LocalState == PlayerStateEnum.Carrying)
             _machine.ChangeState(new AliveState());
     }
 
@@ -183,10 +183,16 @@ public class PlayerInteraction : NetworkBehaviour
         _heldObject.Throw(throwDir, chargeRatio);
         _heldObject = null;
         _isChargingThrow = false;
-        IsHolding.Value = false;
+        SetHoldingServerRpc(false);
 
-        if (_machine != null && _machine.NetState.Value == (byte)PlayerStateEnum.Carrying)
+        if (_machine != null && _machine.LocalState == PlayerStateEnum.Carrying)
             _machine.ChangeState(new AliveState());
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void SetHoldingServerRpc(bool value)
+    {
+        IsHolding.Value = value;
     }
 
     private void UpdateHeldObject()

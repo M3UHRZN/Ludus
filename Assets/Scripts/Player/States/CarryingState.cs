@@ -2,7 +2,6 @@ public class CarryingState : IPlayerState
 {
     public void Enter(PlayerStateMachine machine)
     {
-        machine.NetState.Value = (byte)PlayerStateEnum.Carrying;
         machine.SwitchActionMap("Gameplay");
         machine.SetComponentsEnabled(
             movement: true,

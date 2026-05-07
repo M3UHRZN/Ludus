@@ -48,22 +48,43 @@ public class PlayerInventory : NetworkBehaviour
 
         int dir = scroll > 0 ? -1 : 1;
         int next = (ActiveSlot.Value + dir + Slots.Count) % Slots.Count;
-        ActiveSlot.Value = (byte)next;
+        RequestActiveSlotServerRpc((byte)next);
     }
 
     public bool TryAddItem(ushort itemId)
     {
         if (Slots.Count >= MaxSlots) return false;
-        Slots.Add(itemId);
+        AddItemServerRpc(itemId);
         return true;
     }
 
     public void RemoveAtSlot(int index)
     {
         if (index < 0 || index >= Slots.Count) return;
+        RemoveAtSlotServerRpc(index);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void AddItemServerRpc(ushort itemId)
+    {
+        if (Slots.Count >= MaxSlots) return;
+        Slots.Add(itemId);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RemoveAtSlotServerRpc(int index)
+    {
+        if (index < 0 || index >= Slots.Count) return;
         Slots.RemoveAt(index);
         if (ActiveSlot.Value >= Slots.Count && Slots.Count > 0)
             ActiveSlot.Value = (byte)(Slots.Count - 1);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestActiveSlotServerRpc(byte newSlot)
+    {
+        if (newSlot < Slots.Count)
+            ActiveSlot.Value = newSlot;
     }
 
     private void UseActiveItem()
