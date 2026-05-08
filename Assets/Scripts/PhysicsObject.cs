@@ -39,6 +39,12 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     private Vector3 _serverHoldTarget;
     private bool _serverHasHoldTarget;
 
+    // --- Hold target RPC throttle (client-side only) ---
+    private Vector3 _lastSentHoldTarget;
+    private float _nextHoldTargetSendTime;
+    private const float HoldTargetSendInterval = 0.05f;  // 20 Hz max
+    private const float HoldTargetMinDeltaSqr = 0.01f * 0.01f;  // 1cm threshold
+
     // --- IGrabbable ---
     public float Weight => weight;
     public bool IsHeld => NetIsHeld.Value;
@@ -142,6 +148,10 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         _rb.linearDamping = 8f;
         _rb.angularDamping = 8f;
         _serverHasHoldTarget = false;
+
+        // Throttle state reset — yeni grab'de ilk RPC hemen gitsin.
+        _lastSentHoldTarget = Vector3.zero;
+        _nextHoldTargetSendTime = 0f;
     }
 
     public void ServerStopHold()
@@ -207,6 +217,15 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
             return;
         }
         if (!IsOwnerOfHold()) return;
+
+        // Rate limiter: saniyede en fazla 20 RPC
+        if (Time.time < _nextHoldTargetSendTime) return;
+
+        // Delta threshold: pozisyon yeterince degismediyse gonderme
+        if ((targetPosition - _lastSentHoldTarget).sqrMagnitude < HoldTargetMinDeltaSqr) return;
+
+        _lastSentHoldTarget = targetPosition;
+        _nextHoldTargetSendTime = Time.time + HoldTargetSendInterval;
         SetHoldTargetServerRpc(targetPosition);
     }
 

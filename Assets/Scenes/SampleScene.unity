@@ -530,6 +530,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 39030983961786842, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: weight
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_Interpolate
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_IsKinematic
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_CollisionDetection
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3245912217859212004, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: m_LocalPosition.x
       value: -2.5
@@ -575,71 +591,34 @@ PrefabInstance:
       value: Item Prefab
       objectReference: {fileID: 0}
     - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: Ownership
-      value: 8
-      objectReference: {fileID: 0}
-    - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: GlobalObjectIdHash
       value: 3060714739
       objectReference: {fileID: 0}
-    - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: SceneMigrationSynchronization
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: InScenePlacedSourceGlobalObjectIdHash
-      value: 484320489
-      objectReference: {fileID: 0}
-    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: SyncScaleX
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: SyncScaleY
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: SyncScaleZ
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: SyncRotAngleY
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      propertyPath: UseHalfFloatPrecision
+      propertyPath: PositionThreshold
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: RotAngleThreshold
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: UseQuaternionCompression
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: UseQuaternionSynchronization
       value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3522793483526317839, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 782685288}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
---- !u!1 &782685287 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3522793483526317839, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
-  m_PrefabInstance: {fileID: 782685286}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &782685288
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 782685287}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Components.NetworkRigidbody
-  ShowTopMostFoldoutHeaderGroup: 1
-  NetworkRigidbodyBaseExpanded: 0
-  UseRigidBodyForMotion: 1
-  AutoUpdateKinematicState: 1
-  AutoSetKinematicOnDespawn: 1
 --- !u!1 &793779152
 GameObject:
   m_ObjectHideFlags: 0
