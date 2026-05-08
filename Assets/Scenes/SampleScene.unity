@@ -535,16 +535,28 @@ PrefabInstance:
       value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_ImplicitCom
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: m_Interpolate
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: m_IsKinematic
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_ImplicitTensor
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: m_CollisionDetection
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 88806609955655618, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: m_ExcludeLayers.m_Bits
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 3245912217859212004, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -591,8 +603,16 @@ PrefabInstance:
       value: Item Prefab
       objectReference: {fileID: 0}
     - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: Ownership
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 4153098298000630741, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: GlobalObjectIdHash
       value: 3060714739
+      objectReference: {fileID: 0}
+    - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+      propertyPath: AuthorityMode
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7906534491821509288, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
       propertyPath: SyncRotAngleY
@@ -6233,6 +6253,18 @@ PrefabInstance:
     - target: {fileID: 5123652082969661077, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_Name
       value: NetworkManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.NetworkTopology
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.ForceSamePrefabs
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.ConnectionApproval
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7443329452919609623, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_LocalPosition.x
