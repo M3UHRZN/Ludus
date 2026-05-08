@@ -30,6 +30,8 @@ public class HUDController : MonoBehaviour
         GameEventBus.Subscribe<TimerEventTriggered>(OnTimerUpdated);
         GameEventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);      // Yeni eþya alýndýðýnda aðýrlýk barýný güncellemek için
         GameEventBus.Subscribe<PlayerDiedEvent>(OnTeammateDied);
+        GameEventBus.Subscribe<ItemDroppedEvent>(OnItemDropped);        // Eþya býrakýldýðýnda aðýrlýk barýný güncellemek için
+        GameEventBus.Subscribe<PlayerRevivedEvent>(OnPlayerRevived);    // Oyuncu hayata döndüðünde ikonunu güncellemek için
     }
 
     private void OnDisable()
@@ -38,6 +40,8 @@ public class HUDController : MonoBehaviour
         GameEventBus.Unsubscribe<TimerEventTriggered>(OnTimerUpdated);
         GameEventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);    
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnTeammateDied);
+        GameEventBus.Unsubscribe<ItemDroppedEvent>(OnItemDropped);
+        GameEventBus.Unsubscribe<PlayerRevivedEvent>(OnPlayerRevived);
     }
 
     // --- EVENT DÝNLEYÝCÝ FONKSÝYONLAR ---
@@ -123,6 +127,25 @@ public class HUDController : MonoBehaviour
                 weightBarImage.fillAmount = 0f;
                 weightBarImage.enabled = false;
             }
+        }
+    }
+
+    private void OnItemDropped(ItemDroppedEvent evt)
+    {
+        currentTotalWeight -= evt.Weight;
+        if (currentTotalWeight < 0) currentTotalWeight = 0;
+
+        // Barýn yeni haline doðru kaymasý için target'ý güncelle (Lerp kullanýyorduk hatýrla)
+        targetWeightFill = (float)currentTotalWeight / maxWeight;
+    }
+
+    private void OnPlayerRevived(PlayerRevivedEvent evt)
+    {
+        if (evt.PlayerId >= 0 && evt.PlayerId < teammateIcons.Length)
+        {
+            // Ýkonu tekrar hayatta (beyaz ve pointer) yap
+            teammateIcons[evt.PlayerId].sprite = aliveIcon;
+            teammateIcons[evt.PlayerId].color = Color.white;
         }
     }
 }
