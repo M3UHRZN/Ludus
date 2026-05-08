@@ -18,11 +18,30 @@ public class ExtractionUIController : MonoBehaviour
 
     private void Start()
     {
-        // Oyun baþladýðýnda bu ekran kesinlikle gizli olmalý
+        // Oyun baþladýðýnda bu ekrani gizli yaparýz, sadece görev bittiðinde gösterilecek
         extractionPanel.SetActive(false);
     }
 
-    // Tur bittiðinde Metin'in (veya þimdilik bizim test kodumuzun) çaðýracaðý fonksiyon
+    // --- EVENTBUS ABONELÝKLERÝ BAÞLANGICI ---
+    private void OnEnable()
+    {
+        GameEventBus.Subscribe<LevelEndedEvent>(OnLevelEnded);
+    }
+
+    private void OnDisable()
+    {
+        GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
+    }
+
+    // Olay tetiklendiðinde çalýþacak fonksiyon
+    private void OnLevelEnded(LevelEndedEvent evt)
+    {
+        // Event'ten gelen verileri alýp, ekran gösterme fonksiyonuna gonderiyoruz
+        // !!!Degisken isimlerini ben belirledim, sen event struct'ýnda ne isim verdin ise onu yazarsýn. Benim verdiðim isimler sadece örnek!!!
+        ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
+    }
+    // --- EVENTBUS ABONELÝKLERÝ BÝTÝÞÝ ---
+
     public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
     {
 

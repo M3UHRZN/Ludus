@@ -2,8 +2,20 @@ using UnityEngine;
 
 public class MockTest : MonoBehaviour
 {
+    public float timeRemaining = 60f;
+
     void Update()
     {
+
+        // TimerEventTriggered olayýný her frame'de yayýnlayarak HUDController'ýn güncel zamaný almasýný saðlýyoruz
+        if (timeRemaining > 0)
+        {
+            timeRemaining -= Time.deltaTime;
+            // HUDController'ýn duyabileceði þekilde olayý yayýnla
+            GameEventBus.Publish(new TimerEventTriggered(timeRemaining));
+        }
+
+
         // --- 1. ADIM: OYUNCU SAYISINI AYARLAMA ---
         // Klavyeden '4' tuþuna basarsak 4 kiþilik oyun baþlasýn
         if (Input.GetKeyDown(KeyCode.Alpha4))
@@ -72,20 +84,18 @@ public class MockTest : MonoBehaviour
 
 
         // --- SPRINT 2: EXTRACTION EKRANI TESTÝ ---
-        // 'E' tuþuna basarsak Baþarýlý ve Cezalý bir tur sonu görelim
+        // 'E' tuþuna basarsak Baþarýlý Event fýrlat
         if (Input.GetKeyDown(KeyCode.E))
         {
-            // Senaryo: Baþarýlý, 450 kredi topladýk, 112 ceza yedik, Kota %80 doldu (0.8f)
-            FindObjectOfType<ExtractionUIController>().ShowExtractionScreen(true, 450, 112, 0.8f);
-            Debug.Log("Mock: Baþarýlý tur sonu ekraný açýldý!");
+            GameEventBus.Publish(new LevelEndedEvent(true, 450, 112, 0.8f));
+            Debug.Log("Mock: Baþarýlý tur event'i fýrlatýldý!");
         }
 
-        // 'R' tuþuna basarsak Baþarýsýz ve Cezasýz bir tur sonu görelim
+        // 'R' tuþuna basarsak Baþarýsýz Event fýrlat
         if (Input.GetKeyDown(KeyCode.R))
         {
-            // Senaryo: Baþarýsýz, 120 kredi topladýk, 0 ceza, Kota %30 doldu (0.3f)
-            FindObjectOfType<ExtractionUIController>().ShowExtractionScreen(false, 120, 0, 0.3f);
-            Debug.Log("Mock: Baþarýsýz tur sonu ekraný açýldý!");
+            GameEventBus.Publish(new LevelEndedEvent(false, 120, 0, 0.3f));
+            Debug.Log("Mock: Baþarýsýz tur event'i fýrlatýldý!");
         }
     }
 }

@@ -128,3 +128,20 @@ public struct PlayerDiedEvent
         DeathPosition = deathPosition;
     }
 }
+
+/// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+public struct LevelEndedEvent
+{
+    public bool IsSuccess;
+    public int CollectedCredits;
+    public int PenaltyAmount;
+    public float QuotaFillAmount;
+
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
+    }
+}
