@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -29,6 +30,15 @@ public class EnemyController : MonoBehaviour
 
     private void Start()
     {
+        // Host-Client topology: AI yalnizca server'da kosar.
+        // Sprint 2 TODO: NetworkBehaviour'a cevir, NetworkTransform ile pozisyon sync et.
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer)
+        {
+            if (Agent != null) Agent.enabled = false;
+            this.enabled = false;
+            return;
+        }
+
         var playerObj = GameObject.FindWithTag("Player");
         if (playerObj != null)
             PlayerTransform = playerObj.transform;
@@ -75,7 +85,15 @@ public class EnemyController : MonoBehaviour
 
     public void SetBlinded(bool blinded, float duration)
     {
-        // TODO Sprint 2: FleeBehavior entegrasyonu
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
+        var netState = GetComponent<EnemyNetState>();
+        if (netState != null && blinded)
+            netState.ServerSetBlinded(duration);
+
+        // Sprint 2: FleeBehavior. Simdilik chase'i kes, patrol'a don.
+        if (blinded && _current is ChaseBehavior)
+            SwitchBehavior(new PatrolBehavior());
     }
 
 #if UNITY_EDITOR

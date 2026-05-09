@@ -12,7 +12,6 @@ public class StunnedState : IPlayerState
 
     public void Enter(PlayerStateMachine machine)
     {
-        machine.NetState.Value = (byte)PlayerStateEnum.Stunned;
         machine.SetComponentsEnabled(
             movement: false,
             look: false,

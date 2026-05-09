@@ -29,16 +29,7 @@ public class ConnectionManager : MonoBehaviour
     {
         m_NetworkManager = GetComponent<NetworkManager>();
         m_NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
-        m_NetworkManager.OnSessionOwnerPromoted += OnSessionOwnerPromoted;
         _initializeTask = UnityServices.InitializeAsync();
-    }
-
-    private void OnSessionOwnerPromoted(ulong sessionOwnerPromoted)
-    {
-        if (m_NetworkManager.LocalClient.IsSessionOwner)
-        {
-            Debug.Log($"Client-{m_NetworkManager.LocalClientId} is the session owner!");
-        }
     }
 
     private void OnClientConnectedCallback(ulong clientId)
@@ -81,7 +72,6 @@ public class ConnectionManager : MonoBehaviour
        if (m_NetworkManager != null)
        {
            m_NetworkManager.OnClientConnectedCallback -= OnClientConnectedCallback;
-           m_NetworkManager.OnSessionOwnerPromoted -= OnSessionOwnerPromoted;
        }
 
        if (!_isQuitting && _session != null)
@@ -117,7 +107,7 @@ public class ConnectionManager : MonoBehaviour
            var options = new SessionOptions() {
                Name = _sessionName,
                MaxPlayers = _maxPlayers
-           }.WithDistributedAuthorityNetwork();
+           }.WithRelayNetwork();
 
            _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(_sessionName, options);
            _state = ConnectionState.Connected;

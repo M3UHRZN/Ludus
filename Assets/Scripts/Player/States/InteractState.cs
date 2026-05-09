@@ -5,7 +5,6 @@ public class InteractState : IPlayerState
 {
     public void Enter(PlayerStateMachine machine)
     {
-        machine.NetState.Value = (byte)PlayerStateEnum.Interacting;
         machine.SwitchActionMap("UI");
         machine.SetComponentsEnabled(
             movement: false,

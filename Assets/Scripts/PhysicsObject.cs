@@ -1,8 +1,12 @@
+using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PhysicsObject : MonoBehaviour, IGrabbable, IInteractable
+[RequireComponent(typeof(NetworkObject))]
+public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 {
+    private const ulong NoGrabberClientId = ulong.MaxValue;
+
     [Header("Grab Ayarlari")]
     public float grabDistance = 4f;
     public float holdSpringStrength = 150f;
@@ -15,26 +19,44 @@ public class PhysicsObject : MonoBehaviour, IGrabbable, IInteractable
     [Header("Gorsel Geribildirim")]
     public Material highlightMaterial;
 
-    private bool _isHeld;
+    public readonly NetworkVariable<bool> NetIsHeld = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<ulong> NetGrabberClientId = new(
+        NoGrabberClientId,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
     private bool _isHighlighted;
     private Rigidbody _rb;
     private Material _originalMaterial;
     private Renderer _rend;
     private float _originalDrag;
     private float _originalAngularDrag;
-    private PlayerStateMachine _grabber;
+
+    private Vector3 _serverHoldTarget;
+    private bool _serverHasHoldTarget;
+
+    // --- Hold target RPC throttle (client-side only) ---
+    private Vector3 _lastSentHoldTarget;
+    private float _nextHoldTargetSendTime;
+    private const float HoldTargetSendInterval = 0.05f;  // 20 Hz max
+    private const float HoldTargetMinDeltaSqr = 0.01f * 0.01f;  // 1cm threshold
 
     // --- IGrabbable ---
     public float Weight => weight;
-    public bool IsHeld => _isHeld;
+    public bool IsHeld => NetIsHeld.Value;
 
     // --- IInteractable ---
     public string InteractPrompt => "E — Pick up";
-    public bool CanInteract(PlayerStateMachine player) => !_isHeld;
+    public bool CanInteract(PlayerStateMachine player) => !NetIsHeld.Value;
 
     public void Interact(PlayerStateMachine player)
     {
-        OnGrab(player);
+        // Caller (PlayerInteraction) artik dogrudan RequestGrabServerRpc atiyor.
+        // Bu method legacy IInteractable yolu icin no-op.
     }
 
     private void Awake()
@@ -49,6 +71,57 @@ public class PhysicsObject : MonoBehaviour, IGrabbable, IInteractable
             _originalMaterial = _rend.material;
     }
 
+    public override void OnNetworkSpawn()
+    {
+        if (IsServer)
+        {
+            NetIsHeld.Value = false;
+            NetGrabberClientId.Value = NoGrabberClientId;
+            _rb.linearDamping = _originalDrag;
+            _rb.angularDamping = _originalAngularDrag;
+            _serverHasHoldTarget = false;
+        }
+
+        if (!IsServer)
+        {
+            // Client'lar fizik simule etmez; pozisyon NetworkTransform ile gelir.
+            _rb.isKinematic = true;
+            _rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        NetGrabberClientId.OnValueChanged += OnGrabberChanged;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        NetGrabberClientId.OnValueChanged -= OnGrabberChanged;
+    }
+
+    private void OnGrabberChanged(ulong previous, ulong current)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return;
+        ulong localId = nm.LocalClientId;
+
+        if (previous == localId && current != localId)
+        {
+            var pi = TryGetLocalPlayerInteraction();
+            pi?.NotifyReleased(this);
+        }
+        else if (previous != localId && current == localId)
+        {
+            var pi = TryGetLocalPlayerInteraction();
+            pi?.NotifyGrabbed(this);
+        }
+    }
+
+    private static PlayerInteraction TryGetLocalPlayerInteraction()
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null || nm.LocalClient == null || nm.LocalClient.PlayerObject == null) return null;
+        return nm.LocalClient.PlayerObject.GetComponent<PlayerInteraction>();
+    }
+
     public void SetHighlight(bool active)
     {
         if (_rend == null || highlightMaterial == null) return;
@@ -58,48 +131,116 @@ public class PhysicsObject : MonoBehaviour, IGrabbable, IInteractable
         _rend.material = active ? highlightMaterial : _originalMaterial;
     }
 
-    public void OnGrab(PlayerStateMachine grabber)
+    // --- IGrabbable interface (legacy entry; PlayerInteraction direkt RPC atiyor) ---
+    public void OnGrab(PlayerStateMachine grabber) { }
+    public void OnRelease() { }
+    public void Throw(Vector3 direction, float chargeRatio) { }
+
+    // --- Server-side hold lifecycle (PlayerInteraction RPC handler'larindan cagrilir) ---
+
+    public void ServerStartHold(ulong grabberClientId)
     {
-        _isHeld = true;
-        _grabber = grabber;
+        if (!IsServer) return;
+        if (NetIsHeld.Value) return;
+
+        NetGrabberClientId.Value = grabberClientId;
+        NetIsHeld.Value = true;
         _rb.linearDamping = 8f;
         _rb.angularDamping = 8f;
+        _serverHasHoldTarget = false;
+
+        // Throttle state reset — yeni grab'de ilk RPC hemen gitsin.
+        _lastSentHoldTarget = Vector3.zero;
+        _nextHoldTargetSendTime = 0f;
     }
 
-    public void OnRelease()
+    public void ServerStopHold()
     {
-        _isHeld = false;
-        _grabber = null;
+        if (!IsServer) return;
+        if (!NetIsHeld.Value) return;
+
+        NetIsHeld.Value = false;
+        NetGrabberClientId.Value = NoGrabberClientId;
         _rb.linearDamping = _originalDrag;
         _rb.angularDamping = _originalAngularDrag;
-        SetHighlight(false);
+        _serverHasHoldTarget = false;
     }
 
-    public void MoveTowards(Vector3 targetPosition)
+    public void ServerSetHoldTarget(Vector3 target)
     {
-        Vector3 direction = targetPosition - _rb.position;
-        float distance = direction.magnitude;
+        if (!IsServer) return;
+        if (!NetIsHeld.Value) return;
 
-        Vector3 springForce = direction * holdSpringStrength;
-        Vector3 dampingForce = -_rb.linearVelocity * holdDamping;
-        _rb.AddForce(springForce + dampingForce, ForceMode.Force);
-
-        if (distance > grabDistance * 2.5f && _grabber != null)
-        {
-            var interaction = _grabber.Interaction;
-            if (interaction != null)
-                interaction.DropObject();
-        }
+        _serverHoldTarget = target;
+        _serverHasHoldTarget = true;
     }
 
-    public void Throw(Vector3 direction, float chargeRatio)
+    public void ServerThrow(Vector3 direction, float chargeRatio)
     {
-        OnRelease();
+        if (!IsServer) return;
+
+        ServerStopHold();
+
+        chargeRatio = Mathf.Clamp01(chargeRatio);
+        if (direction.sqrMagnitude < 0.0001f) return;
 
         float force = throwForceMultiplier * (1f + chargeRatio * 2f);
         _rb.AddForce(direction.normalized * force, ForceMode.Impulse);
 
         Vector3 randomTorque = Random.insideUnitSphere * force * 0.3f;
         _rb.AddTorque(randomTorque, ForceMode.Impulse);
+    }
+
+    private void FixedUpdate()
+    {
+        if (!IsServer) return;
+        if (!NetIsHeld.Value || !_serverHasHoldTarget) return;
+
+        Vector3 direction = _serverHoldTarget - _rb.position;
+        float distance = direction.magnitude;
+
+        Vector3 springForce = direction * holdSpringStrength;
+        Vector3 dampingForce = -_rb.linearVelocity * holdDamping;
+        _rb.AddForce(springForce + dampingForce, ForceMode.Force);
+
+        if (distance > grabDistance * 2.5f)
+            ServerStopHold();
+    }
+
+    // Geriye uyumluluk: PlayerInteraction.UpdateHeldObject hala MoveTowards cagiriyor.
+    // Owner client tarafindan cagirilir; server'a forward eder.
+    public void MoveTowards(Vector3 targetPosition)
+    {
+        if (IsServer)
+        {
+            ServerSetHoldTarget(targetPosition);
+            return;
+        }
+        if (!IsOwnerOfHold()) return;
+
+        // Rate limiter: saniyede en fazla 20 RPC
+        if (Time.time < _nextHoldTargetSendTime) return;
+
+        // Delta threshold: pozisyon yeterince degismediyse gonderme
+        if ((targetPosition - _lastSentHoldTarget).sqrMagnitude < HoldTargetMinDeltaSqr) return;
+
+        _lastSentHoldTarget = targetPosition;
+        _nextHoldTargetSendTime = Time.time + HoldTargetSendInterval;
+        SetHoldTargetServerRpc(targetPosition);
+    }
+
+    private bool IsOwnerOfHold()
+    {
+        return NetIsHeld.Value && NetGrabberClientId.Value == NetworkManager.Singleton.LocalClientId;
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    private void SetHoldTargetServerRpc(Vector3 target, RpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        if (!NetIsHeld.Value) return;
+        if (rpcParams.Receive.SenderClientId != NetGrabberClientId.Value) return;
+
+        ServerSetHoldTarget(target);
     }
 }

@@ -4,7 +4,6 @@ public class DeadState : IPlayerState
 {
     public void Enter(PlayerStateMachine machine)
     {
-        machine.NetState.Value = (byte)PlayerStateEnum.Dead;
         machine.SwitchActionMap("Spectator");
         machine.SetComponentsEnabled(
             movement: false,
