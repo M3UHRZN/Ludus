@@ -18,9 +18,9 @@ GameObject:
   - component: {fileID: 39030983961786842}
   - component: {fileID: 7906534491821509288}
   - component: {fileID: 1370561883177964200}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Item Prefab
-  m_TagString: Untagged
+  m_TagString: Interactable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

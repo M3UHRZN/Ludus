@@ -156,8 +156,8 @@ GameObject:
   - component: {fileID: 2494656452920728769}
   - component: {fileID: 8763932262709187922}
   - component: {fileID: 9147211746451175509}
-  - component: {fileID: 1510060086146854700}
   - component: {fileID: 3464923751118398266}
+  - component: {fileID: 1510060086146854700}
   m_Layer: 6
   m_Name: PlayerV0.3
   m_TagString: Player
@@ -388,7 +388,7 @@ MonoBehaviour:
   maxChargeTime: 1.5
   interactLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 512
   interactRange: 4
   debugInteraction: 0
   interactPromptUI: {fileID: 0}
@@ -420,6 +420,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &3464923751118398266
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 636c314f3d38ba14e8d1b86e2245b4b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimator
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &1510060086146854700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -436,16 +449,3 @@ MonoBehaviour:
   modelPrefabs:
   - {fileID: 1907917438950286612, guid: 604af0702049fbf47996180b57272c50, type: 3}
   - {fileID: 8259289655215169890, guid: c9d8cd1303fa39d46b1243d43b65132f, type: 3}
---- !u!114 &3464923751118398266
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8460012054609115418}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 636c314f3d38ba14e8d1b86e2245b4b8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimator
-  ShowTopMostFoldoutHeaderGroup: 1
