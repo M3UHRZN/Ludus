@@ -10,6 +10,7 @@ using UnityEngine;
 /// Anil ile kontrat: harita uretildikten sonra GameEventBus.Publish(new MapReadyEvent(...))
 /// cagirilir, bu spawner devreye girer.
 /// </summary>
+[RequireComponent(typeof(NetworkObject))]
 public class EnemySpawner : NetworkBehaviour
 {
     [Header("Enemy")]
