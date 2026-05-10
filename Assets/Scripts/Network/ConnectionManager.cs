@@ -50,6 +50,7 @@ public class ConnectionManager : MonoBehaviour
         _networkManager = GetComponent<NetworkManager>();
         _networkManager.OnClientConnectedCallback    += OnClientConnectedCallback;
         _networkManager.OnClientDisconnectCallback   += OnClientDisconnectCallback;
+        _networkManager.ConnectionApprovalCallback   += OnConnectionApproval;
         _initializeTask = UnityServices.InitializeAsync();
     }
 
@@ -59,6 +60,7 @@ public class ConnectionManager : MonoBehaviour
         {
             _networkManager.OnClientConnectedCallback  -= OnClientConnectedCallback;
             _networkManager.OnClientDisconnectCallback -= OnClientDisconnectCallback;
+            _networkManager.ConnectionApprovalCallback -= OnConnectionApproval;
         }
 
         if (!_isQuitting && _session != null)
@@ -93,6 +95,20 @@ public class ConnectionManager : MonoBehaviour
         {
             OnDisconnected?.Invoke("Host disconnected");
         }
+    }
+
+    /// <summary>
+    /// Called by NGO when ConnectionApproval is enabled on the NetworkManager.
+    /// Approves all incoming connection requests. Add custom validation here
+    /// (e.g. password check, max-player cap) if needed in the future.
+    /// </summary>
+    private void OnConnectionApproval(
+        NetworkManager.ConnectionApprovalRequest request,
+        NetworkManager.ConnectionApprovalResponse response)
+    {
+        Debug.Log($"[{nameof(ConnectionManager)}] ConnectionApproval for client. Approved.");
+        response.Approved = true;
+        response.CreatePlayerObject = false; // PlayerSpawnCoordinator handles spawning
     }
 
     // ──────────────────────────────────────────────────────────────────────────

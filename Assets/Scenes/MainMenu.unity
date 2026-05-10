@@ -523,7 +523,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: NetworkConfig.ConnectionApproval
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: NetworkConfig.ClientConnectionBufferTimeout

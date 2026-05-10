@@ -57,7 +57,7 @@ MonoBehaviour:
       - {fileID: 11400000, guid: a38703b71e75ae249bba0a4efa2f8c6f, type: 2}
     TickRate: 30
     ClientConnectionBufferTimeout: 10
-    ConnectionApproval: 0
+    ConnectionApproval: 1
     ConnectionData: 
     EnableTimeResync: 0
     TimeResyncInterval: 30
@@ -135,5 +135,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawnCoordinator
   lobbyPlayerPrefab: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
   gameplayPlayerPrefab: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+  lobbySpawnDelay: 0.5
   gameplaySpawnDelay: 2
   spawnHeightOffset: 0.1
