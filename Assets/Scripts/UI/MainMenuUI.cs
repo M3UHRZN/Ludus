@@ -159,6 +159,11 @@ public class MainMenuUI : MonoBehaviour
     private async void OnBrowseLobbyClicked()
     {
         if (_cm == null || _cm.IsConnecting) return;
+        if (string.IsNullOrWhiteSpace(DisplayName))
+        {
+            SetStatus("Callsign required before browsing.", isError: true);
+            return;
+        }
         try
         {
             await OpenBrowserAsync();

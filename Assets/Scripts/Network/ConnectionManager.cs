@@ -107,11 +107,11 @@ public class ConnectionManager : MonoBehaviour
     /// The underlying SDK does not support a join-by-name-only API, so this method will create the session
     /// if no session with that name is found.
     /// </summary>
-    public async Task CreateOrJoinByNameAsync(string displayName, string sessionName)
+    public async Task CreateOrJoinByNameAsync(string displayName, string sessionName, int maxPlayers = 6)
     {
         GuardInFlight();
 
-        _inFlight = CreateOrJoinByNameInternalAsync(displayName, sessionName);
+        _inFlight = CreateOrJoinByNameInternalAsync(displayName, sessionName, maxPlayers);
         await _inFlight;
     }
 
@@ -128,6 +128,13 @@ public class ConnectionManager : MonoBehaviour
     public async Task<QuerySessionsResults> QuerySessionsAsync()
     {
         await _initializeTask;
+
+        // QuerySessionsAsync requires an authenticated user — sign in if not already done.
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            var profile = string.IsNullOrWhiteSpace(DisplayName) ? "browser-anon" : DisplayName;
+            await SignInWithProfileAsync(profile);
+        }
 
         var options = new QuerySessionsOptions
         {
@@ -183,9 +190,9 @@ public class ConnectionManager : MonoBehaviour
         }
     }
 
-    private async Task CreateOrJoinByNameInternalAsync(string displayName, string sessionName)
+    private async Task CreateOrJoinByNameInternalAsync(string displayName, string sessionName, int maxPlayers = 4)
     {
-        var options = new SessionOptions { Name = sessionName }.WithRelayNetwork();
+        var options = new SessionOptions { Name = sessionName, MaxPlayers = maxPlayers }.WithRelayNetwork();
 
         await ConnectInternalAsync(displayName,
             () => MultiplayerService.Instance.CreateOrJoinSessionAsync(sessionName, options));
