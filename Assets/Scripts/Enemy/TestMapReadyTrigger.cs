@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// AlpTest.unity sahnesi icin yardimci. T tusuna basilinca
@@ -13,7 +14,6 @@ public class TestMapReadyTrigger : MonoBehaviour
     [SerializeField] private int _seed = 42;
     [SerializeField] private int _roomCount = 3;
     [SerializeField] private bool _publishOnStart = false;
-    [SerializeField] private KeyCode _triggerKey = KeyCode.T;
 
     private bool _published;
 
@@ -25,7 +25,11 @@ public class TestMapReadyTrigger : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(_triggerKey))
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        // T = MapReadyEvent yayinla
+        if (kb.tKey.wasPressedThisFrame)
             Publish();
     }
 

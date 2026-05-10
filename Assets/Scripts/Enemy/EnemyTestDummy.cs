@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// AlpTest.unity sahnesi icin yardimci Player taklidi.
@@ -33,16 +34,19 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
         // F = yakindaki enemy'lere flashbang (FleeBehavior testi)
-        if (Input.GetKeyDown(KeyCode.F))
+        if (kb.fKey.wasPressedThisFrame)
             TriggerFlashbang();
 
         // H = kendine 25 hasar (HUD/death testi)
-        if (Input.GetKeyDown(KeyCode.H))
+        if (kb.hKey.wasPressedThisFrame)
             TakeDamage(25f, transform.position, 0UL);
 
         // R = HP geri yukle
-        if (Input.GetKeyDown(KeyCode.R))
+        if (kb.rKey.wasPressedThisFrame)
         {
             currentHealth = maxHealth;
             Debug.Log($"[TestDummy] HP geri yuklendi: {currentHealth}");
