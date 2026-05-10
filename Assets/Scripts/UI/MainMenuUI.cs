@@ -212,10 +212,10 @@ public class MainMenuUI : MonoBehaviour
             await RefreshSessionListAsync();
             _nextAllowedRefresh = Time.unscaledTime + 1.25f;
         }
-        catch (RateLimitedException)
+        catch (Unity.Services.Core.RequestFailedException rfe) when (rfe.ErrorCode == 429)
         {
             _nextAllowedRefresh = Time.unscaledTime + 2.5f;
-            SetStatus("Too many requests — please wait.", isError: true);
+            SetStatus("Rate limited, try again soon.", isError: true);
         }
         catch (Exception e)
         {
@@ -225,7 +225,7 @@ public class MainMenuUI : MonoBehaviour
 
     /// <summary>
     /// Fetches a fresh QuerySessionsResults from the server and renders the list.
-    /// Re-subscribes the OnUpdated event so it always reflects the newest result object.
+    /// Re-subscribes any result hooks so they always reflect the newest result object.
     /// </summary>
     private async System.Threading.Tasks.Task RefreshSessionListAsync()
     {
@@ -243,7 +243,7 @@ public class MainMenuUI : MonoBehaviour
     // Session list helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void RenderSessionList(IReadOnlyList<ISessionInfo> sessions)
+    private void RenderSessionList(IList<ISessionInfo> sessions)
     {
         ClearSessionList();
 
@@ -271,6 +271,11 @@ public class MainMenuUI : MonoBehaviour
     private async void OnJoinSessionById(string sessionId)
     {
         if (_cm == null || _cm.IsConnecting) return;
+        if (string.IsNullOrWhiteSpace(displayNameInput.text))
+        {
+            SetStatus("Display name cannot be empty.", isError: true);
+            return;
+        }
 
         SetStatus("Connecting...");
         try
@@ -315,19 +320,13 @@ public class MainMenuUI : MonoBehaviour
 
     private void SubscribeToQueryResult()
     {
-        if (_queryResult == null) return;
-        _queryResult.OnUpdated += OnQueryResultUpdated;
+        // QuerySessionsResults.OnUpdated does not exist in Unity Services 2.2.x.
+        // The fallback polling coroutine (PollingFallbackCoroutine) re-renders every 5 s instead.
     }
 
     private void UnsubscribeFromQueryResult()
     {
-        if (_queryResult == null) return;
-        _queryResult.OnUpdated -= OnQueryResultUpdated;
-    }
-
-    private void OnQueryResultUpdated()
-    {
-        RenderSessionList(_queryResult.Sessions);
+        // No event to unsubscribe from — see SubscribeToQueryResult.
     }
 
     // ──────────────────────────────────────────────────────────────────────────

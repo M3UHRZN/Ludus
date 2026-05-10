@@ -83,7 +83,7 @@ public class ConnectionManager : MonoBehaviour
     private void OnClientDisconnectCallback(ulong clientId)
     {
         // If we are a pure client and the server disconnected us, raise the event.
-        if (!_networkManager.IsServer && clientId == _networkManager.ServerClientId)
+        if (!_networkManager.IsServer && clientId == NetworkManager.ServerClientId)
         {
             OnDisconnected?.Invoke("Host disconnected");
         }

@@ -2006,6 +2006,80 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 486616, guid: 1759eacdee08e12408d757d50755a6d0, type: 3}
   m_PrefabInstance: {fileID: 388299297}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &389493910
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 389493912}
+  - component: {fileID: 389493911}
+  - component: {fileID: 389493913}
+  m_Layer: 0
+  m_Name: LobbyRoomManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &389493911
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 389493910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 1170306820
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!4 &389493912
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 389493910}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &389493913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 389493910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efc4e854c5c9e2e47a051eb8fd84614e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LobbyRoomManager
+  ShowTopMostFoldoutHeaderGroup: 1
+  playerListParent: {fileID: 0}
+  playerRowPrefab: {fileID: 0}
+  startPromptText: {fileID: 0}
 --- !u!1001 &413340010
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2090,6 +2164,7 @@ GameObject:
   m_Component:
   - component: {fileID: 419290684}
   - component: {fileID: 419290683}
+  - component: {fileID: 419290685}
   - component: {fileID: 419290682}
   m_Layer: 0
   m_Name: Player
@@ -2110,6 +2185,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 515003ae7b002754fba8055d49912b80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
+  ShowTopMostFoldoutHeaderGroup: 1
   walkSpeed: 5
   runSpeed: 10
   crouchSpeed: 2.5
@@ -2166,6 +2242,31 @@ Transform:
   - {fileID: 1576197083}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &419290685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 419290681}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 731963429
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1001 &429381012
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2914,8 +3015,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ca3f718c6d098c4084b931b4f7b8d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLook
+  ShowTopMostFoldoutHeaderGroup: 1
   mouseSensitivity: 500
   playerBody: {fileID: 419290684}
+  cameraTarget: {fileID: 0}
+  minPitch: -85
+  maxPitch: 85
 --- !u!114 &572519788
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10479,6 +10584,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1913584499}
   - component: {fileID: 1913584500}
+  - component: {fileID: 1913584501}
   m_Layer: 0
   m_Name: ElevatorTrigger
   m_TagString: Untagged
@@ -10522,6 +10628,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3, y: 3, z: 3}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1913584501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1913584498}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49079b6b8a270b241878dcb29a7e8394, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ElevatorInteractable
 --- !u!1001 &1941676975
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11750,3 +11868,4 @@ SceneRoots:
   - {fileID: 419290684}
   - {fileID: 1501641478}
   - {fileID: 945227271}
+  - {fileID: 389493912}
