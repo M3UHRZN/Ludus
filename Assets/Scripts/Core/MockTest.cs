@@ -7,6 +7,8 @@ public class MockTest : MonoBehaviour
 
     void Update()
     {
+        var kb = Keyboard.current;
+        if (kb == null) return;
 
         // TimerEventTriggered olay�n� her frame'de yay�nlayarak HUDController'�n g�ncel zaman� almas�n� sa�l�yoruz
         if (timeRemaining > 0)
