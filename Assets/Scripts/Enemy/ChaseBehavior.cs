@@ -3,6 +3,7 @@ using UnityEngine;
 public class ChaseBehavior : IEnemyBehavior
 {
     private const float LostSightDelay = 2f;
+    private const float AttackTriggerRange = 1.8f;
     private float _lostSightTimer;
 
     public void Enter(EnemyController enemy)
@@ -19,6 +20,15 @@ public class ChaseBehavior : IEnemyBehavior
         if (enemy.CanSeePlayer())
         {
             _lostSightTimer = LostSightDelay;
+
+            // Yakinlasinca saldiriya gec
+            float dist = Vector3.Distance(enemy.transform.position, enemy.PlayerTransform.position);
+            if (dist <= AttackTriggerRange)
+            {
+                enemy.SwitchBehavior(new AttackBehavior());
+                return;
+            }
+
             enemy.Agent.SetDestination(enemy.PlayerTransform.position);
         }
         else

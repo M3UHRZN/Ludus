@@ -91,9 +91,15 @@ public class EnemyController : MonoBehaviour
         if (netState != null && blinded)
             netState.ServerSetBlinded(duration);
 
-        // Sprint 2: FleeBehavior. Simdilik chase'i kes, patrol'a don.
-        if (blinded && _current is ChaseBehavior)
-            SwitchBehavior(new PatrolBehavior());
+        // Korlestirildiyse tehdit kaynagindan kac (oyuncu varsa onun konumunu, yoksa kendi konumunu kullan).
+        if (blinded)
+        {
+            Vector3 threat = PlayerTransform != null
+                ? PlayerTransform.position
+                : transform.position;
+
+            SwitchBehavior(new FleeBehavior(threat, duration > 0f ? duration : 3f));
+        }
     }
 
 #if UNITY_EDITOR
