@@ -156,3 +156,20 @@ public struct SessionEndedEvent
         TotalCreditCollected = totalCredit;
     }
 }
+
+/// <summary>
+/// Prosedürel harita üretimi tamamlandığında MapGenerator tarafından yayınlanır.
+/// EnemySpawner ve diğer dinleyiciler bu event'ten sonra
+/// sahnedeki marker'ları (EnemySpawnPoint, PatrolWaypointGroup) taramaya başlar.
+/// </summary>
+public struct MapReadyEvent
+{
+    public int Seed;
+    public int RoomCount;
+
+    public MapReadyEvent(int seed, int roomCount)
+    {
+        Seed = seed;
+        RoomCount = roomCount;
+    }
+}
