@@ -88,6 +88,19 @@ public struct ItemPickedUpEvent
     }
 }
 
+/// <summary>!!!Oyuncu bir eşyayı yere bıraktığında yayınlanır. <----- sonradan ekledim -esmnr- </summary>
+public struct ItemDroppedEvent
+{
+    public string ItemName;
+    public int Weight;
+
+    public ItemDroppedEvent(string itemName, int weight)
+    {
+        ItemName = itemName;
+        Weight = weight;
+    }
+}
+
 /// <summary>Oyuncu hasar aldığında yayınlanır.</summary>
 public struct PlayerDamagedEvent
 {
@@ -154,5 +167,33 @@ public struct SessionEndedEvent
     {
         Reason = reason;
         TotalCreditCollected = totalCredit;
+    }
+}
+
+/// <summary>Ölen bir oyuncu Infirmary'de canlandırıldığında yayınlanır. <----- sprint2 de eklenecek ben simdiden ekledim 8.5.26 -esmnr- </summary>
+public struct PlayerRevivedEvent
+{
+    public int PlayerId;
+
+    public PlayerRevivedEvent(int playerId)
+    {
+        PlayerId = playerId;
+    }
+}
+
+/// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+public struct LevelEndedEvent
+{
+    public bool IsSuccess;
+    public int CollectedCredits;
+    public int PenaltyAmount;
+    public float QuotaFillAmount;
+
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
     }
 }
