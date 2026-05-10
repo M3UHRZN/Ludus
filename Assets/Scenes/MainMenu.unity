@@ -497,6 +497,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: spawnHeightOffset
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: gameplaySpawnDelay
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 2807430061452851677, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -504,6 +512,26 @@ PrefabInstance:
     - target: {fileID: 5123652082969661077, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_Name
       value: NetworkManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.PlayerPrefab
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.ForceSamePrefabs
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.ConnectionApproval
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.ClientConnectionBufferTimeout
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098095959413720585, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: NetworkConfig.EnsureNetworkVariableLengthSafety
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7443329452919609623, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_LocalPosition.x

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7098095959413720585}
   - component: {fileID: 8436206825944097725}
   - component: {fileID: 2807430061452851677}
+  - component: {fileID: 591438287401263591}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -71,7 +72,7 @@ MonoBehaviour:
     EnableNetworkLogs: 1
     NetworkTopology: 0
     UseCMBService: 0
-    AutoSpawnPlayerPrefabClientSide: 1
+    AutoSpawnPlayerPrefabClientSide: 0
     NetworkMessageMetrics: 1
     NetworkProfilingMetrics: 1
     OldPrefabList: []
@@ -120,3 +121,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ab36a65663731a4f9c05ffa2eff2b50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ConnectionManager
+--- !u!114 &591438287401263591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5123652082969661077}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8ce7e2d713c45b4a51c6cbcb09d6f18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawnCoordinator
+  lobbyPlayerPrefab: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+  gameplayPlayerPrefab: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+  gameplaySpawnDelay: 2
+  spawnHeightOffset: 0.1

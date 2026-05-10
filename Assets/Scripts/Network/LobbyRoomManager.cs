@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(NetworkObject))]
 public class LobbyRoomManager : NetworkBehaviour
@@ -63,7 +62,13 @@ public class LobbyRoomManager : NetworkBehaviour
     public void StartRun()
     {
         if (!IsServer) return;
-        NetworkManager.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
+        if (PlayerSpawnCoordinator.Instance != null)
+        {
+            PlayerSpawnCoordinator.Instance.StartGameTransition();
+            return;
+        }
+
+        Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
     }
 
     private void OnClientConnected(ulong clientId) => RefreshPlayerList();
