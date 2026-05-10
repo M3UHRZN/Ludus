@@ -8,173 +8,328 @@ using UnityEngine;
 
 public class ConnectionManager : MonoBehaviour
 {
-   private string _profileName;
-   private string _sessionName;
-   private int _maxPlayers = 10;
-   private ConnectionState _state = ConnectionState.Disconnected;
-   private ISession _session;
-   private NetworkManager m_NetworkManager;
-   private Task _initializeTask;
-   private Task _connectTask;
-   private bool _isQuitting;
+    // ──────────────────────────────────────────────────────────────────────────
+    // Public API
+    // ──────────────────────────────────────────────────────────────────────────
 
-   private enum ConnectionState
-   {
-       Disconnected,
-       Connecting,
-       Connected,
-   }
+    public string DisplayName { get; private set; }
+    public bool IsConnected  => _state == ConnectionState.Connected;
+    public bool IsConnecting => _state == ConnectionState.Connecting;
+
+    public event Action         OnConnected;
+    public event Action<string> OnDisconnected;   // string = reason
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Private state
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private ConnectionState _state = ConnectionState.Disconnected;
+    private ISession        _session;
+    private NetworkManager  _networkManager;
+    private Task            _initializeTask;
+    private Task            _inFlight;          // in-progress network operation guard
+    private bool            _isQuitting;
+
+    private enum ConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Unity lifecycle
+    // ──────────────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
-        m_NetworkManager = GetComponent<NetworkManager>();
-        m_NetworkManager.OnClientConnectedCallback += OnClientConnectedCallback;
+        _networkManager = GetComponent<NetworkManager>();
+        _networkManager.OnClientConnectedCallback    += OnClientConnectedCallback;
+        _networkManager.OnClientDisconnectCallback   += OnClientDisconnectCallback;
         _initializeTask = UnityServices.InitializeAsync();
     }
 
+    private void OnDestroy()
+    {
+        if (_networkManager != null)
+        {
+            _networkManager.OnClientConnectedCallback  -= OnClientConnectedCallback;
+            _networkManager.OnClientDisconnectCallback -= OnClientDisconnectCallback;
+        }
+
+        if (!_isQuitting && _session != null)
+        {
+            _ = LeaveAsync();
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        _isQuitting = true;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // NetworkManager callbacks
+    // ──────────────────────────────────────────────────────────────────────────
+
     private void OnClientConnectedCallback(ulong clientId)
     {
-        if (m_NetworkManager.LocalClientId == clientId)
+        if (_networkManager.LocalClientId == clientId)
         {
             Debug.Log($"Client-{clientId} is connected and can spawn {nameof(NetworkObject)}s.");
         }
     }
 
-   private void OnGUI()
-   {
-       if (_state == ConnectionState.Connected)
-           return;
+    private void OnClientDisconnectCallback(ulong clientId)
+    {
+        // If we are a pure client and the server disconnected us, raise the event.
+        if (!_networkManager.IsServer && clientId == _networkManager.ServerClientId)
+        {
+            OnDisconnected?.Invoke("Host disconnected");
+        }
+    }
 
-       GUI.enabled = _state != ConnectionState.Connecting;
+    // ──────────────────────────────────────────────────────────────────────────
+    // Public async methods
+    // ──────────────────────────────────────────────────────────────────────────
 
-       using (new GUILayout.HorizontalScope(GUILayout.Width(250)))
-       {
-           GUILayout.Label("Profile Name", GUILayout.Width(100));
-           _profileName = GUILayout.TextField(_profileName);
-       }
+    /// <summary>Creates a new session and starts as host.</summary>
+    public async Task HostAsync(string displayName, string sessionName, int maxPlayers = 4)
+    {
+        GuardInFlight();
 
-       using (new GUILayout.HorizontalScope(GUILayout.Width(250)))
-       {
-           GUILayout.Label("Session Name", GUILayout.Width(100));
-           _sessionName = GUILayout.TextField(_sessionName);
-       }
+        _inFlight = HostInternalAsync(displayName, sessionName, maxPlayers);
+        await _inFlight;
+    }
 
-       GUI.enabled = GUI.enabled && !string.IsNullOrEmpty(_profileName) && !string.IsNullOrEmpty(_sessionName);
+    /// <summary>
+    /// Creates a new session with the given name, or joins it if one already exists (create-or-join semantics).
+    /// The underlying SDK does not support a join-by-name-only API, so this method will create the session
+    /// if no session with that name is found.
+    /// </summary>
+    public async Task CreateOrJoinByNameAsync(string displayName, string sessionName)
+    {
+        GuardInFlight();
 
-       if (GUILayout.Button("Create or Join Session"))
-       {
-           _connectTask = CreateOrJoinSessionAsync();
-       }
-   }
+        _inFlight = CreateOrJoinByNameInternalAsync(displayName, sessionName);
+        await _inFlight;
+    }
 
-   private void OnDestroy()
-   {
-       if (m_NetworkManager != null)
-       {
-           m_NetworkManager.OnClientConnectedCallback -= OnClientConnectedCallback;
-       }
+    /// <summary>Joins an existing session by its unique session ID.</summary>
+    public async Task JoinBySessionIdAsync(string displayName, string sessionId)
+    {
+        GuardInFlight();
 
-       if (!_isQuitting && _session != null)
-       {
-           _ = LeaveSessionAsync();
-       }
-   }
+        _inFlight = JoinBySessionIdInternalAsync(displayName, sessionId);
+        await _inFlight;
+    }
 
-   private void OnApplicationQuit()
-   {
-       _isQuitting = true;
-   }
+    /// <summary>Queries open sessions. Callers may call StartPolling on the result.</summary>
+    public async Task<QuerySessionsResults> QuerySessionsAsync()
+    {
+        await _initializeTask;
 
-   private async Task CreateOrJoinSessionAsync()
-   {
-       if (_connectTask != null && !_connectTask.IsCompleted)
-           return;
+        var options = new QuerySessionsOptions
+        {
+            FilterOptions = new System.Collections.Generic.List<FilterOption>
+            {
+                new FilterOption(FilterField.AvailableSlots, "0", FilterOperation.Greater)
+            },
+            SortOptions = new System.Collections.Generic.List<SortOption>
+            {
+                new SortOption(SortOrder.Descending, SortField.AvailableSlots)
+            }
+        };
 
-       _state = ConnectionState.Connecting;
+        return await MultiplayerService.Instance.QuerySessionsAsync(options);
+    }
 
-       try
-       {
-           await _initializeTask;
-           await SignInWithProfileAsync();
+    /// <summary>Leaves the current session and shuts down the network.</summary>
+    public async Task LeaveAsync()
+    {
+        if (_session == null) return;
 
-           // Önceki session tam temizlenmeden yeni bağlantı açılırsa SDK task cancel atar
-           if (_session != null)
-           {
-               await LeaveSessionAsync();
-               await ResetNetworkManagerAfterFailedStartAsync();
-           }
+        await LeaveSessionInternalAsync();
+        await ResetNetworkManagerAfterFailedStartAsync();
+    }
 
-           var options = new SessionOptions() {
-               Name = _sessionName,
-               MaxPlayers = _maxPlayers
-           }.WithRelayNetwork();
+    // ──────────────────────────────────────────────────────────────────────────
+    // Private implementation helpers
+    // ──────────────────────────────────────────────────────────────────────────
 
-           _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(_sessionName, options);
-           _state = ConnectionState.Connected;
-       }
-       catch (Exception e)
-       {
-           _state = ConnectionState.Disconnected;
-           Debug.LogException(e);
-           await ResetNetworkManagerAfterFailedStartAsync();
-       }
-   }
+    private void GuardInFlight()
+    {
+        if (_inFlight is { IsCompleted: false })
+            throw new InvalidOperationException(
+                "A network operation is already in progress. Wait for it to complete before calling another.");
+    }
 
-   private async Task SignInWithProfileAsync()
-   {
-       var authenticationService = AuthenticationService.Instance;
+    private async Task HostInternalAsync(string displayName, string sessionName, int maxPlayers)
+    {
+        _state = ConnectionState.Connecting;
+        try
+        {
+            await _initializeTask;
+            await SignInWithProfileAsync(displayName);
 
-       if (authenticationService.IsSignedIn)
-       {
-           if (authenticationService.Profile == _profileName)
-           {
-               return;
-           }
+            if (_session != null)
+            {
+                await LeaveSessionInternalAsync();
+                await ResetNetworkManagerAfterFailedStartAsync();
+            }
 
-           authenticationService.SignOut(true);
-       }
+            var options = new SessionOptions
+            {
+                Name       = sessionName,
+                MaxPlayers = maxPlayers
+            }.WithRelayNetwork();
 
-       if (authenticationService.Profile != _profileName)
-       {
-           authenticationService.SwitchProfile(_profileName);
-       }
+            _session = await MultiplayerService.Instance.CreateSessionAsync(options);
+            _state = ConnectionState.Connected;
 
-       await authenticationService.SignInAnonymouslyAsync();
-   }
+            OnConnected?.Invoke();
 
-   private async Task ResetNetworkManagerAfterFailedStartAsync()
-   {
-       if (m_NetworkManager == null)
-       {
-           return;
-       }
+            if (_networkManager.IsHost)
+            {
+                _networkManager.SceneManager.LoadScene(
+                    "LobbyScene",
+                    UnityEngine.SceneManagement.LoadSceneMode.Single);
+            }
+        }
+        catch (Exception e)
+        {
+            _state = ConnectionState.Disconnected;
+            Debug.LogException(e);
+            await ResetNetworkManagerAfterFailedStartAsync();
+            throw;
+        }
+        finally
+        {
+            _inFlight = null;
+        }
+    }
 
-       if (!m_NetworkManager.ShutdownInProgress &&
-           (m_NetworkManager.IsListening || m_NetworkManager.IsClient || m_NetworkManager.IsServer))
-       {
-           m_NetworkManager.Shutdown();
-       }
+    private async Task CreateOrJoinByNameInternalAsync(string displayName, string sessionName)
+    {
+        _state = ConnectionState.Connecting;
+        try
+        {
+            await _initializeTask;
+            await SignInWithProfileAsync(displayName);
 
-       while (m_NetworkManager.ShutdownInProgress)
-       {
-           await Task.Yield();
-       }
-   }
+            if (_session != null)
+            {
+                await LeaveSessionInternalAsync();
+                await ResetNetworkManagerAfterFailedStartAsync();
+            }
 
-   private async Task LeaveSessionAsync()
-   {
-       try
-       {
-           await _session.LeaveAsync();
-       }
-       catch (Exception e)
-       {
-           Debug.LogException(e);
-       }
-       finally
-       {
-           _session = null;
-           _state = ConnectionState.Disconnected;
-       }
-   }
+            var options = new SessionOptions
+            {
+                Name = sessionName
+            }.WithRelayNetwork();
+
+            _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(sessionName, options);
+            _state = ConnectionState.Connected;
+
+            OnConnected?.Invoke();
+            // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
+        }
+        catch (Exception e)
+        {
+            _state = ConnectionState.Disconnected;
+            Debug.LogException(e);
+            await ResetNetworkManagerAfterFailedStartAsync();
+            throw;
+        }
+        finally
+        {
+            _inFlight = null;
+        }
+    }
+
+    private async Task JoinBySessionIdInternalAsync(string displayName, string sessionId)
+    {
+        _state = ConnectionState.Connecting;
+        try
+        {
+            await _initializeTask;
+            await SignInWithProfileAsync(displayName);
+
+            if (_session != null)
+            {
+                await LeaveSessionInternalAsync();
+                await ResetNetworkManagerAfterFailedStartAsync();
+            }
+
+            _session = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId);
+            _state = ConnectionState.Connected;
+
+            OnConnected?.Invoke();
+            // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
+        }
+        catch (Exception e)
+        {
+            _state = ConnectionState.Disconnected;
+            Debug.LogException(e);
+            await ResetNetworkManagerAfterFailedStartAsync();
+            throw;
+        }
+        finally
+        {
+            _inFlight = null;
+        }
+    }
+
+    private async Task SignInWithProfileAsync(string displayName)
+    {
+        var auth = AuthenticationService.Instance;
+
+        if (auth.IsSignedIn)
+        {
+            if (auth.Profile == displayName)
+                return;
+
+            auth.SignOut(true);
+        }
+
+        auth.SwitchProfile(displayName);
+
+        await auth.SignInAnonymouslyAsync();
+        DisplayName = displayName;
+    }
+
+    private async Task ResetNetworkManagerAfterFailedStartAsync()
+    {
+        if (_networkManager == null)
+            return;
+
+        if (!_networkManager.ShutdownInProgress &&
+            (_networkManager.IsListening || _networkManager.IsClient || _networkManager.IsServer))
+        {
+            _networkManager.Shutdown();
+        }
+
+        while (_networkManager.ShutdownInProgress)
+        {
+            await Task.Yield();
+        }
+    }
+
+    private async Task LeaveSessionInternalAsync()
+    {
+        try
+        {
+            await _session.LeaveAsync();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+        finally
+        {
+            _session = null;
+            _state   = ConnectionState.Disconnected;
+            OnDisconnected?.Invoke("Left session");
+        }
+    }
 }
