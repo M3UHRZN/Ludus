@@ -90,7 +90,7 @@ public class LobbyRoomManager : NetworkBehaviour
         {
             if (playerRowPrefab == null) break;
             var go = Instantiate(playerRowPrefab, playerListParent);
-            var label = go.GetComponent<TMPro.TMP_Text>();
+            var label = go.GetComponentInChildren<TMPro.TMP_Text>();
             if (label != null) label.text = name.ToString();
         }
     }
