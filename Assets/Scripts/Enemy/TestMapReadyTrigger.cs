@@ -15,12 +15,18 @@ public class TestMapReadyTrigger : MonoBehaviour
     [SerializeField] private int _roomCount = 3;
     [SerializeField] private bool _publishOnStart = false;
 
+    [Tooltip("PublishOnStart aktifse, NGO'nun OnNetworkSpawn cagrilmasini beklemek icin gecikme.")]
+    [SerializeField] private float _publishOnStartDelay = 1.5f;
+
     private bool _published;
 
     private void Start()
     {
+        // Race condition: NGO'nun scene-placed NetworkObject'lerinde OnNetworkSpawn
+        // genelde Start'tan sonra cagrilir. Bu yuzden EnemySpawner.Subscribe
+        // hazir olmadan Publish yaparsak event havada kalir. Kucuk bir gecikme cozer.
         if (_publishOnStart)
-            Publish();
+            Invoke(nameof(Publish), _publishOnStartDelay);
     }
 
     private void Update()
