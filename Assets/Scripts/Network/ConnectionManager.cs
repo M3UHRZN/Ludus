@@ -166,88 +166,41 @@ public class ConnectionManager : MonoBehaviour
 
     private async Task HostInternalAsync(string displayName, string sessionName, int maxPlayers)
     {
-        _state = ConnectionState.Connecting;
-        try
+        var options = new SessionOptions
         {
-            await _initializeTask;
-            await SignInWithProfileAsync(displayName);
+            Name       = sessionName,
+            MaxPlayers = maxPlayers
+        }.WithRelayNetwork();
 
-            if (_session != null)
-            {
-                await LeaveSessionInternalAsync();
-                await ResetNetworkManagerAfterFailedStartAsync();
-            }
+        await ConnectInternalAsync(displayName,
+            async () => await MultiplayerService.Instance.CreateSessionAsync(options));
 
-            var options = new SessionOptions
-            {
-                Name       = sessionName,
-                MaxPlayers = maxPlayers
-            }.WithRelayNetwork();
-
-            _session = await MultiplayerService.Instance.CreateSessionAsync(options);
-            _state = ConnectionState.Connected;
-
-            OnConnected?.Invoke();
-
-            if (_networkManager.IsHost)
-            {
-                _networkManager.SceneManager.LoadScene(
-                    "LobbyScene",
-                    UnityEngine.SceneManagement.LoadSceneMode.Single);
-            }
-        }
-        catch (Exception e)
+        if (_networkManager.IsHost)
         {
-            _state = ConnectionState.Disconnected;
-            Debug.LogException(e);
-            await ResetNetworkManagerAfterFailedStartAsync();
-            throw;
-        }
-        finally
-        {
-            _inFlight = null;
+            _networkManager.SceneManager.LoadScene(
+                SceneNames.Lobby,
+                UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
 
     private async Task CreateOrJoinByNameInternalAsync(string displayName, string sessionName)
     {
-        _state = ConnectionState.Connecting;
-        try
-        {
-            await _initializeTask;
-            await SignInWithProfileAsync(displayName);
+        var options = new SessionOptions { Name = sessionName }.WithRelayNetwork();
 
-            if (_session != null)
-            {
-                await LeaveSessionInternalAsync();
-                await ResetNetworkManagerAfterFailedStartAsync();
-            }
-
-            var options = new SessionOptions
-            {
-                Name = sessionName
-            }.WithRelayNetwork();
-
-            _session = await MultiplayerService.Instance.CreateOrJoinSessionAsync(sessionName, options);
-            _state = ConnectionState.Connected;
-
-            OnConnected?.Invoke();
-            // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
-        }
-        catch (Exception e)
-        {
-            _state = ConnectionState.Disconnected;
-            Debug.LogException(e);
-            await ResetNetworkManagerAfterFailedStartAsync();
-            throw;
-        }
-        finally
-        {
-            _inFlight = null;
-        }
+        await ConnectInternalAsync(displayName,
+            () => MultiplayerService.Instance.CreateOrJoinSessionAsync(sessionName, options));
+        // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
     }
 
     private async Task JoinBySessionIdInternalAsync(string displayName, string sessionId)
+    {
+        await ConnectInternalAsync(displayName,
+            () => MultiplayerService.Instance.JoinSessionByIdAsync(sessionId));
+        // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
+    }
+
+    // Shared setup/teardown wrapper for all three connect paths.
+    private async Task ConnectInternalAsync(string displayName, Func<Task<ISession>> sessionFactory)
     {
         _state = ConnectionState.Connecting;
         try
@@ -261,11 +214,10 @@ public class ConnectionManager : MonoBehaviour
                 await ResetNetworkManagerAfterFailedStartAsync();
             }
 
-            _session = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId);
+            _session = await sessionFactory();
             _state = ConnectionState.Connected;
 
             OnConnected?.Invoke();
-            // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
         }
         catch (Exception e)
         {

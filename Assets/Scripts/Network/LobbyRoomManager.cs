@@ -7,20 +7,27 @@ using UnityEngine.SceneManagement;
 [RequireComponent(typeof(NetworkObject))]
 public class LobbyRoomManager : NetworkBehaviour
 {
-    // Serialized UI references for the lobby room display
-    [SerializeField] private Transform playerListParent;     // parent for player name rows
-    [SerializeField] private GameObject playerRowPrefab;     // prefab with a TMP_Text
-    [SerializeField] private TMPro.TMP_Text startPromptText; // "Press E to start" shown only to host
+    public static LobbyRoomManager Instance { get; private set; }
 
-    // Synced player name list (server writes, everyone reads)
+    // Serialized UI references for the lobby room display
+    [SerializeField] private Transform       playerListParent;
+    [SerializeField] private GameObject      playerRowPrefab;
+    [SerializeField] private TMPro.TMP_Text  startPromptText;
+
     private NetworkList<FixedString64Bytes> _playerNames;
 
     private void Awake()
     {
+        Instance = this;
         _playerNames = new NetworkList<FixedString64Bytes>(
             new List<FixedString64Bytes>(),
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     public override void OnNetworkSpawn()
@@ -35,7 +42,6 @@ public class LobbyRoomManager : NetworkBehaviour
             RefreshPlayerList();
         }
 
-        // Show start prompt only to host
         if (startPromptText != null)
             startPromptText.gameObject.SetActive(IsHost);
     }
@@ -53,14 +59,11 @@ public class LobbyRoomManager : NetworkBehaviour
         _playerNames.Dispose();
     }
 
-    // Called by ElevatorInteractable (Task 4)
     public void StartRun()
     {
         if (!IsServer) return;
-        NetworkManager.SceneManager.LoadScene("SampleScene", LoadSceneMode.Single);
+        NetworkManager.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
     }
-
-    // ── Server-side player list management ────────────────────────────────
 
     private void OnClientConnected(ulong clientId) => RefreshPlayerList();
     private void OnClientDisconnected(ulong clientId) => RefreshPlayerList();
@@ -73,8 +76,6 @@ public class LobbyRoomManager : NetworkBehaviour
             _playerNames.Add(new FixedString64Bytes($"Player-{clientId}"));
     }
 
-    // ── Client-side rendering ─────────────────────────────────────────────
-
     private void OnPlayerListChanged(NetworkListEvent<FixedString64Bytes> changeEvent)
         => RenderPlayerList();
 
@@ -82,11 +83,9 @@ public class LobbyRoomManager : NetworkBehaviour
     {
         if (playerListParent == null) return;
 
-        // Clear old rows
         foreach (Transform child in playerListParent)
             Destroy(child.gameObject);
 
-        // Rebuild
         foreach (var name in _playerNames)
         {
             if (playerRowPrefab == null) break;

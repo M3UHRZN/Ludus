@@ -59,12 +59,9 @@ public class MainMenuUI : MonoBehaviour
     {
         _cm = FindFirstObjectByType<ConnectionManager>();
 
-        // Wire Panel A buttons
         hostButton.onClick.AddListener(OnHostClicked);
         joinByNameButton.onClick.AddListener(OnJoinByNameClicked);
         browseLobbyButton.onClick.AddListener(OnBrowseLobbyClicked);
-
-        // Wire Panel B buttons
         refreshButton.onClick.AddListener(OnRefreshClicked);
         backButton.onClick.AddListener(CloseBrowser);
     }
@@ -81,7 +78,6 @@ public class MainMenuUI : MonoBehaviour
             SetStatus("ConnectionManager not found in scene!", isError: true);
         }
 
-        // Start with Panel A visible, Panel B hidden
         panelA.SetActive(true);
         panelB.SetActive(false);
         SetStatus(string.Empty);
@@ -95,20 +91,25 @@ public class MainMenuUI : MonoBehaviour
             _cm.OnDisconnected -= HandleDisconnected;
         }
 
-        UnsubscribeFromQueryResult();
         StopPollingCoroutine();
     }
+
+    private bool _lastBusy;
 
     private void Update()
     {
         if (_cm == null) return;
 
         bool busy = _cm.IsConnecting;
+        bool refreshReady = !busy && Time.unscaledTime >= _nextAllowedRefresh;
+
+        if (busy == _lastBusy && refreshButton.interactable == refreshReady) return;
+        _lastBusy = busy;
 
         hostButton.interactable        = !busy;
         joinByNameButton.interactable  = !busy;
         browseLobbyButton.interactable = !busy;
-        refreshButton.interactable     = !busy && Time.unscaledTime >= _nextAllowedRefresh;
+        refreshButton.interactable     = refreshReady;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -184,10 +185,7 @@ public class MainMenuUI : MonoBehaviour
         // Start SDK-level polling (updates _queryResult.Sessions automatically)
         _queryResult?.StartPolling(pollingDelaySeconds: 5);
 
-        // Subscribe to the updated event for live list re-renders
-        SubscribeToQueryResult();
-
-        // Fallback coroutine — re-renders every 5 s if event not fired
+        // Fallback coroutine — re-renders every 5 s (SDK 2.2.x has no OnUpdated event)
         StopPollingCoroutine();
         _pollingCoroutine = StartCoroutine(PollingFallbackCoroutine());
     }
@@ -195,7 +193,6 @@ public class MainMenuUI : MonoBehaviour
     private void CloseBrowser()
     {
         _queryResult?.StopPolling();
-        UnsubscribeFromQueryResult();
         StopPollingCoroutine();
         ClearSessionList();
 
@@ -223,19 +220,12 @@ public class MainMenuUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Fetches a fresh QuerySessionsResults from the server and renders the list.
-    /// Re-subscribes any result hooks so they always reflect the newest result object.
-    /// </summary>
     private async System.Threading.Tasks.Task RefreshSessionListAsync()
     {
-        UnsubscribeFromQueryResult();
-
         _queryResult = await _cm.QuerySessionsAsync();
 
         if (this == null) return;
 
-        SubscribeToQueryResult();
         RenderSessionList(_queryResult.Sessions);
     }
 
@@ -271,7 +261,9 @@ public class MainMenuUI : MonoBehaviour
     private async void OnJoinSessionById(string sessionId)
     {
         if (_cm == null || _cm.IsConnecting) return;
-        if (string.IsNullOrWhiteSpace(displayNameInput.text))
+
+        string displayName = DisplayName;
+        if (string.IsNullOrWhiteSpace(displayName))
         {
             SetStatus("Display name cannot be empty.", isError: true);
             return;
@@ -280,7 +272,7 @@ public class MainMenuUI : MonoBehaviour
         SetStatus("Connecting...");
         try
         {
-            await _cm.JoinBySessionIdAsync(DisplayName, sessionId);
+            await _cm.JoinBySessionIdAsync(displayName, sessionId);
         }
         catch (Exception e)
         {
@@ -300,33 +292,9 @@ public class MainMenuUI : MonoBehaviour
 
     private void HandleDisconnected(string reason)
     {
-        // Stop any active browser polling
-        _queryResult?.StopPolling();
-        UnsubscribeFromQueryResult();
-        StopPollingCoroutine();
-        ClearSessionList();
-
-        // Return to Panel A
-        panelB.SetActive(false);
-        panelA.SetActive(true);
+        CloseBrowser();
         gameObject.SetActive(true);
-
         SetStatus(reason, isError: true);
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // QuerySessionsResults event wiring
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private void SubscribeToQueryResult()
-    {
-        // QuerySessionsResults.OnUpdated does not exist in Unity Services 2.2.x.
-        // The fallback polling coroutine (PollingFallbackCoroutine) re-renders every 5 s instead.
-    }
-
-    private void UnsubscribeFromQueryResult()
-    {
-        // No event to unsubscribe from — see SubscribeToQueryResult.
     }
 
     // ──────────────────────────────────────────────────────────────────────────

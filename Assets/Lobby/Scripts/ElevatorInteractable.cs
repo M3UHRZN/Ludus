@@ -11,9 +11,8 @@ public class ElevatorInteractable : MonoBehaviour, IInteractable
     public void Interact(PlayerStateMachine machine)
     {
         if (!CanInteract(machine)) return;
-        var mgr = Object.FindFirstObjectByType<LobbyRoomManager>();
-        if (mgr != null)
-            mgr.StartRun();
+        if (LobbyRoomManager.Instance != null)
+            LobbyRoomManager.Instance.StartRun();
         else
             Debug.LogWarning("[ElevatorInteractable] LobbyRoomManager not found in scene.");
     }
