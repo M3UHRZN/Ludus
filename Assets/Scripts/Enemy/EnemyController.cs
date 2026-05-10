@@ -83,6 +83,16 @@ public class EnemyController : MonoBehaviour
         _current.Enter(this);
     }
 
+    /// <summary>
+    /// EnemySpawner tarafindan runtime'da cagrilir. Inspector'dan elle
+    /// atamak yerine harita uretildikten sonra otomatik baglanir.
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints)
+    {
+        _patrolWaypoints = waypoints;
+        CurrentWaypointIndex = 0;
+    }
+
     public void SetBlinded(bool blinded, float duration)
     {
         if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
