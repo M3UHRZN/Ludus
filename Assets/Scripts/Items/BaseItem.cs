@@ -23,6 +23,7 @@ public class BaseItem : MonoBehaviour, IItem
     {
         GetComponent<Rigidbody>().isKinematic = true;
         gameObject.SetActive(false);
+        GameEventBus.Publish(new ItemPickedUpEvent(ItemName, Weight, CreditValue));
         Debug.Log($"[Item] {ItemName} picked up | Weight: {Weight} | Value: {CreditValue}cr");
     }
 
