@@ -10,9 +10,9 @@ public class LobbyRoomManager : NetworkBehaviour
     public static LobbyRoomManager Instance { get; private set; }
 
     // Serialized UI references for the lobby room display
-    [SerializeField] private Transform       playerListParent;
-    [SerializeField] private GameObject      playerRowPrefab;
-    [SerializeField] private TMPro.TMP_Text  startPromptText;
+    [SerializeField] private Transform              playerListParent;
+    [SerializeField] private GameObject             playerRowPrefab;
+    [SerializeField] private TMPro.TMP_Text         startPromptText;
 
     private NetworkList<FixedString64Bytes> _playerNames;
 
@@ -44,6 +44,7 @@ public class LobbyRoomManager : NetworkBehaviour
 
         if (startPromptText != null)
             startPromptText.gameObject.SetActive(IsHost);
+
     }
 
     public override void OnNetworkDespawn()
