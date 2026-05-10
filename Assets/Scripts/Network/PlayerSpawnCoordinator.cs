@@ -14,11 +14,13 @@ public class PlayerSpawnCoordinator : MonoBehaviour
     [SerializeField] private GameObject gameplayPlayerPrefab;
 
     [Header("Spawn Settings")]
+    [SerializeField] private float lobbySpawnDelay = 0.5f;
     [SerializeField] private float gameplaySpawnDelay = 2f;
     [SerializeField] private float spawnHeightOffset = 0.1f;
 
     private readonly Dictionary<ulong, Coroutine> _pendingGameplaySpawns = new();
 
+    private Coroutine _lobbySpawnPassCoroutine;
     private Coroutine _gameplaySpawnPassCoroutine;
     private Coroutine _pendingSceneReadyCoroutine;
     private NetworkManager _networkManager;
@@ -79,6 +81,7 @@ public class PlayerSpawnCoordinator : MonoBehaviour
 
     private void OnDestroy()
     {
+        CancelLobbySpawnPass();
         CancelAllPendingGameplaySpawns();
         CancelPendingSceneReadyCheck();
 
@@ -97,6 +100,7 @@ public class PlayerSpawnCoordinator : MonoBehaviour
         }
 
         Debug.Log($"[{nameof(PlayerSpawnCoordinator)}] Starting game transition.");
+        CancelLobbySpawnPass();
         DespawnAllPlayerObjects();
         _networkManager.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
     }
@@ -172,7 +176,7 @@ public class PlayerSpawnCoordinator : MonoBehaviour
 
         if (IsServerReady())
         {
-            SpawnLobbyPlayersForAllConnectedClients();
+            StartLobbySpawnPass();
             return;
         }
 
@@ -221,7 +225,7 @@ public class PlayerSpawnCoordinator : MonoBehaviour
         if (sceneName == SceneNames.Lobby)
         {
             Debug.Log($"[{nameof(PlayerSpawnCoordinator)}] Server ready in lobby. Spawning lobby players.");
-            SpawnLobbyPlayersForAllConnectedClients();
+            StartLobbySpawnPass();
             yield break;
         }
 
@@ -252,6 +256,29 @@ public class PlayerSpawnCoordinator : MonoBehaviour
         }
 
         SpawnPlayerForClient(clientId, lobbyPlayerPrefab, GetLobbySpawnPose(clientId, spawnIndex));
+    }
+
+    private void StartLobbySpawnPass()
+    {
+        CancelLobbySpawnPass();
+        _lobbySpawnPassCoroutine = StartCoroutine(LobbySpawnPassCoroutine());
+    }
+
+    private IEnumerator LobbySpawnPassCoroutine()
+    {
+        if (lobbySpawnDelay > 0f)
+        {
+            yield return new WaitForSeconds(lobbySpawnDelay);
+        }
+
+        _lobbySpawnPassCoroutine = null;
+
+        if (!IsServerReady() || SceneManager.GetActiveScene().name != SceneNames.Lobby)
+        {
+            yield break;
+        }
+
+        SpawnLobbyPlayersForAllConnectedClients();
     }
 
     private void StartGameplaySpawnPass()
@@ -451,6 +478,15 @@ public class PlayerSpawnCoordinator : MonoBehaviour
         var clientIds = new List<ulong>(_networkManager.ConnectedClientsIds);
         clientIds.Sort();
         return clientIds;
+    }
+
+    private void CancelLobbySpawnPass()
+    {
+        if (_lobbySpawnPassCoroutine != null)
+        {
+            StopCoroutine(_lobbySpawnPassCoroutine);
+            _lobbySpawnPassCoroutine = null;
+        }
     }
 
     private void CancelPendingGameplaySpawn(ulong clientId)
