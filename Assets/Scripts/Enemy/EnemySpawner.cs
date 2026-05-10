@@ -34,6 +34,7 @@ public class EnemySpawner : NetworkBehaviour
         if (!IsServer) return;
 
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
+        Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent dinlemeye basladi.");
 
         if (_spawnOnStartIfNoMapEvent)
             Invoke(nameof(FallbackSpawn), _fallbackSpawnDelay);
