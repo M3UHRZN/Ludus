@@ -16,9 +16,20 @@ public class PatrolBehavior : IEnemyBehavior
         if (!enemy.Agent.isOnNavMesh) return;
         if (enemy.Agent.pathPending) return;
 
+        // Gorus oncelikli
         if (enemy.CanSeePlayer())
         {
             enemy.SwitchBehavior(new ChaseBehavior());
+            return;
+        }
+
+        // Ses duydu: oyuncuyu hala goremeyebiliriz ama Chase'e gecip
+        // ses konumuna dogru hareket ederek aramayi baslat
+        if (enemy.HeardNoise)
+        {
+            enemy.HeardNoise = false; // tek seferlik tetik
+            Debug.Log("[PatrolBehavior] Ses duyuldu, Chase'e geciliyor.");
+            enemy.SwitchBehavior(new ChaseBehavior(enemy.LastNoisePosition));
             return;
         }
 
@@ -31,7 +42,8 @@ public class PatrolBehavior : IEnemyBehavior
 
     public void Exit(EnemyController enemy)
     {
-        enemy.Agent.ResetPath();
+        if (enemy.Agent.isOnNavMesh)
+            enemy.Agent.ResetPath();
     }
 
     private static void MoveToWaypoint(EnemyController enemy)

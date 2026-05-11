@@ -170,6 +170,23 @@ public struct SessionEndedEvent
     }
 }
 
+/// <summary>
+/// Prosedürel harita üretimi tamamlandığında MapGenerator tarafından yayınlanır.
+/// EnemySpawner ve diğer dinleyiciler bu event'ten sonra
+/// sahnedeki marker'ları (EnemySpawnPoint, PatrolWaypointGroup) taramaya başlar.
+/// </summary>
+public struct MapReadyEvent
+{
+    public int Seed;
+    public int RoomCount;
+
+    public MapReadyEvent(int seed, int roomCount)
+    {
+        Seed = seed;
+        RoomCount = roomCount;
+    }
+}
+
 /// <summary>Ölen bir oyuncu Infirmary'de canlandırıldığında yayınlanır. <----- sprint2 de eklenecek ben simdiden ekledim 8.5.26 -esmnr- </summary>
 public struct PlayerRevivedEvent
 {
@@ -195,5 +212,23 @@ public struct LevelEndedEvent
         CollectedCredits = collectedCredits;
         PenaltyAmount = penaltyAmount;
         QuotaFillAmount = quotaFillAmount;
+    }
+}
+
+/// <summary>
+/// Sahnede bir ses kaynagi olustugunda yayinlanir (ayak sesi, item dusurme,
+/// silah sesi, vs.). EnemyController bunu dinler ve menzilindeyse Chase'e gecer.
+/// </summary>
+public struct NoiseEmittedEvent
+{
+    public UnityEngine.Vector3 Position;
+    public float Range;
+    public string Source;
+
+    public NoiseEmittedEvent(UnityEngine.Vector3 position, float range, string source = null)
+    {
+        Position = position;
+        Range = range;
+        Source = source;
     }
 }

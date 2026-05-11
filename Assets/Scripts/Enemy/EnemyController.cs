@@ -10,8 +10,8 @@ public class EnemyController : MonoBehaviour
 
     [Header("Detection")]
     [SerializeField] private float _sightRange = 15f;
-    [SerializeField] private float _attackRange = 2f;
-    [SerializeField] private float _noiseDetectionRadius = 8f;
+    [SerializeField] private float _attackRange = 1.8f;
+    [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
 
     public NavMeshAgent Agent { get; private set; }
@@ -20,6 +20,10 @@ public class EnemyController : MonoBehaviour
     public Transform CurrentTarget { get; set; }
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
+    public Vector3 LastNoisePosition { get; private set; }
+
+    /// <summary>ChaseBehavior'in AttackBehavior'a gectigi mesafe.</summary>
+    public float AttackTriggerRange => _attackRange;
 
     private IEnemyBehavior _current;
 
@@ -70,10 +74,46 @@ public class EnemyController : MonoBehaviour
         _current?.Tick(this);
     }
 
+    private void OnEnable()
+    {
+        GameEventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEvent);
+    }
+
+    private void OnDisable()
+    {
+        GameEventBus.Unsubscribe<NoiseEmittedEvent>(OnNoiseEvent);
+    }
+
     private void OnDestroy()
     {
         _current?.Exit(this);
         GameEventBus.Publish(new EnemyDiedEvent(GetInstanceID(), transform.position));
+    }
+
+    /// <summary>
+    /// GameEventBus uzerinden ses olaylarini dinler. Yayinlanan ses
+    /// hem ses kaynaginin kendi range'i hem de dusmanin noiseDetectionRadius'u
+    /// icindeyse HeardNoise tetiklenir, PatrolBehavior bunu Chase'e cevirir.
+    /// </summary>
+    private void OnNoiseEvent(NoiseEmittedEvent evt)
+    {
+        OnNoiseHeard(evt.Position, evt.Range);
+    }
+
+    /// <summary>
+    /// Manuel olarak ses kaynagi bildirimi yapmak isteyen sistemler
+    /// (test scriptleri, direkt cagri) bunu kullanabilir.
+    /// </summary>
+    public void OnNoiseHeard(Vector3 source, float sourceRange)
+    {
+        float dist = Vector3.Distance(transform.position, source);
+        float effectiveRange = Mathf.Min(sourceRange, _noiseDetectionRadius);
+
+        if (dist > effectiveRange) return;
+
+        HeardNoise = true;
+        LastNoisePosition = source;
+        Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, kaynak={source}).");
     }
 
     public void SwitchBehavior(IEnemyBehavior next)
@@ -81,6 +121,16 @@ public class EnemyController : MonoBehaviour
         _current?.Exit(this);
         _current = next;
         _current.Enter(this);
+    }
+
+    /// <summary>
+    /// EnemySpawner tarafindan runtime'da cagrilir. Inspector'dan elle
+    /// atamak yerine harita uretildikten sonra otomatik baglanir.
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints)
+    {
+        _patrolWaypoints = waypoints;
+        CurrentWaypointIndex = 0;
     }
 
     public void SetBlinded(bool blinded, float duration)
