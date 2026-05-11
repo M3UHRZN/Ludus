@@ -74,7 +74,8 @@ public class ChaseBehavior : IEnemyBehavior
 
     public void Exit(EnemyController enemy)
     {
-        enemy.Agent.ResetPath();
+        if (enemy.Agent.isOnNavMesh)
+            enemy.Agent.ResetPath();
         Debug.Log("[ChaseBehavior] Kovalama bitti, devriye donuyor.");
     }
 }

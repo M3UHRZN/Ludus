@@ -42,7 +42,8 @@ public class PatrolBehavior : IEnemyBehavior
 
     public void Exit(EnemyController enemy)
     {
-        enemy.Agent.ResetPath();
+        if (enemy.Agent.isOnNavMesh)
+            enemy.Agent.ResetPath();
     }
 
     private static void MoveToWaypoint(EnemyController enemy)
