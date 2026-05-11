@@ -818,7 +818,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TestMapReadyTrigger
   _seed: 42
   _roomCount: 3
-  _publishOnStart: 0
+  _publishOnStart: 1
   _publishOnStartDelay: 1.5
 --- !u!1 &998228031
 GameObject:
