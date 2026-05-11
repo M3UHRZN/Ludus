@@ -50,6 +50,21 @@ public class DungeonGenerator
         }
     }
 
+    private void Phase3_AddLoops(DungeonData data)
+    {
+        foreach (var room in new List<RoomNode>(data.AllRooms))
+        {
+            foreach (var dir in DirectionHelper.All)
+            {
+                if (room.HasConnection(dir)) continue;
+                var nbCoords = room.Coordinates + DirectionHelper.ToVector(dir);
+                if (!data.IsOccupied(nbCoords)) continue;
+                if (_rng.NextDouble() < _config.extraConnectionChance)
+                    ConnectRooms(data, room.Coordinates, nbCoords);
+            }
+        }
+    }
+
     private void ConnectRooms(DungeonData data, Vector2Int a, Vector2Int b)
     {
         Vector2Int delta = b - a;
