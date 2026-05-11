@@ -169,4 +169,113 @@ public class DungeonGeneratorTests
         var occupied = data.GetOccupiedNeighbors(Vector2Int.zero);
         Assert.AreEqual(2, occupied.Count);
     }
+
+    // Helper: creates a minimal config SO for testing
+    private DungeonGeneratorSO MakeConfig(int maxRooms = 20, int seed = 42)
+    {
+        var cfg = ScriptableObject.CreateInstance<DungeonGeneratorSO>();
+        cfg.maxRooms = maxRooms;
+        cfg.extraConnectionChance = 0f;
+        cfg.enableRoomMerging = false;
+        cfg.useRandomSeed = false;
+        cfg.seed = seed;
+        return cfg;
+    }
+
+    [Test]
+    public void DungeonGenerator_Generate_ProducesExactRoomCount()
+    {
+        var generator = new DungeonGenerator(MakeConfig(maxRooms: 20, seed: 42));
+        var data = generator.Generate();
+        Assert.AreEqual(20, data.RoomCount);
+    }
+
+    [Test]
+    public void DungeonGenerator_Generate_StartRoomAtOrigin()
+    {
+        var generator = new DungeonGenerator(MakeConfig(maxRooms: 10, seed: 1));
+        var data = generator.Generate();
+        Assert.IsTrue(data.TryGetRoom(Vector2Int.zero, out var startRoom));
+        Assert.AreEqual(RoomType.Start, startRoom.Type);
+    }
+
+    [Test]
+    public void DungeonGenerator_Generate_AllRoomsReachableFromOrigin()
+    {
+        var generator = new DungeonGenerator(MakeConfig(maxRooms: 25, seed: 7));
+        var data = generator.Generate();
+
+        var visited = new System.Collections.Generic.HashSet<Vector2Int>();
+        var queue = new System.Collections.Generic.Queue<Vector2Int>();
+        queue.Enqueue(Vector2Int.zero);
+        visited.Add(Vector2Int.zero);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!data.TryGetRoom(current, out var node)) continue;
+            foreach (var dir in DirectionHelper.All)
+            {
+                if (!node.HasConnection(dir)) continue;
+                var nb = current + DirectionHelper.ToVector(dir);
+                if (visited.Add(nb)) queue.Enqueue(nb);
+            }
+        }
+
+        Assert.AreEqual(data.RoomCount, visited.Count,
+            "BFS from origin must reach every room — dungeon must be fully connected");
+    }
+
+    [Test]
+    public void DungeonGenerator_Generate_AllConnectionsBidirectional()
+    {
+        var generator = new DungeonGenerator(MakeConfig(maxRooms: 15, seed: 99));
+        var data = generator.Generate();
+
+        foreach (var room in data.AllRooms)
+        {
+            foreach (var dir in DirectionHelper.All)
+            {
+                if (!room.HasConnection(dir)) continue;
+                var nbCoords = room.Coordinates + DirectionHelper.ToVector(dir);
+                Assert.IsTrue(data.TryGetRoom(nbCoords, out var nb),
+                    $"Room at {room.Coordinates} points {dir} but neighbor {nbCoords} does not exist");
+                Assert.IsTrue(nb.HasConnection(DirectionHelper.Opposite(dir)),
+                    $"Room at {nbCoords} is missing reverse {DirectionHelper.Opposite(dir)} connection");
+            }
+        }
+    }
+
+    [Test]
+    public void DungeonGenerator_ZeroLoopChance_IsExactSpanningTree()
+    {
+        // A spanning tree of N nodes has exactly N-1 undirected edges
+        var generator = new DungeonGenerator(MakeConfig(maxRooms: 20, seed: 42));
+        var data = generator.Generate();
+
+        int totalConnections = 0;
+        foreach (var room in data.AllRooms)
+            foreach (var dir in DirectionHelper.All)
+                if (room.HasConnection(dir)) totalConnections++;
+
+        Assert.AreEqual(data.RoomCount - 1, totalConnections / 2,
+            "No extra connections: dungeon must be a perfect spanning tree");
+    }
+
+    [Test]
+    public void DungeonGenerator_FullLoopChance_HasMoreEdgesThanSpanningTree()
+    {
+        var cfg = MakeConfig(maxRooms: 20, seed: 42);
+        cfg.extraConnectionChance = 1f;
+        var generator = new DungeonGenerator(cfg);
+        var data = generator.Generate();
+
+        int totalConnections = 0;
+        foreach (var room in data.AllRooms)
+            foreach (var dir in DirectionHelper.All)
+                if (room.HasConnection(dir)) totalConnections++;
+
+        Assert.Greater(totalConnections / 2, data.RoomCount - 1,
+            "With extraConnectionChance=1, every valid extra wall should become a door");
+    }
 }
