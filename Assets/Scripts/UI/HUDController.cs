@@ -31,6 +31,8 @@ public class HUDController : MonoBehaviour
         GameEventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);      // Yeni e�ya al�nd���nda a��rl�k bar�n� g�ncellemek i�in
         GameEventBus.Subscribe<PlayerDiedEvent>(OnTeammateDied);
         GameEventBus.Subscribe<SessionStartedEvent>(OnSessionStarted);
+        GameEventBus.Subscribe<ItemDroppedEvent>(OnItemDropped);        // E�ya b�rak�ld���nda a��rl�k bar�n� g�ncellemek i�in
+        GameEventBus.Subscribe<PlayerRevivedEvent>(OnPlayerRevived);    // Oyuncu hayata d�nd���nde ikonunu g�ncellemek i�in
     }
 
     private void OnDisable()
@@ -40,6 +42,8 @@ public class HUDController : MonoBehaviour
         GameEventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnTeammateDied);
         GameEventBus.Unsubscribe<SessionStartedEvent>(OnSessionStarted);
+        GameEventBus.Unsubscribe<ItemDroppedEvent>(OnItemDropped);
+        GameEventBus.Unsubscribe<PlayerRevivedEvent>(OnPlayerRevived);
     }
 
     // --- EVENT D�NLEY�C� FONKS�YONLAR ---
@@ -131,6 +135,25 @@ public class HUDController : MonoBehaviour
                 weightBarImage.fillAmount = 0f;
                 weightBarImage.enabled = false;
             }
+        }
+    }
+
+    private void OnItemDropped(ItemDroppedEvent evt)
+    {
+        currentTotalWeight -= evt.Weight;
+        if (currentTotalWeight < 0) currentTotalWeight = 0;
+
+        // Bar�n yeni haline do�ru kaymas� i�in target'� g�ncelle (Lerp kullan�yorduk hat�rla)
+        targetWeightFill = (float)currentTotalWeight / maxWeight;
+    }
+
+    private void OnPlayerRevived(PlayerRevivedEvent evt)
+    {
+        if (evt.PlayerId >= 0 && evt.PlayerId < teammateIcons.Length)
+        {
+            // �konu tekrar hayatta (beyaz ve pointer) yap
+            teammateIcons[evt.PlayerId].sprite = aliveIcon;
+            teammateIcons[evt.PlayerId].color = Color.white;
         }
     }
 }
