@@ -18,6 +18,10 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
     [SerializeField] private float flashRadius = 8f;
     [SerializeField] private float blindDuration = 3f;
 
+    [Header("Noise Test")]
+    [Tooltip("N tusuna basinca burada belirtilen menzilde NoiseEmittedEvent yayinlanir")]
+    [SerializeField] private float noiseRange = 10f;
+
     public bool IsAlive => currentHealth > 0f;
     public float CurrentHealth => currentHealth;
 
@@ -51,6 +55,10 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
             currentHealth = maxHealth;
             Debug.Log($"[TestDummy] HP geri yuklendi: {currentHealth}");
         }
+
+        // N = ses yayinla (Patrol sound reactivity testi)
+        if (kb.nKey.wasPressedThisFrame)
+            TriggerNoise();
     }
 
     private void TriggerFlashbang()
@@ -69,6 +77,12 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
         }
 
         Debug.Log($"[TestDummy] Flashbang tetiklendi, etkilenen dusman: {count}");
+    }
+
+    private void TriggerNoise()
+    {
+        GameEventBus.Publish(new NoiseEmittedEvent(transform.position, noiseRange, "TestDummy"));
+        Debug.Log($"[TestDummy] Ses yayinlandi (menzil={noiseRange}).");
     }
 
 #if UNITY_EDITOR
