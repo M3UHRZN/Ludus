@@ -20,7 +20,7 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
 
     [Header("Noise Test")]
     [Tooltip("N tusuna basinca burada belirtilen menzilde NoiseEmittedEvent yayinlanir")]
-    [SerializeField] private float noiseRange = 10f;
+    [SerializeField] private float noiseRange = 25f;
 
     public bool IsAlive => currentHealth > 0f;
     public float CurrentHealth => currentHealth;
