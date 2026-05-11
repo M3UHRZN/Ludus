@@ -278,4 +278,66 @@ public class DungeonGeneratorTests
         Assert.Greater(totalConnections / 2, data.RoomCount - 1,
             "With extraConnectionChance=1, every valid extra wall should become a door");
     }
+
+    [Test]
+    public void ApplyMerging_2x2Square_MarksLargeRoom()
+    {
+        var data = new DungeonData();
+        var bl = new RoomNode(new Vector2Int(0, 0));
+        var br = new RoomNode(new Vector2Int(1, 0));
+        var tl = new RoomNode(new Vector2Int(0, 1));
+        var tr = new RoomNode(new Vector2Int(1, 1));
+        bl.AddConnection(ConnectionDirection.East);  bl.AddConnection(ConnectionDirection.North);
+        br.AddConnection(ConnectionDirection.West);  br.AddConnection(ConnectionDirection.North);
+        tl.AddConnection(ConnectionDirection.East);  tl.AddConnection(ConnectionDirection.South);
+        tr.AddConnection(ConnectionDirection.West);  tr.AddConnection(ConnectionDirection.South);
+        data.AddRoom(bl); data.AddRoom(br); data.AddRoom(tl); data.AddRoom(tr);
+
+        var cfg = MakeConfig(maxRooms: 4);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var merged);
+        Assert.AreEqual(RoomSize.Large_2x2, merged.Size);
+    }
+
+    [Test]
+    public void ApplyMerging_1x3HorizontalLine_MarksLongRoom()
+    {
+        var data = new DungeonData();
+        var r0 = new RoomNode(new Vector2Int(0, 0));
+        var r1 = new RoomNode(new Vector2Int(1, 0));
+        var r2 = new RoomNode(new Vector2Int(2, 0));
+        r0.AddConnection(ConnectionDirection.East);
+        r1.AddConnection(ConnectionDirection.West); r1.AddConnection(ConnectionDirection.East);
+        r2.AddConnection(ConnectionDirection.West);
+        data.AddRoom(r0); data.AddRoom(r1); data.AddRoom(r2);
+
+        var cfg = MakeConfig(maxRooms: 3);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var merged);
+        Assert.AreEqual(RoomSize.Long_1x3, merged.Size);
+    }
+
+    [Test]
+    public void ApplyMerging_3x1VerticalLine_MarksLongRoom()
+    {
+        var data = new DungeonData();
+        var r0 = new RoomNode(new Vector2Int(0, 0));
+        var r1 = new RoomNode(new Vector2Int(0, 1));
+        var r2 = new RoomNode(new Vector2Int(0, 2));
+        r0.AddConnection(ConnectionDirection.North);
+        r1.AddConnection(ConnectionDirection.South); r1.AddConnection(ConnectionDirection.North);
+        r2.AddConnection(ConnectionDirection.South);
+        data.AddRoom(r0); data.AddRoom(r1); data.AddRoom(r2);
+
+        var cfg = MakeConfig(maxRooms: 3);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var merged);
+        Assert.AreEqual(RoomSize.Long_3x1, merged.Size);
+    }
 }
