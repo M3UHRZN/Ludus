@@ -81,8 +81,13 @@ public class EnemyTestDummy : MonoBehaviour, IDamageable
 
     private void TriggerNoise()
     {
-        GameEventBus.Publish(new NoiseEmittedEvent(transform.position, noiseRange, "TestDummy"));
-        Debug.Log($"[TestDummy] Ses yayinlandi (menzil={noiseRange}).");
+        // Ses kaynagi olarak sahnedeki "Player" tag'li objeyi kullan
+        // (TestController'in kendi konumu degil, gercek oyuncu konumu mantikli)
+        var playerObj = GameObject.FindWithTag("Player");
+        Vector3 source = playerObj != null ? playerObj.transform.position : transform.position;
+
+        GameEventBus.Publish(new NoiseEmittedEvent(source, noiseRange, "TestDummy"));
+        Debug.Log($"[TestDummy] Ses yayinlandi (kaynak={source}, menzil={noiseRange}).");
     }
 
 #if UNITY_EDITOR
