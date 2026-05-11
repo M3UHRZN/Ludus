@@ -29,7 +29,7 @@ public class PatrolBehavior : IEnemyBehavior
         {
             enemy.HeardNoise = false; // tek seferlik tetik
             Debug.Log("[PatrolBehavior] Ses duyuldu, Chase'e geciliyor.");
-            enemy.SwitchBehavior(new ChaseBehavior());
+            enemy.SwitchBehavior(new ChaseBehavior(enemy.LastNoisePosition));
             return;
         }
 
