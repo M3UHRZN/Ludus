@@ -5,6 +5,7 @@ public class DungeonGenerator
 {
     private readonly DungeonGeneratorSO _config;
     private System.Random _rng;
+    private int _nextGroupId;
 
     public DungeonGenerator(DungeonGeneratorSO config)
     {
@@ -14,6 +15,7 @@ public class DungeonGenerator
     public DungeonData Generate()
     {
         _rng = _config.useRandomSeed ? new System.Random() : new System.Random(_config.seed);
+        _nextGroupId = 0;
         var data = new DungeonData();
         Phase1_PlaceStart(data);
         Phase2_GrowMaze(data);
@@ -99,10 +101,10 @@ public class DungeonGenerator
         {
             if (room.Size != RoomSize.Small_1x1) continue;
             Vector2Int c = room.Coordinates;
-            if (!data.TryGetRoom(c,                          out var bl)) continue;
-            if (!data.TryGetRoom(c + Vector2Int.right,       out var br)) continue;
-            if (!data.TryGetRoom(c + Vector2Int.up,          out var tl)) continue;
-            if (!data.TryGetRoom(c + new Vector2Int(1, 1),   out var tr)) continue;
+            if (!data.TryGetRoom(c,                        out var bl)) continue;
+            if (!data.TryGetRoom(c + Vector2Int.right,     out var br)) continue;
+            if (!data.TryGetRoom(c + Vector2Int.up,        out var tl)) continue;
+            if (!data.TryGetRoom(c + new Vector2Int(1, 1), out var tr)) continue;
 
             if (bl.Size != RoomSize.Small_1x1 || br.Size != RoomSize.Small_1x1 ||
                 tl.Size != RoomSize.Small_1x1 || tr.Size != RoomSize.Small_1x1) continue;
@@ -112,7 +114,9 @@ public class DungeonGenerator
             if (!tl.HasConnection(ConnectionDirection.East)  || !tl.HasConnection(ConnectionDirection.South)) continue;
             if (!tr.HasConnection(ConnectionDirection.West)  || !tr.HasConnection(ConnectionDirection.South)) continue;
 
+            int groupId = _nextGroupId++;
             bl.Size = br.Size = tl.Size = tr.Size = RoomSize.Large_2x2;
+            bl.MergeGroupId = br.MergeGroupId = tl.MergeGroupId = tr.MergeGroupId = groupId;
         }
     }
 
@@ -123,7 +127,7 @@ public class DungeonGenerator
             if (room.Size != RoomSize.Small_1x1) continue;
             Vector2Int c = room.Coordinates;
 
-            // 1x3 horizontal
+            // 1x3 yatay
             if (data.TryGetRoom(c,                       out var ra) &&
                 data.TryGetRoom(c + Vector2Int.right,    out var rb) &&
                 data.TryGetRoom(c + new Vector2Int(2,0), out var rc) &&
@@ -132,11 +136,13 @@ public class DungeonGenerator
                 rb.HasConnection(ConnectionDirection.West) && rb.HasConnection(ConnectionDirection.East) &&
                 rc.HasConnection(ConnectionDirection.West))
             {
+                int groupId = _nextGroupId++;
                 ra.Size = rb.Size = rc.Size = RoomSize.Long_1x3;
+                ra.MergeGroupId = rb.MergeGroupId = rc.MergeGroupId = groupId;
                 continue;
             }
 
-            // 3x1 vertical
+            // 3x1 dikey
             if (data.TryGetRoom(c,                       out var rd) &&
                 data.TryGetRoom(c + Vector2Int.up,       out var re) &&
                 data.TryGetRoom(c + new Vector2Int(0,2), out var rf) &&
@@ -145,7 +151,9 @@ public class DungeonGenerator
                 re.HasConnection(ConnectionDirection.South) && re.HasConnection(ConnectionDirection.North) &&
                 rf.HasConnection(ConnectionDirection.South))
             {
+                int groupId = _nextGroupId++;
                 rd.Size = re.Size = rf.Size = RoomSize.Long_3x1;
+                rd.MergeGroupId = re.MergeGroupId = rf.MergeGroupId = groupId;
             }
         }
     }

@@ -15,12 +15,19 @@ public class DungeonVisualizer : MonoBehaviour
     [SerializeField] private GameObject _doorWestPrefab;
     [SerializeField] private GameObject _corridorFloorPrefab;
 
+    [Header("Birleşik Oda Prefabları")]
+    [Tooltip("2x2 oda için zemin prefabı (opsiyonel; atanmazsa _floorPrefab kullanılır)")]
+    [SerializeField] private GameObject _mergedFloor2x2Prefab;
+    [Tooltip("1x3 yatay oda için zemin prefabı")]
+    [SerializeField] private GameObject _mergedFloorH1x3Prefab;
+    [Tooltip("3x1 dikey oda için zemin prefabı")]
+    [SerializeField] private GameObject _mergedFloorV3x1Prefab;
+
     [Header("Boyutlar (dünya birimi)")]
     [Tooltip("Oda prefabının XZ boyutu")]
     [SerializeField] private float _roomSize = 6f;
     [Tooltip("Odalar arası koridor uzunluğu")]
     [SerializeField] private float _corridorLength = 4f;
-    // Oda merkezleri arası mesafe
     private float Stride => _roomSize + _corridorLength;
 
     private Transform _root;
@@ -30,35 +37,51 @@ public class DungeonVisualizer : MonoBehaviour
         if (_root != null) Destroy(_root.gameObject);
         _root = new GameObject("DungeonLayout").transform;
         _root.SetParent(transform);
-
         foreach (var room in data.AllRooms)
-            SpawnRoom(room);
+            SpawnRoom(room, data);
     }
 
-    private void SpawnRoom(RoomNode room)
+    private void SpawnRoom(RoomNode room, DungeonData data)
     {
         float stride = Stride;
         Vector3 worldPos = new Vector3(
             room.Coordinates.x * stride, 0,
             room.Coordinates.y * stride);
 
-        var parent = new GameObject(
-            $"Room_{room.Coordinates.x}_{room.Coordinates.y}").transform;
+        // Birleşik odalar birden fazla parent GO'ya bölünür: origin hücre floor'u taşır,
+        // diğer hücreler yalnızca dış duvarlarını taşır.
+        var parent = new GameObject(RoomName(room)).transform;
         parent.SetParent(_root);
         parent.position = worldPos;
 
-        if (_floorPrefab != null)
-            Instantiate(_floorPrefab, worldPos, Quaternion.identity, parent);
+        SpawnFloor(room, data, parent);
+        SpawnSide(room, ConnectionDirection.North, worldPos, parent, data);
+        SpawnSide(room, ConnectionDirection.South, worldPos, parent, data);
+        SpawnSide(room, ConnectionDirection.East,  worldPos, parent, data);
+        SpawnSide(room, ConnectionDirection.West,  worldPos, parent, data);
+    }
 
-        SpawnSide(room, ConnectionDirection.North, worldPos, parent);
-        SpawnSide(room, ConnectionDirection.South, worldPos, parent);
-        SpawnSide(room, ConnectionDirection.East,  worldPos, parent);
-        SpawnSide(room, ConnectionDirection.West,  worldPos, parent);
+    private void SpawnFloor(RoomNode room, DungeonData data, Transform parent)
+    {
+        if (!IsGroupOrigin(room, data)) return;
+
+        GameObject prefab = room.Size switch
+        {
+            RoomSize.Large_2x2 => _mergedFloor2x2Prefab  != null ? _mergedFloor2x2Prefab  : _floorPrefab,
+            RoomSize.Long_1x3  => _mergedFloorH1x3Prefab != null ? _mergedFloorH1x3Prefab : _floorPrefab,
+            RoomSize.Long_3x1  => _mergedFloorV3x1Prefab != null ? _mergedFloorV3x1Prefab : _floorPrefab,
+            _                  => _floorPrefab
+        };
+
+        if (prefab == null) return;
+        Instantiate(prefab, GroupFloorCenter(room), Quaternion.identity, parent);
     }
 
     private void SpawnSide(RoomNode room, ConnectionDirection dir,
-                           Vector3 center, Transform parent)
+                           Vector3 center, Transform parent, DungeonData data)
     {
+        if (IsInternalConnection(room, dir, data)) return;
+
         bool hasDoor = room.HasConnection(dir);
         GameObject wallPrefab = (dir, hasDoor) switch
         {
@@ -87,20 +110,59 @@ public class DungeonVisualizer : MonoBehaviour
         if (wallPrefab != null)
             Instantiate(wallPrefab, center + wallOffset, rot, parent);
 
-        // Koridor: her iki oda da spawn etmesin diye sadece East/North tarafı spawn eder
+        // Koridor: sadece East/North tarafı spawn eder (her ikisi de spawn etmesin diye)
         if (!hasDoor) return;
         if (dir != ConnectionDirection.East && dir != ConnectionDirection.North) return;
+        if (Mathf.Approximately(_corridorLength, 0f)) return;
 
-        // _corridorFloorPrefab atanmamışsa _floorPrefab ile fallback — koridor her zaman çizilir
-        GameObject corridorPrefab = _corridorFloorPrefab != null
-            ? _corridorFloorPrefab
-            : _floorPrefab;
+        GameObject corridorPrefab = _corridorFloorPrefab != null ? _corridorFloorPrefab : _floorPrefab;
         if (corridorPrefab == null) return;
 
         Vector3 corridorCenter = center +
-            new Vector3(dir2d.x, 0, dir2d.y) *
-            (_roomSize * 0.5f + _corridorLength * 0.5f);
+            new Vector3(dir2d.x, 0, dir2d.y) * (_roomSize * 0.5f + _corridorLength * 0.5f);
 
         Instantiate(corridorPrefab, corridorCenter, rot, parent);
     }
+
+    // Grubun sol-alt hücresi: West ve South yönünde aynı gruptan komşu yok
+    private bool IsGroupOrigin(RoomNode room, DungeonData data)
+    {
+        if (room.MergeGroupId == -1) return true;
+        if (data.TryGetRoom(room.Coordinates + Vector2Int.left, out var west) &&
+            west.MergeGroupId == room.MergeGroupId) return false;
+        if (data.TryGetRoom(room.Coordinates + Vector2Int.down, out var south) &&
+            south.MergeGroupId == room.MergeGroupId) return false;
+        return true;
+    }
+
+    // Komşu aynı merge grubundaysa bu bağlantı iç duvardır — hiçbir şey spawn edilmez
+    private bool IsInternalConnection(RoomNode room, ConnectionDirection dir, DungeonData data)
+    {
+        if (room.MergeGroupId == -1) return false;
+        var nbCoords = room.Coordinates + DirectionHelper.ToVector(dir);
+        return data.TryGetRoom(nbCoords, out var nb) && nb.MergeGroupId == room.MergeGroupId;
+    }
+
+    // Origin hücresinin world pozisyonundan grubun görsel merkezini hesaplar
+    private Vector3 GroupFloorCenter(RoomNode origin)
+    {
+        float s = Stride;
+        float bx = origin.Coordinates.x * s;
+        float bz = origin.Coordinates.y * s;
+        return origin.Size switch
+        {
+            RoomSize.Large_2x2 => new Vector3(bx + s * 0.5f, 0, bz + s * 0.5f),
+            RoomSize.Long_1x3  => new Vector3(bx + s,        0, bz),
+            RoomSize.Long_3x1  => new Vector3(bx,             0, bz + s),
+            _                  => new Vector3(bx,             0, bz)
+        };
+    }
+
+    private static string RoomName(RoomNode room) => room.Size switch
+    {
+        RoomSize.Large_2x2 => $"Room2x2_({room.Coordinates.x},{room.Coordinates.y})",
+        RoomSize.Long_1x3  => $"RoomH1x3_({room.Coordinates.x},{room.Coordinates.y})",
+        RoomSize.Long_3x1  => $"RoomV3x1_({room.Coordinates.x},{room.Coordinates.y})",
+        _                  => $"Room1x1_({room.Coordinates.x},{room.Coordinates.y})"
+    };
 }

@@ -86,6 +86,13 @@ public class DungeonGeneratorTests
     }
 
     [Test]
+    public void RoomNode_DefaultMergeGroupId_IsMinusOne()
+    {
+        var node = new RoomNode(Vector2Int.zero);
+        Assert.AreEqual(-1, node.MergeGroupId);
+    }
+
+    [Test]
     public void DungeonData_AddRoom_IncreasesCount()
     {
         var data = new DungeonData();
@@ -339,5 +346,97 @@ public class DungeonGeneratorTests
 
         data.TryGetRoom(new Vector2Int(0, 0), out var merged);
         Assert.AreEqual(RoomSize.Long_3x1, merged.Size);
+    }
+
+    [Test]
+    public void Phase4_Merge2x2_AssignsSameGroupId_ToAllFourRooms()
+    {
+        var data = new DungeonData();
+        var bl = new RoomNode(new Vector2Int(0, 0));
+        var br = new RoomNode(new Vector2Int(1, 0));
+        var tl = new RoomNode(new Vector2Int(0, 1));
+        var tr = new RoomNode(new Vector2Int(1, 1));
+        bl.AddConnection(ConnectionDirection.East);  bl.AddConnection(ConnectionDirection.North);
+        br.AddConnection(ConnectionDirection.West);  br.AddConnection(ConnectionDirection.North);
+        tl.AddConnection(ConnectionDirection.East);  tl.AddConnection(ConnectionDirection.South);
+        tr.AddConnection(ConnectionDirection.West);  tr.AddConnection(ConnectionDirection.South);
+        data.AddRoom(bl); data.AddRoom(br); data.AddRoom(tl); data.AddRoom(tr);
+
+        var cfg = MakeConfig(maxRooms: 4);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var r00);
+        data.TryGetRoom(new Vector2Int(1, 0), out var r10);
+        data.TryGetRoom(new Vector2Int(0, 1), out var r01);
+        data.TryGetRoom(new Vector2Int(1, 1), out var r11);
+
+        Assert.AreNotEqual(-1, r00.MergeGroupId, "Origin should have a group ID");
+        Assert.AreEqual(r00.MergeGroupId, r10.MergeGroupId);
+        Assert.AreEqual(r00.MergeGroupId, r01.MergeGroupId);
+        Assert.AreEqual(r00.MergeGroupId, r11.MergeGroupId);
+    }
+
+    [Test]
+    public void Phase4_MergeLinear_1x3_AssignsSameGroupId()
+    {
+        var data = new DungeonData();
+        var r0 = new RoomNode(new Vector2Int(0, 0));
+        var r1 = new RoomNode(new Vector2Int(1, 0));
+        var r2 = new RoomNode(new Vector2Int(2, 0));
+        r0.AddConnection(ConnectionDirection.East);
+        r1.AddConnection(ConnectionDirection.West); r1.AddConnection(ConnectionDirection.East);
+        r2.AddConnection(ConnectionDirection.West);
+        data.AddRoom(r0); data.AddRoom(r1); data.AddRoom(r2);
+
+        var cfg = MakeConfig(maxRooms: 3);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var ra);
+        data.TryGetRoom(new Vector2Int(1, 0), out var rb);
+        data.TryGetRoom(new Vector2Int(2, 0), out var rc);
+
+        Assert.AreNotEqual(-1, ra.MergeGroupId);
+        Assert.AreEqual(ra.MergeGroupId, rb.MergeGroupId);
+        Assert.AreEqual(ra.MergeGroupId, rc.MergeGroupId);
+    }
+
+    [Test]
+    public void Phase4_TwoSeparate2x2Groups_HaveDifferentGroupIds()
+    {
+        var data = new DungeonData();
+        var g1bl = new RoomNode(new Vector2Int(0, 0));
+        var g1br = new RoomNode(new Vector2Int(1, 0));
+        var g1tl = new RoomNode(new Vector2Int(0, 1));
+        var g1tr = new RoomNode(new Vector2Int(1, 1));
+        g1bl.AddConnection(ConnectionDirection.East); g1bl.AddConnection(ConnectionDirection.North);
+        g1br.AddConnection(ConnectionDirection.West); g1br.AddConnection(ConnectionDirection.North);
+        g1tl.AddConnection(ConnectionDirection.East); g1tl.AddConnection(ConnectionDirection.South);
+        g1tr.AddConnection(ConnectionDirection.West); g1tr.AddConnection(ConnectionDirection.South);
+
+        var g2bl = new RoomNode(new Vector2Int(3, 0));
+        var g2br = new RoomNode(new Vector2Int(4, 0));
+        var g2tl = new RoomNode(new Vector2Int(3, 1));
+        var g2tr = new RoomNode(new Vector2Int(4, 1));
+        g2bl.AddConnection(ConnectionDirection.East); g2bl.AddConnection(ConnectionDirection.North);
+        g2br.AddConnection(ConnectionDirection.West); g2br.AddConnection(ConnectionDirection.North);
+        g2tl.AddConnection(ConnectionDirection.East); g2tl.AddConnection(ConnectionDirection.South);
+        g2tr.AddConnection(ConnectionDirection.West); g2tr.AddConnection(ConnectionDirection.South);
+
+        data.AddRoom(g1bl); data.AddRoom(g1br); data.AddRoom(g1tl); data.AddRoom(g1tr);
+        data.AddRoom(g2bl); data.AddRoom(g2br); data.AddRoom(g2tl); data.AddRoom(g2tr);
+
+        var cfg = MakeConfig(maxRooms: 8);
+        cfg.enableRoomMerging = true;
+        new DungeonGenerator(cfg).ApplyMerging(data);
+
+        data.TryGetRoom(new Vector2Int(0, 0), out var rg1);
+        data.TryGetRoom(new Vector2Int(3, 0), out var rg2);
+
+        Assert.AreNotEqual(-1, rg1.MergeGroupId);
+        Assert.AreNotEqual(-1, rg2.MergeGroupId);
+        Assert.AreNotEqual(rg1.MergeGroupId, rg2.MergeGroupId,
+            "Two separate merge groups must have different IDs");
     }
 }

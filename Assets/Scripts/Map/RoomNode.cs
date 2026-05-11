@@ -6,6 +6,7 @@ public class RoomNode
     public ConnectionDirection Connections { get; private set; }
     public RoomType Type { get; set; }
     public RoomSize Size { get; set; }
+    public int MergeGroupId { get; set; } = -1;
 
     public RoomNode(Vector2Int coordinates, RoomType type = RoomType.Standard)
     {

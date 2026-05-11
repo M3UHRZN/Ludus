@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 366010e6a6896ec47b6a9025546d0b72, type: 3}
   m_Name: DungeonGeneratorConfig
   m_EditorClassIdentifier: Map::DungeonGeneratorSO
-  maxRooms: 20
-  extraConnectionChance: 0.03
+  maxRooms: 40
+  extraConnectionChance: 0.15
   enableRoomMerging: 1
   useRandomSeed: 1
   seed: 0
