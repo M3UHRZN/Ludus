@@ -10,8 +10,8 @@ public class EnemyController : MonoBehaviour
 
     [Header("Detection")]
     [SerializeField] private float _sightRange = 15f;
-    [SerializeField] private float _attackRange = 2f;
-    [SerializeField] private float _noiseDetectionRadius = 8f;
+    [SerializeField] private float _attackRange = 1.8f;
+    [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
 
     public NavMeshAgent Agent { get; private set; }
@@ -21,6 +21,9 @@ public class EnemyController : MonoBehaviour
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
     public Vector3 LastNoisePosition { get; private set; }
+
+    /// <summary>ChaseBehavior'in AttackBehavior'a gectigi mesafe.</summary>
+    public float AttackTriggerRange => _attackRange;
 
     private IEnemyBehavior _current;
 
