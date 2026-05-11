@@ -16,8 +16,19 @@ public class PatrolBehavior : IEnemyBehavior
         if (!enemy.Agent.isOnNavMesh) return;
         if (enemy.Agent.pathPending) return;
 
+        // Gorus oncelikli
         if (enemy.CanSeePlayer())
         {
+            enemy.SwitchBehavior(new ChaseBehavior());
+            return;
+        }
+
+        // Ses duydu: oyuncuyu hala goremeyebiliriz ama Chase'e gecip
+        // ses konumuna dogru hareket ederek aramayi baslat
+        if (enemy.HeardNoise)
+        {
+            enemy.HeardNoise = false; // tek seferlik tetik
+            Debug.Log("[PatrolBehavior] Ses duyuldu, Chase'e geciliyor.");
             enemy.SwitchBehavior(new ChaseBehavior());
             return;
         }
