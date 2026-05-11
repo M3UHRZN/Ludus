@@ -23,6 +23,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     [Header("UI")]
     [SerializeField] private GameObject interactPromptUI;
+    private InteractionUIController _uiController; // --- ESMANUR UI ---
 
     public readonly NetworkVariable<bool> IsHolding = new(
         false,
@@ -54,6 +55,8 @@ public class PlayerInteraction : NetworkBehaviour
         playerCamera = ResolveInteractionCamera();
 
         _machine = GetComponent<PlayerStateMachine>();
+
+        _uiController = FindFirstObjectByType<InteractionUIController>();       // --- ESMANUR UI ---
 
         var input = GetComponent<PlayerInput>();
         _interactAction = input.actions["Gameplay/Interact"];
@@ -102,9 +105,17 @@ public class PlayerInteraction : NetworkBehaviour
             _lookedInteractable = null;
         }
 
+        //if (_heldObject != null)
+        //{
+        //    ShowPrompt(false);
+        //    return;
+        //}
+
+        // Eşya tutuyorsak veya hiçbir şeye bakmıyorsak UI'ı kapatan kısımlar:
         if (_heldObject != null)
         {
             ShowPrompt(false);
+            if (_uiController != null) _uiController.HideInteraction(); // ESMANUR UI KAPAT
             return;
         }
 
@@ -127,6 +138,17 @@ public class PlayerInteraction : NetworkBehaviour
                     physicsState = $" netIsHeld={physicsObject.NetIsHeld.Value} isSpawned={physicsObject.IsSpawned}";
                 Debug.Log($"[PlayerInteraction] Hit '{hit.collider.name}' interactable={interactableName} type={interactableType} canInteract={canInteract} distance={hit.distance:F2}{physicsState}", this);
             }
+            //if (canInteract)
+            //{
+            //    _lookedInteractable = interactable;
+
+            //    if (TryGetPhysicsObject(hit.collider, out var po))
+            //        po.SetHighlight(true);
+
+            //    ShowPrompt(true);
+            //    return;
+            //}
+
             if (canInteract)
             {
                 _lookedInteractable = interactable;
@@ -134,7 +156,21 @@ public class PlayerInteraction : NetworkBehaviour
                 if (TryGetPhysicsObject(hit.collider, out var po))
                     po.SetHighlight(true);
 
-                ShowPrompt(true);
+                // --- ESMANUR UI TETİKLEME ---
+                // Çarptığımız objede IItem arayüzü varsa benim özel arayüzüme değerleri yolla
+                if (hit.collider.TryGetComponent(out IItem item))
+                {
+                    if (_uiController != null)
+                        _uiController.ShowInteraction(item.ItemName, item.CreditValue);
+
+                    ShowPrompt(false); // Senin eski düz yazıyı kapat
+                }
+                else
+                {
+                    // Eğer kapı, şalter gibi IItem olmayan bir şeyse senin eski UI çalışsın
+                    ShowPrompt(true);
+                }
+                // -----------------------------
                 return;
             }
 
@@ -147,6 +183,7 @@ public class PlayerInteraction : NetworkBehaviour
         }
 
         ShowPrompt(false);
+        if (_uiController != null) _uiController.HideInteraction(); // ESMANUR UI KAPAT
     }
 
     private void HandleInput()
