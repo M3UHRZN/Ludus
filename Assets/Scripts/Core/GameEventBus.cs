@@ -214,3 +214,21 @@ public struct LevelEndedEvent
         QuotaFillAmount = quotaFillAmount;
     }
 }
+
+/// <summary>
+/// Sahnede bir ses kaynagi olustugunda yayinlanir (ayak sesi, item dusurme,
+/// silah sesi, vs.). EnemyController bunu dinler ve menzilindeyse Chase'e gecer.
+/// </summary>
+public struct NoiseEmittedEvent
+{
+    public UnityEngine.Vector3 Position;
+    public float Range;
+    public string Source;
+
+    public NoiseEmittedEvent(UnityEngine.Vector3 position, float range, string source = null)
+    {
+        Position = position;
+        Range = range;
+        Source = source;
+    }
+}
