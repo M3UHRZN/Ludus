@@ -33,4 +33,55 @@ public class DungeonGeneratorTests
     {
         Assert.AreEqual(4, DirectionHelper.All.Length);
     }
+
+    [Test]
+    public void RoomNode_NewNode_HasNoConnections()
+    {
+        var node = new RoomNode(Vector2Int.zero);
+        Assert.AreEqual(ConnectionDirection.None, node.Connections);
+    }
+
+    [Test]
+    public void RoomNode_AddConnection_SetsFlag()
+    {
+        var node = new RoomNode(Vector2Int.zero);
+        node.AddConnection(ConnectionDirection.North);
+        Assert.IsTrue(node.HasConnection(ConnectionDirection.North));
+        Assert.IsFalse(node.HasConnection(ConnectionDirection.South));
+    }
+
+    [Test]
+    public void RoomNode_AddMultiple_AllFlagsSet()
+    {
+        var node = new RoomNode(new Vector2Int(1, 2));
+        node.AddConnection(ConnectionDirection.North);
+        node.AddConnection(ConnectionDirection.East);
+        Assert.IsTrue(node.HasConnection(ConnectionDirection.North));
+        Assert.IsTrue(node.HasConnection(ConnectionDirection.East));
+        Assert.IsFalse(node.HasConnection(ConnectionDirection.South));
+    }
+
+    [Test]
+    public void RoomNode_RemoveConnection_ClearsFlag()
+    {
+        var node = new RoomNode(Vector2Int.zero);
+        node.AddConnection(ConnectionDirection.West);
+        node.RemoveConnection(ConnectionDirection.West);
+        Assert.IsFalse(node.HasConnection(ConnectionDirection.West));
+    }
+
+    [Test]
+    public void RoomNode_Coordinates_MatchConstructorInput()
+    {
+        var coords = new Vector2Int(3, -2);
+        var node = new RoomNode(coords);
+        Assert.AreEqual(coords, node.Coordinates);
+    }
+
+    [Test]
+    public void RoomNode_DefaultType_IsStandard()
+    {
+        var node = new RoomNode(Vector2Int.zero);
+        Assert.AreEqual(RoomType.Standard, node.Type);
+    }
 }
