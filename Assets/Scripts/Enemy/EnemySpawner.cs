@@ -68,7 +68,8 @@ public class EnemySpawner : NetworkBehaviour
         if (!IsServer) return;
 
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
-        Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent dinlemeye basladi.");
+        GameEventBus.Subscribe<EnemyDiedEvent>(OnEnemyDied);
+        Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent + EnemyDiedEvent dinlemeye basladi.");
 
         if (_spawnOnStartIfNoMapEvent)
             Invoke(nameof(FallbackStart), _fallbackStartDelay);
@@ -78,7 +79,20 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (!IsServer) return;
         GameEventBus.Unsubscribe<MapReadyEvent>(OnMapReady);
+        GameEventBus.Unsubscribe<EnemyDiedEvent>(OnEnemyDied);
+        _waveLoopActive = false;
         if (_waveLoop != null) StopCoroutine(_waveLoop);
+    }
+
+    /// <summary>
+    /// Observer: enemy oldukce alive count azalir. Wave loop bir sonraki interval'de
+    /// bos slot'u gorur ve yeni enemy spawn eder. Boylece "bir oldu, biri geldi" akisi
+    /// loose-coupled saglanir.
+    /// </summary>
+    private void OnEnemyDied(EnemyDiedEvent evt)
+    {
+        _aliveCount = Mathf.Max(0, _aliveCount - 1);
+        Debug.Log($"[EnemySpawner] EnemyDiedEvent alindi (id={evt.EnemyId}). Alive: {_aliveCount}/{_targetEnemyCount}.");
     }
 
     private void OnMapReady(MapReadyEvent evt)
