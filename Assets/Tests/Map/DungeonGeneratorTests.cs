@@ -186,6 +186,7 @@ public class DungeonGeneratorTests
         cfg.enableRoomMerging = false;
         cfg.useRandomSeed = false;
         cfg.seed = seed;
+        cfg.newestBias = 0f;
         return cfg;
     }
 
@@ -438,5 +439,33 @@ public class DungeonGeneratorTests
         Assert.AreNotEqual(-1, rg2.MergeGroupId);
         Assert.AreNotEqual(rg1.MergeGroupId, rg2.MergeGroupId,
             "Two separate merge groups must have different IDs");
+    }
+
+    [Test]
+    public void DungeonGenerator_NewestBias1_AllRoomsStillReachable()
+    {
+        var cfg = MakeConfig(maxRooms: 20, seed: 42);
+        cfg.newestBias = 1f;
+        var data = new DungeonGenerator(cfg).Generate();
+
+        var visited = new System.Collections.Generic.HashSet<Vector2Int>();
+        var queue = new System.Collections.Generic.Queue<Vector2Int>();
+        queue.Enqueue(Vector2Int.zero);
+        visited.Add(Vector2Int.zero);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!data.TryGetRoom(current, out var node)) continue;
+            foreach (var dir in DirectionHelper.All)
+            {
+                if (!node.HasConnection(dir)) continue;
+                var nb = current + DirectionHelper.ToVector(dir);
+                if (visited.Add(nb)) queue.Enqueue(nb);
+            }
+        }
+
+        Assert.AreEqual(data.RoomCount, visited.Count,
+            "newestBias=1 (DFS) ile de tüm odalar ulaşılabilir olmalı");
     }
 }

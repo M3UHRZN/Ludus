@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: DungeonGeneratorConfig
   m_EditorClassIdentifier: Map::DungeonGeneratorSO
   maxRooms: 40
-  extraConnectionChance: 0.15
+  extraConnectionChance: 0.2
   enableRoomMerging: 1
+  newestBias: 0
   useRandomSeed: 1
   seed: 0

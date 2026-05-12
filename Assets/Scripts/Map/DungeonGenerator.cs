@@ -30,14 +30,16 @@ public class DungeonGenerator
         data.AddRoom(new RoomNode(Vector2Int.zero, RoomType.Start));
     }
 
-    // Growing Tree algorithm — picking a random active cell guarantees full connectivity
+    // Growing Tree: newestBias=1 → DFS (uzun koridorlar), 0 → saf rastgele (dallanma)
     private void Phase2_GrowMaze(DungeonData data)
     {
         var active = new List<Vector2Int> { Vector2Int.zero };
 
         while (data.RoomCount < _config.maxRooms && active.Count > 0)
         {
-            int idx = _rng.Next(active.Count);
+            int idx = (_rng.NextDouble() < _config.newestBias)
+                ? active.Count - 1
+                : _rng.Next(active.Count);
             Vector2Int current = active[idx];
 
             var freeNeighbors = data.GetFreeNeighbors(current);
