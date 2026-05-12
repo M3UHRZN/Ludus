@@ -12,9 +12,12 @@ public class DungeonGenerator
         _config = config;
     }
 
+    public int LastSeed { get; private set; }
+
     public DungeonData Generate()
     {
-        _rng = _config.useRandomSeed ? new System.Random() : new System.Random(_config.seed);
+        LastSeed = _config.useRandomSeed ? System.Environment.TickCount : _config.seed;
+        _rng = new System.Random(LastSeed);
         _nextGroupId = 0;
         var data = new DungeonData();
         Phase1_PlaceStart(data);
