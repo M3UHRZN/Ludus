@@ -30,6 +30,15 @@ public class PatrolWaypointGroup : MonoBehaviour
             _waypoints[i] = transform.GetChild(i);
     }
 
+    /// <summary>
+    /// Runtime'da waypoint dizisini set eder. Map adaptoru (MapEnemyBridge)
+    /// prosedurel olarak uretilen odalara waypoint atarken kullanir.
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints)
+    {
+        _waypoints = waypoints;
+    }
+
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {
