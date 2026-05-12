@@ -44,6 +44,13 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("Spawn'da yakin patrol grubu aramak icin maks. mesafe")]
     [SerializeField] private float _patrolGroupSearchRadius = 20f;
 
+    [Header("Player Mesafe Kontrolu")]
+    [Tooltip("Player'a bu mesafeden daha yakin spawn olmaz (jump scare riskini onler)")]
+    [SerializeField] private float _minDistanceFromPlayer = 20f;
+
+    [Tooltip("Player'a bu mesafeden daha uzak spawn olmaz. 0 = limit yok.")]
+    [SerializeField] private float _maxDistanceFromPlayer = 0f;
+
     [Header("Test / Fallback")]
     [Tooltip("MapReadyEvent gelmese bile sahnede EnemySpawnPoint varsa wave loop'u baslat")]
     [SerializeField] private bool _spawnOnStartIfNoMapEvent = false;
@@ -171,11 +178,39 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     /// <summary>
-    /// Default: havuzdan rastgele bir spawn point seç. (Mesafe kontrolu sonraki commit'te eklenir.)
+    /// Player'dan min mesafede ve (varsa) max mesafenin altinda olan spawn point'leri filtreleyip
+    /// rastgele birini doner. Player bulunamazsa veya filtre bos donerse fallback olarak
+    /// havuzdan rastgele dondurur.
     /// </summary>
     private EnemySpawnPoint PickSpawnPoint(EnemySpawnPoint[] candidates)
     {
-        return candidates[Random.Range(0, candidates.Length)];
+        var playerObj = GameObject.FindWithTag("Player");
+        if (playerObj == null)
+            return candidates[Random.Range(0, candidates.Length)];
+
+        Vector3 playerPos = playerObj.transform.position;
+        float minSqr = _minDistanceFromPlayer * _minDistanceFromPlayer;
+        float maxSqr = _maxDistanceFromPlayer > 0f
+            ? _maxDistanceFromPlayer * _maxDistanceFromPlayer
+            : float.MaxValue;
+
+        var filtered = new List<EnemySpawnPoint>(candidates.Length);
+        foreach (var sp in candidates)
+        {
+            if (sp == null) continue;
+            float sqr = (sp.transform.position - playerPos).sqrMagnitude;
+            if (sqr < minSqr) continue;
+            if (sqr > maxSqr) continue;
+            filtered.Add(sp);
+        }
+
+        if (filtered.Count == 0)
+        {
+            Debug.LogWarning("[EnemySpawner] Player mesafe filtresi sonucu bos. Rastgele spawn'a fallback.");
+            return candidates[Random.Range(0, candidates.Length)];
+        }
+
+        return filtered[Random.Range(0, filtered.Count)];
     }
 
     /// <summary>
