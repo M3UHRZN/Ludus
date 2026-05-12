@@ -4,11 +4,17 @@ using UnityEngine;
 public class DungeonData
 {
     private readonly Dictionary<Vector2Int, RoomNode> _rooms = new();
+    private readonly List<RoomNode> _roomList = new();
 
     public int RoomCount => _rooms.Count;
-    public IEnumerable<RoomNode> AllRooms => _rooms.Values;
+    // List garantili insertion-order — Dictionary.Values değil
+    public IReadOnlyList<RoomNode> AllRooms => _roomList;
 
-    public void AddRoom(RoomNode node) => _rooms[node.Coordinates] = node;
+    public void AddRoom(RoomNode node)
+    {
+        _rooms[node.Coordinates] = node;
+        _roomList.Add(node);
+    }
 
     public bool TryGetRoom(Vector2Int coords, out RoomNode node) =>
         _rooms.TryGetValue(coords, out node);
