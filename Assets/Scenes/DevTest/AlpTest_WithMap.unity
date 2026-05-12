@@ -230,8 +230,8 @@ MonoBehaviour:
   _mergedFloor2x2Prefab: {fileID: 2715353074314832260, guid: 81d514b978dde604d990866230ecd1a1, type: 3}
   _mergedFloorH1x3Prefab: {fileID: 2589127317185105089, guid: ebe733bdba637c14d84c82ab7ac77a38, type: 3}
   _mergedFloorV3x1Prefab: {fileID: 9077843509619995459, guid: 7899fe991c75c474d87a89e561630f9c, type: 3}
-  _roomSize: 6
-  _corridorLength: 4
+  _roomSize: 10
+  _corridorLength: 5
 --- !u!114 &400766112
 MonoBehaviour:
   m_ObjectHideFlags: 0
