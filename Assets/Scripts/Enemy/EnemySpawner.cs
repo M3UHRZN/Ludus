@@ -1,11 +1,17 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
 /// Server-only enemy spawner. MapReadyEvent yayinlandiginda sahnedeki
-/// EnemySpawnPoint marker'larini tarar, her biri icin server'da Enemy
-/// NetworkObject spawn eder ve yakindaki PatrolWaypointGroup'u atar.
+/// EnemySpawnPoint marker'larini havuz olarak alir, ardisik dalgalar halinde
+/// (wave) enemy uretir. Toplam alive enemy sayisi budget'la sinirlidir.
+///
+/// Mimari kararlar:
+///   - Budget: targetCount = Min(maxAlive, roomCount / roomsPerEnemy)
+///   - Wave: ilk spawn delay sonra, sabit interval ile yeni enemy gelir
+///   - EnemyDiedEvent Observer: enemy oldukce alive count azalir, yeni slot acilir
 ///
 /// Anil ile kontrat: harita uretildikten sonra GameEventBus.Publish(new MapReadyEvent(...))
 /// cagirilir, bu spawner devreye girer.
@@ -13,106 +19,212 @@ using UnityEngine;
 [RequireComponent(typeof(NetworkObject))]
 public class EnemySpawner : NetworkBehaviour
 {
-    [Header("Enemy")]
-    [Tooltip("NetworkObject component'i olan Enemy prefab'i (Assets/Prefabs/Enemy.prefab)")]
-    [SerializeField] private GameObject _enemyPrefab;
+    [Header("Enemy Prefablari")]
+    [Tooltip("Spawn icin kullanilacak enemy prefablari (her biri NetworkObject olmali). Bos ise spawn olmaz.")]
+    [SerializeField] private GameObject[] _enemyPrefabs;
 
-    [Header("Davranis")]
+    [Header("Spawn Budget")]
+    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir")]
+    [SerializeField] private int _maxAliveEnemies = 5;
+
+    [Tooltip("Budget formulu: target = roomCount / roomsPerEnemy (sonra maxAlive ile sinirlanir)")]
+    [SerializeField] private int _roomsPerEnemy = 10;
+
+    [Tooltip("MapReadyEvent gelmezse fallback hedef enemy sayisi")]
+    [SerializeField] private int _fallbackTargetCount = 3;
+
+    [Header("Wave Spawn")]
+    [Tooltip("MapReadyEvent'ten sonra ilk enemy ne kadar sure sonra cikar")]
+    [SerializeField] private float _firstSpawnDelay = 5f;
+
+    [Tooltip("Iki ardisik spawn arasi sure (saniye)")]
+    [SerializeField] private float _spawnInterval = 15f;
+
+    [Header("Patrol Bagi")]
     [Tooltip("Spawn'da yakin patrol grubu aramak icin maks. mesafe")]
     [SerializeField] private float _patrolGroupSearchRadius = 20f;
 
-    [Tooltip("MapReadyEvent gelmese bile sahnede EnemySpawnPoint varsa direkt spawn et (test icin)")]
+    [Header("Player Mesafe Kontrolu")]
+    [Tooltip("Player'a bu mesafeden daha yakin spawn olmaz (jump scare riskini onler)")]
+    [SerializeField] private float _minDistanceFromPlayer = 20f;
+
+    [Tooltip("Player'a bu mesafeden daha uzak spawn olmaz. 0 = limit yok.")]
+    [SerializeField] private float _maxDistanceFromPlayer = 0f;
+
+    [Header("Test / Fallback")]
+    [Tooltip("MapReadyEvent gelmese bile sahnede EnemySpawnPoint varsa wave loop'u baslat")]
     [SerializeField] private bool _spawnOnStartIfNoMapEvent = false;
 
-    [Tooltip("Test sahnesi icin MapReadyEvent yayinlanmadiysa Start'tan sonra ne kadar bekle")]
-    [SerializeField] private float _fallbackSpawnDelay = 2f;
+    [Tooltip("Fallback durumda Start'tan sonra ne kadar bekle")]
+    [SerializeField] private float _fallbackStartDelay = 2f;
 
-    private bool _hasSpawned;
+    private int _targetEnemyCount;
+    private int _aliveCount;
+    private bool _waveLoopActive;
+    private Coroutine _waveLoop;
 
     public override void OnNetworkSpawn()
     {
         if (!IsServer) return;
 
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
-        Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent dinlemeye basladi.");
+        GameEventBus.Subscribe<EnemyDiedEvent>(OnEnemyDied);
+        Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent + EnemyDiedEvent dinlemeye basladi.");
 
         if (_spawnOnStartIfNoMapEvent)
-            Invoke(nameof(FallbackSpawn), _fallbackSpawnDelay);
+            Invoke(nameof(FallbackStart), _fallbackStartDelay);
     }
 
     public override void OnNetworkDespawn()
     {
         if (!IsServer) return;
         GameEventBus.Unsubscribe<MapReadyEvent>(OnMapReady);
+        GameEventBus.Unsubscribe<EnemyDiedEvent>(OnEnemyDied);
+        _waveLoopActive = false;
+        if (_waveLoop != null) StopCoroutine(_waveLoop);
+    }
+
+    /// <summary>
+    /// Observer: enemy oldukce alive count azalir. Wave loop bir sonraki interval'de
+    /// bos slot'u gorur ve yeni enemy spawn eder. Boylece "bir oldu, biri geldi" akisi
+    /// loose-coupled saglanir.
+    /// </summary>
+    private void OnEnemyDied(EnemyDiedEvent evt)
+    {
+        _aliveCount = Mathf.Max(0, _aliveCount - 1);
+        Debug.Log($"[EnemySpawner] EnemyDiedEvent alindi (id={evt.EnemyId}). Alive: {_aliveCount}/{_targetEnemyCount}.");
     }
 
     private void OnMapReady(MapReadyEvent evt)
     {
-        if (_hasSpawned) return;
-        Debug.Log($"[EnemySpawner] MapReadyEvent alindi (seed={evt.Seed}, roomCount={evt.RoomCount}). Spawn baslıyor.");
-        SpawnAllEnemies();
+        if (_waveLoopActive) return;
+
+        _targetEnemyCount = CalculateTarget(evt.RoomCount);
+        Debug.Log($"[EnemySpawner] MapReadyEvent alindi (rooms={evt.RoomCount}). Target enemy count: {_targetEnemyCount}.");
+        StartWaveLoop();
     }
 
-    private void FallbackSpawn()
+    private void FallbackStart()
     {
-        if (_hasSpawned) return;
-        Debug.Log("[EnemySpawner] MapReadyEvent gelmedi, fallback spawn devrede.");
-        SpawnAllEnemies();
+        if (_waveLoopActive) return;
+        _targetEnemyCount = _fallbackTargetCount;
+        Debug.Log($"[EnemySpawner] Fallback wave loop baslatildi. Target: {_targetEnemyCount}.");
+        StartWaveLoop();
     }
 
-    private void SpawnAllEnemies()
+    private int CalculateTarget(int roomCount)
     {
-        if (_enemyPrefab == null)
+        if (_roomsPerEnemy <= 0) return _maxAliveEnemies;
+        int formulaTarget = Mathf.Max(1, roomCount / _roomsPerEnemy);
+        return Mathf.Min(_maxAliveEnemies, formulaTarget);
+    }
+
+    private void StartWaveLoop()
+    {
+        _waveLoopActive = true;
+        _waveLoop = StartCoroutine(WaveSpawnLoop());
+    }
+
+    private IEnumerator WaveSpawnLoop()
+    {
+        yield return new WaitForSeconds(_firstSpawnDelay);
+
+        while (_waveLoopActive)
         {
-            Debug.LogError("[EnemySpawner] Enemy prefab atanmamis.");
-            return;
+            if (_aliveCount < _targetEnemyCount)
+                TrySpawnOne();
+
+            yield return new WaitForSeconds(_spawnInterval);
+        }
+    }
+
+    private bool TrySpawnOne()
+    {
+        if (_enemyPrefabs == null || _enemyPrefabs.Length == 0)
+        {
+            Debug.LogError("[EnemySpawner] Enemy prefab listesi bos.");
+            return false;
         }
 
         var spawnPoints = FindObjectsByType<EnemySpawnPoint>(FindObjectsSortMode.None);
-        var patrolGroups = FindObjectsByType<PatrolWaypointGroup>(FindObjectsSortMode.None);
-
-        Debug.Log($"[EnemySpawner] {spawnPoints.Length} spawn point, {patrolGroups.Length} patrol grubu bulundu.");
-
-        int totalSpawned = 0;
-        foreach (var sp in spawnPoints)
+        if (spawnPoints == null || spawnPoints.Length == 0)
         {
-            for (int i = 0; i < sp.EnemyCount; i++)
-            {
-                if (TrySpawnAt(sp, patrolGroups))
-                    totalSpawned++;
-            }
+            Debug.LogWarning("[EnemySpawner] Sahnede EnemySpawnPoint yok, spawn atlandi.");
+            return false;
         }
 
-        _hasSpawned = true;
-        Debug.Log($"[EnemySpawner] Toplam {totalSpawned} enemy spawn edildi.");
-    }
+        var patrolGroups = FindObjectsByType<PatrolWaypointGroup>(FindObjectsSortMode.None);
+        EnemySpawnPoint chosen = PickSpawnPoint(spawnPoints);
+        if (chosen == null) return false;
 
-    private bool TrySpawnAt(EnemySpawnPoint sp, PatrolWaypointGroup[] patrolGroups)
-    {
-        Vector3 pos = sp.transform.position;
+        GameObject prefab = _enemyPrefabs[Random.Range(0, _enemyPrefabs.Length)];
+        if (prefab == null)
+        {
+            Debug.LogError("[EnemySpawner] Secilen prefab null.");
+            return false;
+        }
+
+        Vector3 pos = chosen.transform.position;
         Quaternion rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
-        var enemyGo = Instantiate(_enemyPrefab, pos, rot);
+        var enemyGo = Instantiate(prefab, pos, rot);
         var netObj = enemyGo.GetComponent<NetworkObject>();
         if (netObj == null)
         {
-            Debug.LogError($"[EnemySpawner] Enemy prefab'inda NetworkObject yok: {_enemyPrefab.name}");
+            Debug.LogError($"[EnemySpawner] Enemy prefab'inda NetworkObject yok: {prefab.name}");
             Destroy(enemyGo);
             return false;
         }
 
         netObj.Spawn();
 
-        // Patrol noktalarini ata
         var ctrl = enemyGo.GetComponent<EnemyController>();
         if (ctrl != null)
         {
-            var waypoints = ResolveWaypointsFor(sp, patrolGroups);
+            var waypoints = ResolveWaypointsFor(chosen, patrolGroups);
             if (waypoints != null && waypoints.Length > 0)
                 ctrl.SetWaypoints(waypoints);
         }
 
+        _aliveCount++;
+        Debug.Log($"[EnemySpawner] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
         return true;
+    }
+
+    /// <summary>
+    /// Player'dan min mesafede ve (varsa) max mesafenin altinda olan spawn point'leri filtreleyip
+    /// rastgele birini doner. Player bulunamazsa veya filtre bos donerse fallback olarak
+    /// havuzdan rastgele dondurur.
+    /// </summary>
+    private EnemySpawnPoint PickSpawnPoint(EnemySpawnPoint[] candidates)
+    {
+        var playerObj = GameObject.FindWithTag("Player");
+        if (playerObj == null)
+            return candidates[Random.Range(0, candidates.Length)];
+
+        Vector3 playerPos = playerObj.transform.position;
+        float minSqr = _minDistanceFromPlayer * _minDistanceFromPlayer;
+        float maxSqr = _maxDistanceFromPlayer > 0f
+            ? _maxDistanceFromPlayer * _maxDistanceFromPlayer
+            : float.MaxValue;
+
+        var filtered = new List<EnemySpawnPoint>(candidates.Length);
+        foreach (var sp in candidates)
+        {
+            if (sp == null) continue;
+            float sqr = (sp.transform.position - playerPos).sqrMagnitude;
+            if (sqr < minSqr) continue;
+            if (sqr > maxSqr) continue;
+            filtered.Add(sp);
+        }
+
+        if (filtered.Count == 0)
+        {
+            Debug.LogWarning("[EnemySpawner] Player mesafe filtresi sonucu bos. Rastgele spawn'a fallback.");
+            return candidates[Random.Range(0, candidates.Length)];
+        }
+
+        return filtered[Random.Range(0, filtered.Count)];
     }
 
     /// <summary>

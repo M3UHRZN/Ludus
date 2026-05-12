@@ -190,10 +190,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
   ShowTopMostFoldoutHeaderGroup: 1
-  _enemyPrefab: {fileID: 2378715969404602837, guid: e17490cfef75d764194ce04fe378744a, type: 3}
+  _enemyPrefabs:
+  - {fileID: 2378715969404602837, guid: e17490cfef75d764194ce04fe378744a, type: 3}
+  _maxAliveEnemies: 5
+  _roomsPerEnemy: 10
+  _fallbackTargetCount: 3
+  _firstSpawnDelay: 5
+  _spawnInterval: 15
   _patrolGroupSearchRadius: 20
+  _minDistanceFromPlayer: 20
+  _maxDistanceFromPlayer: 0
   _spawnOnStartIfNoMapEvent: 0
-  _fallbackSpawnDelay: 2
+  _fallbackStartDelay: 2
 --- !u!1 &282944171
 GameObject:
   m_ObjectHideFlags: 0
@@ -789,6 +797,7 @@ MonoBehaviour:
   currentHealth: 100
   flashRadius: 50
   blindDuration: 3
+  noiseRange: 25
 --- !u!4 &991304700
 Transform:
   m_ObjectHideFlags: 0
