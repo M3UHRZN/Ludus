@@ -79,6 +79,7 @@ Bu degerler efekti daha erken gostermek icin yuksek tutuldu.
 | Depth Of Field | Panik/stun sirasinda blur verir | `FearSystem.cs` + `FearVolume Profile` |
 | FearOverlay | Kirmizi ekran bindirmesi | Canvas altindaki `FearOverlay` Image |
 | Camera Shake | Stun/panik sirasinda kamerayi sallar | `shakeCamera`, `shakeAmount`, `shakeFrequency` |
+| Heartbeat Audio | Fear arttikca volume ve hiz hissi artan loop ses | `heartbeatSource` / `heartbeatClip` |
 | Panic Re-arm | Panic loop'u engeller | `panicRearmFear` |
 
 ### Chromatic Aberration Notu
@@ -99,6 +100,34 @@ Depth Of Field sadece panik/stun sirasinda fark edilir. Profile icinde:
 - `Max Radius` override checkbox acik olmali.
 - Panic test etmek icin `FearSystemUI.SimulatePanic()` butonu kullanilabilir.
 - Test profile'inda `Depth Of Field / Max Radius` override acik ve degeri `1`.
+
+### Heartbeat Audio
+
+FearSystem icine loop eden heartbeat sesi eklendi.
+
+Davranis:
+
+- Fear `heartbeatStartFear` altindayken ses kapali kalir.
+- Fear arttikca `AudioSource.volume` artar.
+- Fear arttikca `AudioSource.pitch` da artar, bu da daha hizli kalp atisi hissi verir.
+- Sistem ham mesafeye degil smoothed fear degerine bagli oldugu icin daha stabil calisir.
+
+Inspector alanlari:
+
+| Alan | Anlam |
+|------|-------|
+| `Heartbeat Source` | Istersen mevcut bir AudioSource baglarsin, bos birakirsan script ayni objede bir tane olusturur |
+| `Heartbeat Clip` | Loopable kalp atis sesi |
+| `Heartbeat Start Fear` | Sesin duyulmaya basladigi fear seviyesi |
+| `Heartbeat Max Volume` | Maksimum ses seviyesi |
+| `Heartbeat Min Pitch` | Dusuk fear pitch |
+| `Heartbeat Max Pitch` | Yuksek fear pitch |
+| `Heartbeat Follow Speed` | Sesin fear degisimlerini ne kadar hizli takip ettigi |
+
+Onerilen ses import yolu:
+
+- `Assets/Audio/Heartbeat/`
+- Ornek dosya: `Assets/Audio/Heartbeat/heartbeat_loop.wav`
 
 Mesafe degisince tum fear efekti hala fazla zipliyorsa:
 
@@ -175,6 +204,7 @@ FearSceneTest
 | `Distance Retreat Follow Speed` | Dusmandan uzaklasirken mesafe guncellemesinin hizi |
 | `Panic Trigger Hold Time` | Fear threshold ustunde bu sure kalmadan panic baslamaz |
 | `High Fear Blur Radius` | Panic oncesi yuksek fear blur miktari |
+| `Heartbeat Clip` | Loop heartbeat audio dosyasi |
 
 `FakeEnemy` objesinde:
 
@@ -273,5 +303,6 @@ Degisiklikler:
 - Panic hold time: yakindayken fear bir frame 90 ustune cikti diye panic aninda patlamaz.
 - Directional distance smoothing: dusmana yaklasma ve uzaklasma farkli hizlarda yumusatilir.
 - Fear Pulse mekanigi tamamen kaldirildi.
+- Heartbeat loop eklendi: fear arttikca volume ve pitch yavasca yukselir.
 
 Commit/push yapilmadi.

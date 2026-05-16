@@ -83,6 +83,17 @@ public class FearSystem : MonoBehaviour
     public float maxFearSpeedMultiplier = 0.6f;
     public TestPlayer playerMovement;
 
+    [Header("Heartbeat Audio")]
+    [Tooltip("Optional AudioSource for heartbeat playback. If left empty, one is created automatically on this object.")]
+    public AudioSource heartbeatSource;
+    [Tooltip("Loopable heartbeat clip.")]
+    public AudioClip heartbeatClip;
+    [Range(0f, 100f)] public float heartbeatStartFear = 35f;
+    [Range(0f, 1f)] public float heartbeatMaxVolume = 0.8f;
+    public float heartbeatMinPitch = 0.9f;
+    public float heartbeatMaxPitch = 1.35f;
+    public float heartbeatFollowSpeed = 2.5f;
+
     [Header("Post Processing")]
     [Tooltip("Global Volume — must contain Vignette, ChromaticAberration, LensDistortion overrides")]
     public Volume postProcessVolume;
@@ -106,6 +117,7 @@ public class FearSystem : MonoBehaviour
     private bool  _panicLock;
     private bool  _panicArmed = true;
     private bool  _stunned;
+    private float _smoothedHeartbeatLevel;
     private Vector3 _cameraRestLocalPosition;
     private bool _hasCameraRestPosition;
 
@@ -122,6 +134,7 @@ public class FearSystem : MonoBehaviour
         }
 
         CacheCameraRestPosition();
+        ConfigureHeartbeatSource();
 
         GameEventBus.Subscribe<PlayerDiedEvent>(OnPlayerDied);
         GameEventBus.Subscribe<PlayerDamagedEvent>(OnPlayerDamaged);
@@ -163,6 +176,7 @@ public class FearSystem : MonoBehaviour
 
         ApplyVisualEffects(_fearLevel);
         ApplySpeedPenalty(_fearLevel);
+        UpdateHeartbeat(_fearLevel, dt);
 
         if (!_panicArmed && _fearLevel <= panicRearmFear)
             _panicArmed = true;
@@ -201,8 +215,10 @@ public class FearSystem : MonoBehaviour
         _smoothedFearTarget = 0f;
         _panicThresholdTimer = 0f;
         _panicArmed = true;
+        _smoothedHeartbeatLevel = 0f;
         ApplyVisualEffects(0f);
         ResetCameraPosition();
+        UpdateHeartbeat(0f, 0f);
         playerMovement?.SetSpeedMultiplier(1f);
     }
 
@@ -330,6 +346,65 @@ public class FearSystem : MonoBehaviour
         if (playerMovement == null) return;
         float penalty = Mathf.InverseLerp(70f, 100f, fear);
         playerMovement.SetSpeedMultiplier(Mathf.Lerp(1f, maxFearSpeedMultiplier, penalty));
+    }
+
+    private void ConfigureHeartbeatSource()
+    {
+        if (heartbeatSource == null)
+            heartbeatSource = GetComponent<AudioSource>();
+
+        if (heartbeatSource == null)
+            heartbeatSource = gameObject.AddComponent<AudioSource>();
+
+        heartbeatSource.playOnAwake = false;
+        heartbeatSource.loop = true;
+        heartbeatSource.spatialBlend = 0f;
+        heartbeatSource.volume = 0f;
+        heartbeatSource.pitch = heartbeatMinPitch;
+
+        if (heartbeatClip != null)
+            heartbeatSource.clip = heartbeatClip;
+    }
+
+    private void UpdateHeartbeat(float fear, float dt)
+    {
+        if (heartbeatSource == null) return;
+
+        if (heartbeatClip != null && heartbeatSource.clip != heartbeatClip)
+            heartbeatSource.clip = heartbeatClip;
+
+        if (heartbeatSource.clip == null)
+        {
+            if (heartbeatSource.isPlaying)
+                heartbeatSource.Stop();
+            return;
+        }
+
+        float targetLevel = Mathf.InverseLerp(heartbeatStartFear, 100f, fear);
+        if (dt > 0f)
+        {
+            _smoothedHeartbeatLevel = Mathf.MoveTowards(
+                _smoothedHeartbeatLevel,
+                targetLevel,
+                heartbeatFollowSpeed * dt);
+        }
+        else
+        {
+            _smoothedHeartbeatLevel = targetLevel;
+        }
+
+        heartbeatSource.volume = Mathf.Lerp(0f, heartbeatMaxVolume, _smoothedHeartbeatLevel);
+        heartbeatSource.pitch = Mathf.Lerp(heartbeatMinPitch, heartbeatMaxPitch, _smoothedHeartbeatLevel);
+
+        if (_smoothedHeartbeatLevel > 0.001f)
+        {
+            if (!heartbeatSource.isPlaying)
+                heartbeatSource.Play();
+        }
+        else if (heartbeatSource.isPlaying)
+        {
+            heartbeatSource.Stop();
+        }
     }
 
     // ---------------------------------------------------------------
