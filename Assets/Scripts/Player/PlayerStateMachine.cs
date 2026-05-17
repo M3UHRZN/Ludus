@@ -144,6 +144,24 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
         _currentState.Enter(this);
     }
 
+    /// <summary>Server tarafindan zorla stun uygula (FearSystem panik, vb.)</summary>
+    public void ForceStun(float duration)
+    {
+        if (!IsServer) return;
+        if (!IsAlive) return;
+        StartCoroutine(StunCoroutine(duration));
+    }
+
+    private System.Collections.IEnumerator StunCoroutine(float duration)
+    {
+        byte prev = NetState.Value;
+        NetState.Value = (byte)PlayerStateEnum.Stunned;
+        yield return new WaitForSeconds(duration);
+        // Stun bittikten sonra Alive'a don (Dead degillerse)
+        if (IsAlive && (PlayerStateEnum)NetState.Value == PlayerStateEnum.Stunned)
+            NetState.Value = prev;
+    }
+
     public void SwitchActionMap(string mapName)
     {
         if (PlayerInput == null) return;
