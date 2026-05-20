@@ -33,8 +33,12 @@ public class EnemyController : MonoBehaviour
     [Tooltip("Merminin ciktigi namlu noktasi (bos ise govdenin ust-on kismi kullanilir)")]
     [SerializeField] private Transform _firePoint;
 
+    [Tooltip("Atis aninda namluda kisa sure gorunen efekt prefab'i (opsiyonel)")]
+    [SerializeField] private GameObject _muzzleFlashPrefab;
+
     public GameObject ProjectilePrefab => _projectilePrefab;
     public Transform FirePoint => _firePoint;
+    public GameObject MuzzleFlashPrefab => _muzzleFlashPrefab;
 
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;

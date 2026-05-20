@@ -16,8 +16,14 @@ using UnityEngine;
 [RequireComponent(typeof(NetworkObject))]
 public class EnemyProjectile : NetworkBehaviour
 {
-    [SerializeField] private float _speed = 30f;
-    [SerializeField] private float _lifetime = 3f;
+    [Tooltip("Mermi hizi — dusuk deger gorunur ve kacinilabilir mermi (gerceklik icin 15-20)")]
+    [SerializeField] private float _speed = 18f;
+
+    [Tooltip("Merminin maks. omru (saniye)")]
+    [SerializeField] private float _lifetime = 4f;
+
+    [Tooltip("Carpma aninda spawn olan efekt prefab'i (opsiyonel — kivilcim/patlama)")]
+    [SerializeField] private GameObject _impactEffectPrefab;
 
     private Vector3 _direction;
     private float _damage;
@@ -68,9 +74,22 @@ public class EnemyProjectile : NetworkBehaviour
     private void Despawn()
     {
         _launched = false;
+
+        // Carpma efekti (opsiyonel) — herkeste gorunmesi icin tum client'lara bildir
+        if (_impactEffectPrefab != null)
+            SpawnImpactRpc(transform.position);
+
         if (NetworkObject != null && NetworkObject.IsSpawned)
             NetworkObject.Despawn();
         else
             Destroy(gameObject);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void SpawnImpactRpc(Vector3 position)
+    {
+        if (_impactEffectPrefab == null) return;
+        var fx = Instantiate(_impactEffectPrefab, position, Quaternion.identity);
+        Destroy(fx, 1.5f);
     }
 }
