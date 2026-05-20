@@ -519,6 +519,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestAutoHost
   _autoHostOnStart: 1
+--- !u!1 &1045011107 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+  m_PrefabInstance: {fileID: 1406411618}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1045011121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045011107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f8277fa765b411429098f000a63c55b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerNoiseEmitter
+  ShowTopMostFoldoutHeaderGroup: 1
+  walkNoiseRange: 12
+  runNoiseRange: 28
+  walkStepInterval: 0.5
+  runStepInterval: 0.3
 --- !u!1 &1152259209
 GameObject:
   m_ObjectHideFlags: 0
@@ -748,7 +770,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1045011121}
   m_SourcePrefab: {fileID: 100100000, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
 --- !u!1 &1709098103
 GameObject:
