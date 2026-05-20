@@ -25,11 +25,15 @@ public class EnemySpawner : NetworkBehaviour
     [SerializeField] private GameObject[] _enemyPrefabs;
 
     [Header("Spawn Budget")]
-    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir")]
-    [SerializeField] private int _maxAliveEnemies = 5;
+    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir (orn. 5 Type A + 1 Type B icin 6)")]
+    [SerializeField] private int _maxAliveEnemies = 6;
 
     [Tooltip("Budget formulu: target = roomCount / roomsPerEnemy (sonra maxAlive ile sinirlanir)")]
-    [SerializeField] private int _roomsPerEnemy = 10;
+    [SerializeField] private int _roomsPerEnemy = 7;
+
+    [Header("Nadir Dusman (Type B)")]
+    [Tooltip("Element 1 = nadir dusman (Type B). Her haritada en fazla bu kadar spawn olur. Gerisi Element 0 (Type A).")]
+    [SerializeField] private int _rareEnemyMaxCount = 1;
 
     [Tooltip("MapReadyEvent gelmezse fallback hedef enemy sayisi")]
     [SerializeField] private int _fallbackTargetCount = 3;
@@ -63,7 +67,7 @@ public class EnemySpawner : NetworkBehaviour
     private int _aliveCount;
     private bool _waveLoopActive;
     private Coroutine _waveLoop;
-    private int _prefabCursor;
+    private int _rareSpawned;
 
     public override void OnNetworkSpawn()
     {
@@ -201,16 +205,22 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     /// <summary>
-    /// Round-robin prefab secimi: her spawn'da siradaki enemy tipini doner.
-    /// Rastgele secim bazen tek tipi ust uste verebiliyordu; round-robin ile
-    /// tum tipler (Type A, Type B...) garanti olarak sahnede gorunur.
+    /// Nadir dusman limitli prefab secimi.
+    /// Element 0 = yaygin dusman (Type A), Element 1 = nadir dusman (Type B).
+    /// Once _rareEnemyMaxCount kadar Type B spawn edilir (genelde 1), sonra
+    /// tum spawn'lar Type A olur. Boylece her haritada tek bir guclu Type B,
+    /// gerisi yaygin Type A cikar.
     /// </summary>
     private GameObject PickPrefab()
     {
         if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return null;
-        GameObject prefab = _enemyPrefabs[_prefabCursor % _enemyPrefabs.Length];
-        _prefabCursor++;
-        return prefab;
+
+        if (_enemyPrefabs.Length >= 2 && _rareSpawned < _rareEnemyMaxCount)
+        {
+            _rareSpawned++;
+            return _enemyPrefabs[1]; // nadir (Type B)
+        }
+        return _enemyPrefabs[0]; // yaygin (Type A)
     }
 
     /// <summary>
