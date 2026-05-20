@@ -22,10 +22,14 @@ public class GameSessionManager : NetworkBehaviour
     public readonly NetworkVariable<int> NetPlayerCount = new(
         0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    public float RemainingTime => NetRemainingTime.Value;
-    public bool IsSessionActive => NetIsActive.Value;
-    public float TotalCreditCollected => NetTotalCredit.Value;
-    public int PlayerCount => NetPlayerCount.Value;
+    // ── Abandonment (Sprint 3 — Yasin #41) ───────────────────────────────────
+    private int _abandonedCorpseCount = 0;
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public float RemainingTime         => NetRemainingTime.Value;
+    public bool  IsSessionActive       => NetIsActive.Value;
+    public float TotalCreditCollected  => NetTotalCredit.Value;
+    public int   PlayerCount           => NetPlayerCount.Value;
 
     private void Awake()
     {
@@ -60,7 +64,7 @@ public class GameSessionManager : NetworkBehaviour
         if (!IsServer)
         {
             NetRemainingTime.OnValueChanged += OnTimerChanged;
-            NetIsActive.OnValueChanged += OnSessionActiveChanged;
+            NetIsActive.OnValueChanged      += OnSessionActiveChanged;
         }
     }
 
@@ -69,7 +73,7 @@ public class GameSessionManager : NetworkBehaviour
         if (!IsServer)
         {
             NetRemainingTime.OnValueChanged -= OnTimerChanged;
-            NetIsActive.OnValueChanged -= OnSessionActiveChanged;
+            NetIsActive.OnValueChanged      -= OnSessionActiveChanged;
         }
     }
 
@@ -86,10 +90,11 @@ public class GameSessionManager : NetworkBehaviour
             return;
         }
 
-        NetPlayerCount.Value = playerCount;
+        NetPlayerCount.Value   = playerCount;
         NetRemainingTime.Value = sessionDuration;
-        NetTotalCredit.Value = 0f;
-        NetIsActive.Value = true;
+        NetTotalCredit.Value   = 0f;
+        NetIsActive.Value      = true;
+        _abandonedCorpseCount  = 0;
 
         GameEventBus.Publish(new SessionStartedEvent(playerCount, sessionDuration));
     }
@@ -99,7 +104,7 @@ public class GameSessionManager : NetworkBehaviour
         if (!IsServer) return;
         if (!NetIsActive.Value) return;
 
-        NetIsActive.Value = false;
+        NetIsActive.Value      = false;
         NetRemainingTime.Value = 0f;
         GameEventBus.Publish(new SessionEndedEvent(reason, NetTotalCredit.Value));
         BroadcastSessionEndedRpc((byte)reason, NetTotalCredit.Value);
@@ -142,6 +147,61 @@ public class GameSessionManager : NetworkBehaviour
 
     private void OnPlayerDied(PlayerDiedEvent evt)
     {
-        // Sprint 2: tüm oyuncular ölünce EndSession(SessionEndReason.AllDead)
+        // Ölüm takibi — ceset tesiste bırakılırsa RegisterAbandonedCorpse() çağrılır
     }
+
+    // ── Abandonment Penalty (Sprint 3 — Yasin #41) ───────────────────────────
+
+    /// <summary>
+    /// Tesiste kalan her ceset için extraction öncesi çağrılır.
+    /// CorpseItem veya ExtractionPoint trigger'ı çağırır.
+    /// </summary>
+    public void RegisterAbandonedCorpse()
+    {
+        if (!IsServer) return;
+        _abandonedCorpseCount++;
+        Debug.Log($"[GameSessionManager] Terk edilen ceset sayısı: {_abandonedCorpseCount}");
+    }
+
+    /// <summary>
+    /// GDD §6.4: penalty = max(0.25, playerCount/100) * grossCredits — her ceset için.
+    /// Dönen değer: toplam kesinti miktarı.
+    /// </summary>
+    public float CalculateAbandonmentPenalty(float grossCredits)
+    {
+        if (!IsServer) return 0f;
+        if (_abandonedCorpseCount == 0) return 0f;
+
+        int   playerCount      = NetPlayerCount.Value;
+        float penaltyPerCorpse = Mathf.Max(0.25f, playerCount / 100f);
+        float totalDeduction   = Mathf.Min(
+            grossCredits * penaltyPerCorpse * _abandonedCorpseCount,
+            grossCredits);
+
+        Debug.Log($"[GameSessionManager] Abandonment penalty: " +
+                  $"{_abandonedCorpseCount} ceset x {penaltyPerCorpse:P0} = " +
+                  $"{totalDeduction} kesinti | net={grossCredits - totalDeduction}");
+
+        GameEventBus.Publish(new CorpseAbandonedEvent(0, penaltyPerCorpse));
+
+        _abandonedCorpseCount = 0;
+        return totalDeduction;
+    }
+
+    /// <summary>
+    /// Extraction'da çağrılır: penalty hesapla, net krediyi uygula, session'ı bitir.
+    /// ExtractionPoint.cs bu metodu çağırır.
+    /// </summary>
+    public void EndSessionWithPenalty()
+    {
+        if (!IsServer) return;
+
+        float gross     = NetTotalCredit.Value;
+        float deduction = CalculateAbandonmentPenalty(gross);
+
+        NetTotalCredit.Value = gross - deduction;
+        EndSession(SessionEndReason.Escaped);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 }
