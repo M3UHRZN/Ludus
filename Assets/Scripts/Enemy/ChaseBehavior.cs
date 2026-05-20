@@ -68,7 +68,7 @@ public class ChaseBehavior : IEnemyBehavior
         {
             _lostSightTimer -= Time.deltaTime;
             if (_lostSightTimer <= 0f)
-                enemy.SwitchBehavior(new PatrolBehavior());
+                enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
         }
     }
 
