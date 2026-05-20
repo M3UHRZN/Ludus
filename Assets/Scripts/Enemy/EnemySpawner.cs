@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// Server-only enemy spawner. MapReadyEvent yayinlandiginda sahnedeki
@@ -178,6 +179,13 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         netObj.Spawn();
+
+        // Her enemy'ye farkli avoidance priority ver. Ayni priority'de iki agent
+        // dar gecitte/kapida birbirine yol vermeyip kilitleniyor (deadlock).
+        // Farkli deger = dusuk priority bekler, yuksek gecer.
+        var agent = enemyGo.GetComponent<NavMeshAgent>();
+        if (agent != null)
+            agent.avoidancePriority = Random.Range(20, 80);
 
         var ctrl = enemyGo.GetComponent<EnemyController>();
         if (ctrl != null)
