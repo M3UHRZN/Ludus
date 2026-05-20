@@ -122,13 +122,14 @@ public class EnemyController : MonoBehaviour
     public void OnNoiseHeard(Vector3 source, float sourceRange)
     {
         float dist = Vector3.Distance(transform.position, source);
-        float effectiveRange = Mathf.Min(sourceRange, _noiseDetectionRadius);
 
-        if (dist > effectiveRange) return;
+        // Ses menzili belirleyici: kosma (genis menzil) uzaktan, yurume (dar) yakindan
+        // duyulur. Comelmede oyuncu hic ses yaymaz, bu metod cagrilmaz.
+        if (dist > sourceRange) return;
 
         HeardNoise = true;
         LastNoisePosition = source;
-        Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, kaynak={source}).");
+        Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, menzil={sourceRange:F0}).");
     }
 
     public void SwitchBehavior(IEnemyBehavior next)
