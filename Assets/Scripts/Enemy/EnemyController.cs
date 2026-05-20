@@ -14,6 +14,11 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
 
+    [Header("Davranis Modu")]
+    [Tooltip("True ise enemy spawn'da WanderingBehavior (tum haritada gezen) ile baslar. " +
+             "False ise PatrolBehavior (oda waypoint turu). Type B dusman icin true.")]
+    [SerializeField] private bool _useWanderMode = false;
+
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
     public Transform PlayerTransform { get; private set; }
@@ -49,7 +54,17 @@ public class EnemyController : MonoBehaviour
         else
             Debug.LogWarning("[EnemyController] 'Player' tag'li obje bulunamadı.");
 
-        SwitchBehavior(new PatrolBehavior());
+        SwitchBehavior(CreateDefaultBehavior());
+    }
+
+    /// <summary>
+    /// Enemy'nin "bos" durumdaki varsayilan davranisi. Type A patrol, Type B wander.
+    /// Chase / Flee davranislari isleri bittiginde Patrol yerine bunu cagirir,
+    /// boylece her enemy tipi kendi temel davranisina doner.
+    /// </summary>
+    public IEnemyBehavior CreateDefaultBehavior()
+    {
+        return _useWanderMode ? new WanderingBehavior() : new PatrolBehavior();
     }
 
     public bool CanSeePlayer()
