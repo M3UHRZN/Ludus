@@ -1,9 +1,11 @@
+using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
 /// Uzaktan saldiri davranisi (Type A / robot). Belirli menzilde durup oyuncuya
-/// raycast (hitscan) ile "kursun" atar, cooldown'li hasar verir. Oyuncu menzil
-/// disina cikarsa veya gorus kaybolursa Chase'e doner.
+/// gorunur mermi (EnemyProjectile) atar; mermi prefab atanmamissa gorunmez
+/// hitscan'e duser. Cooldown'li hasar verir. Oyuncu menzil disina cikarsa veya
+/// gorus kaybolursa Chase'e doner.
 ///
 /// Strategy pattern'in 6. concrete davranisi. EnemyController.CreateAttackBehavior()
 /// _useRangedAttack flag'ine gore bu davranisi veya yakin dovus AttackBehavior'i secer.
@@ -66,10 +68,27 @@ public class RangedAttackBehavior : IEnemyBehavior
     {
         if (enemy.PlayerTransform == null) return;
 
-        Vector3 origin = enemy.transform.position + Vector3.up * 1.5f;
+        Vector3 origin = enemy.FirePoint != null
+            ? enemy.FirePoint.position
+            : enemy.transform.position + Vector3.up * 1.5f;
         Vector3 target = enemy.PlayerTransform.position + Vector3.up;
         Vector3 dir = (target - origin).normalized;
 
+        // Mermi prefab atanmissa gorunur mermi spawn et (hasar mermi carptiginda verilir)
+        if (enemy.ProjectilePrefab != null)
+        {
+            var proj = Object.Instantiate(enemy.ProjectilePrefab, origin, Quaternion.LookRotation(dir));
+            var netObj = proj.GetComponent<NetworkObject>();
+            if (netObj != null) netObj.Spawn();
+
+            var projScript = proj.GetComponent<EnemyProjectile>();
+            if (projScript != null) projScript.Launch(dir, DamagePerShot);
+
+            Debug.Log("[RangedAttackBehavior] Mermi atildi.");
+            return;
+        }
+
+        // Fallback: gorunmez hitscan (mermi prefab yoksa)
         if (Physics.Raycast(origin, dir, out RaycastHit hit, DisengageRange))
         {
             var dmg = hit.transform.GetComponent<IDamageable>()
@@ -77,18 +96,12 @@ public class RangedAttackBehavior : IEnemyBehavior
 
             if (dmg != null && dmg.IsAlive)
             {
-                // Enemy server'da kostugu icin attacker olarak server client id (0)
                 dmg.TakeDamage(DamagePerShot, hit.point, 0UL);
-                Debug.Log($"[RangedAttackBehavior] Isabet! {DamagePerShot} hasar.");
-            }
-            else
-            {
-                Debug.Log("[RangedAttackBehavior] Ates edildi (isabet yok / engel).");
+                Debug.Log($"[RangedAttackBehavior] Isabet (hitscan)! {DamagePerShot} hasar.");
             }
         }
 
 #if UNITY_EDITOR
-        // Editor'da atis izini goster (gorsel mermi/VFX Sprint 3'te eklenecek)
         Debug.DrawLine(origin, origin + dir * DisengageRange, Color.red, 0.15f);
 #endif
     }

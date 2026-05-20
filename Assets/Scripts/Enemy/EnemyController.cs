@@ -26,6 +26,16 @@ public class EnemyController : MonoBehaviour
     [Tooltip("Uzaktan saldiri tetik mesafesi (sadece _useRangedAttack true ise gecerli)")]
     [SerializeField] private float _rangedAttackRange = 12f;
 
+    [Tooltip("Ranged enemy'nin attigi mermi prefab'i (NetworkObject + EnemyProjectile). " +
+             "Bos birakilirsa gorunmez hitscan kullanilir.")]
+    [SerializeField] private GameObject _projectilePrefab;
+
+    [Tooltip("Merminin ciktigi namlu noktasi (bos ise govdenin ust-on kismi kullanilir)")]
+    [SerializeField] private Transform _firePoint;
+
+    public GameObject ProjectilePrefab => _projectilePrefab;
+    public Transform FirePoint => _firePoint;
+
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
     public Transform PlayerTransform { get; private set; }
