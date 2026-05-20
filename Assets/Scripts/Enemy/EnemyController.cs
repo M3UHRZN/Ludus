@@ -19,6 +19,13 @@ public class EnemyController : MonoBehaviour
              "False ise PatrolBehavior (oda waypoint turu). Type B dusman icin true.")]
     [SerializeField] private bool _useWanderMode = false;
 
+    [Tooltip("True ise uzaktan kursun atar (RangedAttackBehavior). False ise yakin dovus " +
+             "(AttackBehavior). Type A (robot) icin true, Type B (priest) icin false.")]
+    [SerializeField] private bool _useRangedAttack = false;
+
+    [Tooltip("Uzaktan saldiri tetik mesafesi (sadece _useRangedAttack true ise gecerli)")]
+    [SerializeField] private float _rangedAttackRange = 12f;
+
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
     public Transform PlayerTransform { get; private set; }
@@ -27,8 +34,8 @@ public class EnemyController : MonoBehaviour
     public bool HeardNoise { get; set; }
     public Vector3 LastNoisePosition { get; private set; }
 
-    /// <summary>ChaseBehavior'in AttackBehavior'a gectigi mesafe.</summary>
-    public float AttackTriggerRange => _attackRange;
+    /// <summary>ChaseBehavior'in saldiri davranisina gectigi mesafe (ranged ise daha uzak).</summary>
+    public float AttackTriggerRange => _useRangedAttack ? _rangedAttackRange : _attackRange;
 
     private IEnemyBehavior _current;
 
@@ -65,6 +72,16 @@ public class EnemyController : MonoBehaviour
     public IEnemyBehavior CreateDefaultBehavior()
     {
         return _useWanderMode ? new WanderingBehavior() : new PatrolBehavior();
+    }
+
+    /// <summary>
+    /// Saldiri davranisi fabrikasi. Type A (robot) uzaktan kursun atar
+    /// (RangedAttackBehavior), Type B (priest) yakin dovus yapar (AttackBehavior).
+    /// ChaseBehavior yakinlasinca bunu cagirir.
+    /// </summary>
+    public IEnemyBehavior CreateAttackBehavior()
+    {
+        return _useRangedAttack ? new RangedAttackBehavior() : new AttackBehavior();
     }
 
     public bool CanSeePlayer()
