@@ -13,6 +13,13 @@ public class PlayerInventory : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
+    // ── Corpse Carry (Sprint 2 — Yasin) ──────────────────────────────────────
+    public readonly NetworkVariable<bool> IsCarryingCorpse = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+    // ─────────────────────────────────────────────────────────────────────────
+
     private InputAction _scrollAction;
     private InputAction _useAction;
     private InputAction _dropAction;
@@ -27,8 +34,8 @@ public class PlayerInventory : NetworkBehaviour
 
         var input = GetComponent<PlayerInput>();
         _scrollAction = input.actions["Gameplay/Scroll"];
-        _useAction = input.actions["Gameplay/UseItem"];
-        _dropAction = input.actions["Gameplay/Drop"];
+        _useAction    = input.actions["Gameplay/UseItem"];
+        _dropAction   = input.actions["Gameplay/Drop"];
     }
 
     private void Update()
@@ -46,14 +53,17 @@ public class PlayerInventory : NetworkBehaviour
         if (Mathf.Abs(scroll) < 0.01f) return;
         if (Slots.Count == 0) return;
 
-        int dir = scroll > 0 ? -1 : 1;
+        int dir  = scroll > 0 ? -1 : 1;
         int next = (ActiveSlot.Value + dir + Slots.Count) % Slots.Count;
         RequestActiveSlotServerRpc((byte)next);
     }
 
+    // ── Item Yönetimi ─────────────────────────────────────────────────────────
+
     public bool TryAddItem(ushort itemId)
     {
-        if (Slots.Count >= MaxSlots) return false;
+        if (Slots.Count >= MaxSlots)  return false;
+        if (IsCarryingCorpse.Value)   return false; // ceset taşırken item alınamaz
         AddItemServerRpc(itemId);
         return true;
     }
@@ -63,6 +73,35 @@ public class PlayerInventory : NetworkBehaviour
         if (index < 0 || index >= Slots.Count) return;
         RemoveAtSlotServerRpc(index);
     }
+
+    // ── Corpse Carry (Sprint 2 — Yasin) ──────────────────────────────────────
+
+    /// <summary>
+    /// Ceset alınabilir mi? Slot dolu VEYA zaten ceset taşınıyorsa false.
+    /// CorpseItem.OnCorpsePickedUp() çağırır.
+    /// </summary>
+    public bool IsFull()
+    {
+        return Slots.Count >= MaxSlots || IsCarryingCorpse.Value;
+    }
+
+    /// <summary>
+    /// CorpseItem, ceset alındığında/bırakıldığında çağırır.
+    /// Sadece Owner çağırabilir.
+    /// </summary>
+    public void SetCarryingCorpse(bool carrying)
+    {
+        if (!IsOwner) return;
+        SetCarryingCorpseServerRpc(carrying);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void SetCarryingCorpseServerRpc(bool carrying)
+    {
+        IsCarryingCorpse.Value = carrying;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void AddItemServerRpc(ushort itemId)
@@ -101,7 +140,6 @@ public class PlayerInventory : NetworkBehaviour
         if (duration <= 0f || duration > 30f) return;
         if (float.IsNaN(origin.x) || float.IsNaN(origin.y) || float.IsNaN(origin.z)) return;
 
-        // Anti-cheat: origin oyuncuya yakin mi?
         if (Vector3.Distance(transform.position, origin) > radius + 2f) return;
 
         Collider[] hits = Physics.OverlapSphere(origin, radius);

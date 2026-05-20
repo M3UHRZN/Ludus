@@ -18,6 +18,8 @@ EditorBuildSettings:
     path: Assets/Scenes/DevTest/AlpTest.unity
     guid: 2e791aff83686554990406b21ac3503d
   - enabled: 1
+    path: Assets/Scripts/FearSystem/Scene/FearSceneTest.unity
+    guid: d67da4a0e94d04365aaf57ad46cee2d8
     path: Assets/Scenes/DevTest/AlpTest_WithMap.unity
     guid: b22b707abce8d7048a9fd92328eb56ec
   m_configObjects:
