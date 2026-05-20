@@ -62,6 +62,7 @@ public class EnemySpawner : NetworkBehaviour
     private int _aliveCount;
     private bool _waveLoopActive;
     private Coroutine _waveLoop;
+    private int _prefabCursor;
 
     public override void OnNetworkSpawn()
     {
@@ -157,7 +158,7 @@ public class EnemySpawner : NetworkBehaviour
         EnemySpawnPoint chosen = PickSpawnPoint(spawnPoints);
         if (chosen == null) return false;
 
-        GameObject prefab = _enemyPrefabs[Random.Range(0, _enemyPrefabs.Length)];
+        GameObject prefab = PickPrefab();
         if (prefab == null)
         {
             Debug.LogError("[EnemySpawner] Secilen prefab null.");
@@ -189,6 +190,19 @@ public class EnemySpawner : NetworkBehaviour
         _aliveCount++;
         Debug.Log($"[EnemySpawner] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
         return true;
+    }
+
+    /// <summary>
+    /// Round-robin prefab secimi: her spawn'da siradaki enemy tipini doner.
+    /// Rastgele secim bazen tek tipi ust uste verebiliyordu; round-robin ile
+    /// tum tipler (Type A, Type B...) garanti olarak sahnede gorunur.
+    /// </summary>
+    private GameObject PickPrefab()
+    {
+        if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return null;
+        GameObject prefab = _enemyPrefabs[_prefabCursor % _enemyPrefabs.Length];
+        _prefabCursor++;
+        return prefab;
     }
 
     /// <summary>
