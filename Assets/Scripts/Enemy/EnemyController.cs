@@ -158,9 +158,13 @@ public class EnemyController : MonoBehaviour
         // duyulur. Comelmede oyuncu hic ses yaymaz, bu metod cagrilmaz.
         if (dist > sourceRange) return;
 
+        // Sadece ilk algilamada logla (her footstep'te spam olmasin).
+        // Davranis gecisi (Chase'e gecis) zaten Patrol/Wander log'unda gorunur.
+        if (!HeardNoise)
+            Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, menzil={sourceRange:F0}).");
+
         HeardNoise = true;
         LastNoisePosition = source;
-        Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, menzil={sourceRange:F0}).");
     }
 
     public void SwitchBehavior(IEnemyBehavior next)

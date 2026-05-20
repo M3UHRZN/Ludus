@@ -112,3 +112,7 @@ ObsidianKasa/Vault/Lobby Sistemi.md
 .claude/
 Thumbs.db
 /docs
+
+# Unity crash recovery klasoru (gecici, commit edilmemeli)
+/Assets/_Recovery/
+/Assets/_Recovery.meta
