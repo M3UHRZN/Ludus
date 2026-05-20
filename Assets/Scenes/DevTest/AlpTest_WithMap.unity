@@ -941,6 +941,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   _enemyPrefabs:
   - {fileID: 2378715969404602837, guid: e17490cfef75d764194ce04fe378744a, type: 3}
+  - {fileID: 2378715969404602837, guid: 6ce236aad3d15fb48ab7988212bf0084, type: 3}
   _maxAliveEnemies: 5
   _roomsPerEnemy: 10
   _fallbackTargetCount: 3
