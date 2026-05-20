@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// Server-only enemy spawner. MapReadyEvent yayinlandiginda sahnedeki
@@ -24,11 +25,15 @@ public class EnemySpawner : NetworkBehaviour
     [SerializeField] private GameObject[] _enemyPrefabs;
 
     [Header("Spawn Budget")]
-    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir")]
-    [SerializeField] private int _maxAliveEnemies = 5;
+    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir (orn. 5 Type A + 1 Type B icin 6)")]
+    [SerializeField] private int _maxAliveEnemies = 6;
 
     [Tooltip("Budget formulu: target = roomCount / roomsPerEnemy (sonra maxAlive ile sinirlanir)")]
-    [SerializeField] private int _roomsPerEnemy = 10;
+    [SerializeField] private int _roomsPerEnemy = 7;
+
+    [Header("Nadir Dusman (Type B)")]
+    [Tooltip("Element 1 = nadir dusman (Type B). Her haritada en fazla bu kadar spawn olur. Gerisi Element 0 (Type A).")]
+    [SerializeField] private int _rareEnemyMaxCount = 1;
 
     [Tooltip("MapReadyEvent gelmezse fallback hedef enemy sayisi")]
     [SerializeField] private int _fallbackTargetCount = 3;
@@ -62,6 +67,7 @@ public class EnemySpawner : NetworkBehaviour
     private int _aliveCount;
     private bool _waveLoopActive;
     private Coroutine _waveLoop;
+    private int _rareSpawned;
 
     public override void OnNetworkSpawn()
     {
@@ -157,7 +163,7 @@ public class EnemySpawner : NetworkBehaviour
         EnemySpawnPoint chosen = PickSpawnPoint(spawnPoints);
         if (chosen == null) return false;
 
-        GameObject prefab = _enemyPrefabs[Random.Range(0, _enemyPrefabs.Length)];
+        GameObject prefab = PickPrefab();
         if (prefab == null)
         {
             Debug.LogError("[EnemySpawner] Secilen prefab null.");
@@ -178,6 +184,13 @@ public class EnemySpawner : NetworkBehaviour
 
         netObj.Spawn();
 
+        // Her enemy'ye farkli avoidance priority ver. Ayni priority'de iki agent
+        // dar gecitte/kapida birbirine yol vermeyip kilitleniyor (deadlock).
+        // Farkli deger = dusuk priority bekler, yuksek gecer.
+        var agent = enemyGo.GetComponent<NavMeshAgent>();
+        if (agent != null)
+            agent.avoidancePriority = Random.Range(20, 80);
+
         var ctrl = enemyGo.GetComponent<EnemyController>();
         if (ctrl != null)
         {
@@ -189,6 +202,25 @@ public class EnemySpawner : NetworkBehaviour
         _aliveCount++;
         Debug.Log($"[EnemySpawner] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
         return true;
+    }
+
+    /// <summary>
+    /// Nadir dusman limitli prefab secimi.
+    /// Element 0 = yaygin dusman (Type A), Element 1 = nadir dusman (Type B).
+    /// Once _rareEnemyMaxCount kadar Type B spawn edilir (genelde 1), sonra
+    /// tum spawn'lar Type A olur. Boylece her haritada tek bir guclu Type B,
+    /// gerisi yaygin Type A cikar.
+    /// </summary>
+    private GameObject PickPrefab()
+    {
+        if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return null;
+
+        if (_enemyPrefabs.Length >= 2 && _rareSpawned < _rareEnemyMaxCount)
+        {
+            _rareSpawned++;
+            return _enemyPrefabs[1]; // nadir (Type B)
+        }
+        return _enemyPrefabs[0]; // yaygin (Type A)
     }
 
     /// <summary>

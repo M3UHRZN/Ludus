@@ -14,6 +14,32 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
 
+    [Header("Davranis Modu")]
+    [Tooltip("True ise enemy spawn'da WanderingBehavior (tum haritada gezen) ile baslar. " +
+             "False ise PatrolBehavior (oda waypoint turu). Type B dusman icin true.")]
+    [SerializeField] private bool _useWanderMode = false;
+
+    [Tooltip("True ise uzaktan kursun atar (RangedAttackBehavior). False ise yakin dovus " +
+             "(AttackBehavior). Type A (robot) icin true, Type B (priest) icin false.")]
+    [SerializeField] private bool _useRangedAttack = false;
+
+    [Tooltip("Uzaktan saldiri tetik mesafesi (sadece _useRangedAttack true ise gecerli)")]
+    [SerializeField] private float _rangedAttackRange = 12f;
+
+    [Tooltip("Ranged enemy'nin attigi mermi prefab'i (NetworkObject + EnemyProjectile). " +
+             "Bos birakilirsa gorunmez hitscan kullanilir.")]
+    [SerializeField] private GameObject _projectilePrefab;
+
+    [Tooltip("Merminin ciktigi namlu noktasi (bos ise govdenin ust-on kismi kullanilir)")]
+    [SerializeField] private Transform _firePoint;
+
+    [Tooltip("Atis aninda namluda kisa sure gorunen efekt prefab'i (opsiyonel)")]
+    [SerializeField] private GameObject _muzzleFlashPrefab;
+
+    public GameObject ProjectilePrefab => _projectilePrefab;
+    public Transform FirePoint => _firePoint;
+    public GameObject MuzzleFlashPrefab => _muzzleFlashPrefab;
+
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
     public Transform PlayerTransform { get; private set; }
@@ -22,8 +48,8 @@ public class EnemyController : MonoBehaviour
     public bool HeardNoise { get; set; }
     public Vector3 LastNoisePosition { get; private set; }
 
-    /// <summary>ChaseBehavior'in AttackBehavior'a gectigi mesafe.</summary>
-    public float AttackTriggerRange => _attackRange;
+    /// <summary>ChaseBehavior'in saldiri davranisina gectigi mesafe (ranged ise daha uzak).</summary>
+    public float AttackTriggerRange => _useRangedAttack ? _rangedAttackRange : _attackRange;
 
     private IEnemyBehavior _current;
 
@@ -49,7 +75,27 @@ public class EnemyController : MonoBehaviour
         else
             Debug.LogWarning("[EnemyController] 'Player' tag'li obje bulunamadı.");
 
-        SwitchBehavior(new PatrolBehavior());
+        SwitchBehavior(CreateDefaultBehavior());
+    }
+
+    /// <summary>
+    /// Enemy'nin "bos" durumdaki varsayilan davranisi. Type A patrol, Type B wander.
+    /// Chase / Flee davranislari isleri bittiginde Patrol yerine bunu cagirir,
+    /// boylece her enemy tipi kendi temel davranisina doner.
+    /// </summary>
+    public IEnemyBehavior CreateDefaultBehavior()
+    {
+        return _useWanderMode ? new WanderingBehavior() : new PatrolBehavior();
+    }
+
+    /// <summary>
+    /// Saldiri davranisi fabrikasi. Type A (robot) uzaktan kursun atar
+    /// (RangedAttackBehavior), Type B (priest) yakin dovus yapar (AttackBehavior).
+    /// ChaseBehavior yakinlasinca bunu cagirir.
+    /// </summary>
+    public IEnemyBehavior CreateAttackBehavior()
+    {
+        return _useRangedAttack ? new RangedAttackBehavior() : new AttackBehavior();
     }
 
     public bool CanSeePlayer()
@@ -107,13 +153,18 @@ public class EnemyController : MonoBehaviour
     public void OnNoiseHeard(Vector3 source, float sourceRange)
     {
         float dist = Vector3.Distance(transform.position, source);
-        float effectiveRange = Mathf.Min(sourceRange, _noiseDetectionRadius);
 
-        if (dist > effectiveRange) return;
+        // Ses menzili belirleyici: kosma (genis menzil) uzaktan, yurume (dar) yakindan
+        // duyulur. Comelmede oyuncu hic ses yaymaz, bu metod cagrilmaz.
+        if (dist > sourceRange) return;
+
+        // Sadece ilk algilamada logla (her footstep'te spam olmasin).
+        // Davranis gecisi (Chase'e gecis) zaten Patrol/Wander log'unda gorunur.
+        if (!HeardNoise)
+            Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, menzil={sourceRange:F0}).");
 
         HeardNoise = true;
         LastNoisePosition = source;
-        Debug.Log($"[EnemyController] Ses algilandi (mesafe={dist:F1}, kaynak={source}).");
     }
 
     public void SwitchBehavior(IEnemyBehavior next)

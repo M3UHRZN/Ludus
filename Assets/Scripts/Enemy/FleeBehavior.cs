@@ -50,7 +50,7 @@ public class FleeBehavior : IEnemyBehavior
 
         if (_remainingDuration <= 0f || reached)
         {
-            enemy.SwitchBehavior(new PatrolBehavior());
+            enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
         }
     }
 

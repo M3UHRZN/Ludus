@@ -439,6 +439,11 @@ MonoBehaviour:
   _playerLayer:
     serializedVersion: 2
     m_Bits: 64
+  _useWanderMode: 0
+  _useRangedAttack: 1
+  _rangedAttackRange: 12
+  _projectilePrefab: {fileID: 1812182815970122627, guid: fd2b99bc98aafb6428fbe77663f2a73a, type: 3}
+  _firePoint: {fileID: 0}
 --- !u!114 &5946491812327709379
 MonoBehaviour:
   m_ObjectHideFlags: 0

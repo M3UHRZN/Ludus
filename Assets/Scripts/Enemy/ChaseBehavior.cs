@@ -44,11 +44,11 @@ public class ChaseBehavior : IEnemyBehavior
             _lostSightTimer = LostSightDelay;
             _huntingNoise = false;
 
-            // Yakinlasinca saldiriya gec
+            // Saldiri menziline girince saldiriya gec (Type A ranged, Type B melee)
             float dist = Vector3.Distance(enemy.transform.position, enemy.PlayerTransform.position);
             if (dist <= enemy.AttackTriggerRange)
             {
-                enemy.SwitchBehavior(new AttackBehavior());
+                enemy.SwitchBehavior(enemy.CreateAttackBehavior());
                 return;
             }
 
@@ -68,7 +68,7 @@ public class ChaseBehavior : IEnemyBehavior
         {
             _lostSightTimer -= Time.deltaTime;
             if (_lostSightTimer <= 0f)
-                enemy.SwitchBehavior(new PatrolBehavior());
+                enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
         }
     }
 
