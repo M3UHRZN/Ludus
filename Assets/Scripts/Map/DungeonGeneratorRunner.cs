@@ -6,6 +6,7 @@ public class DungeonGeneratorRunner : MonoBehaviour
 
     private void Start() => GenerateAndVisualize();
 
+    [ContextMenu("Generate Dungeon")]
     public void GenerateAndVisualize()
     {
         if (_config == null)

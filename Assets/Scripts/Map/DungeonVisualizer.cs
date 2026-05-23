@@ -23,6 +23,14 @@ public class DungeonVisualizer : MonoBehaviour
     [Tooltip("3x1 dikey oda için zemin prefabı")]
     [SerializeField] private GameObject _mergedFloorV3x1Prefab;
 
+    [Header("Giriş Odası Prefabları")]
+    [Tooltip("Giriş odası (Start) için özel zemin prefabı (opsiyonel)")]
+    [SerializeField] private GameObject _entryFloorPrefab;
+    [Tooltip("Giriş odası (Start) için özel duvar prefabı (opsiyonel)")]
+    [SerializeField] private GameObject _entryWallPrefab;
+    [Tooltip("Giriş odası (Start) için özel kapı prefabı (opsiyonel)")]
+    [SerializeField] private GameObject _entryDoorPrefab;
+
     [Header("Boyutlar (dünya birimi)")]
     [Tooltip("Oda prefabının XZ boyutu")]
     [SerializeField] private float _roomSize = 6f;
@@ -30,11 +38,19 @@ public class DungeonVisualizer : MonoBehaviour
     [SerializeField] private float _corridorLength = 4f;
     private float Stride => _roomSize + _corridorLength;
 
+    private DungeonData _dungeonData;
     private Transform _root;
 
     public void Visualize(DungeonData data)
     {
-        if (_root != null) Destroy(_root.gameObject);
+        _dungeonData = data;
+        if (_root != null)
+        {
+            if (Application.isPlaying)
+                Destroy(_root.gameObject);
+            else
+                DestroyImmediate(_root.gameObject);
+        }
         _root = new GameObject("DungeonLayout").transform;
         _root.SetParent(transform);
         foreach (var room in data.AllRooms)
@@ -65,13 +81,21 @@ public class DungeonVisualizer : MonoBehaviour
     {
         if (!IsGroupOrigin(room, data)) return;
 
-        GameObject prefab = room.Size switch
+        GameObject prefab;
+        if (room.Type == RoomType.Start)
         {
-            RoomSize.Large_2x2 => _mergedFloor2x2Prefab  != null ? _mergedFloor2x2Prefab  : _floorPrefab,
-            RoomSize.Long_1x3  => _mergedFloorH1x3Prefab != null ? _mergedFloorH1x3Prefab : _floorPrefab,
-            RoomSize.Long_3x1  => _mergedFloorV3x1Prefab != null ? _mergedFloorV3x1Prefab : _floorPrefab,
-            _                  => _floorPrefab
-        };
+            prefab = _entryFloorPrefab != null ? _entryFloorPrefab : _floorPrefab;
+        }
+        else
+        {
+            prefab = room.Size switch
+            {
+                RoomSize.Large_2x2 => _mergedFloor2x2Prefab  != null ? _mergedFloor2x2Prefab  : _floorPrefab,
+                RoomSize.Long_1x3  => _mergedFloorH1x3Prefab != null ? _mergedFloorH1x3Prefab : _floorPrefab,
+                RoomSize.Long_3x1  => _mergedFloorV3x1Prefab != null ? _mergedFloorV3x1Prefab : _floorPrefab,
+                _                  => _floorPrefab
+            };
+        }
 
         if (prefab == null) return;
         Instantiate(prefab, GroupFloorCenter(room), Quaternion.identity, parent);
@@ -95,6 +119,14 @@ public class DungeonVisualizer : MonoBehaviour
             (ConnectionDirection.West,  false) => _wallWestPrefab,
             _                                  => null
         };
+
+        if (room.Type == RoomType.Start)
+        {
+            if (hasDoor && _entryDoorPrefab != null)
+                wallPrefab = _entryDoorPrefab;
+            else if (!hasDoor && _entryWallPrefab != null)
+                wallPrefab = _entryWallPrefab;
+        }
 
         Vector2Int dir2d = DirectionHelper.ToVector(dir);
         Vector3 wallOffset = new Vector3(dir2d.x, 0, dir2d.y) * (_roomSize * 0.5f);
@@ -165,4 +197,72 @@ public class DungeonVisualizer : MonoBehaviour
         RoomSize.Long_3x1  => $"RoomV3x1_({room.Coordinates.x},{room.Coordinates.y})",
         _                  => $"Room1x1_({room.Coordinates.x},{room.Coordinates.y})"
     };
+
+    private void OnDrawGizmos()
+    {
+        if (_dungeonData == null || _dungeonData.AllRooms == null) return;
+
+        float stride = Stride;
+
+        foreach (var room in _dungeonData.AllRooms)
+        {
+            Vector3 center = new Vector3(room.Coordinates.x * stride, 0f, room.Coordinates.y * stride);
+
+            // 1. Draw grid / room boundary
+            if (room.Type == RoomType.Start)
+            {
+                // Strong green color for Entry Point
+                Gizmos.color = new Color(0.1f, 1f, 0.2f, 0.4f);
+                Gizmos.DrawCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+                Gizmos.color = new Color(0.1f, 1f, 0.2f, 0.9f);
+                Gizmos.DrawWireCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+            }
+            else if (room.Type == RoomType.Boss)
+            {
+                // Purple/red color for Boss room
+                Gizmos.color = new Color(0.8f, 0f, 0.8f, 0.3f);
+                Gizmos.DrawCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+                Gizmos.color = new Color(0.8f, 0f, 0.8f, 0.9f);
+                Gizmos.DrawWireCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+            }
+            else if (room.Type == RoomType.End)
+            {
+                // Orange/Red color for End room
+                Gizmos.color = new Color(1f, 0.3f, 0f, 0.3f);
+                Gizmos.DrawCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+                Gizmos.color = new Color(1f, 0.3f, 0f, 0.9f);
+                Gizmos.DrawWireCube(center, new Vector3(_roomSize, 0.2f, _roomSize));
+            }
+            else
+            {
+                // Light cyan/blue for normal rooms
+                Gizmos.color = new Color(0f, 0.8f, 1f, 0.15f);
+                Gizmos.DrawCube(center, new Vector3(_roomSize, 0.1f, _roomSize));
+                Gizmos.color = new Color(0f, 0.8f, 1f, 0.6f);
+                Gizmos.DrawWireCube(center, new Vector3(_roomSize, 0.1f, _roomSize));
+            }
+
+            // 2. Draw connections (lines)
+            Gizmos.color = new Color(1f, 0.9f, 0f, 0.8f); // Gold/yellow for paths
+            foreach (var dir in DirectionHelper.All)
+            {
+                if (room.HasConnection(dir))
+                {
+                    Vector2Int dirVector = DirectionHelper.ToVector(dir);
+                    Vector3 lineEnd = center + new Vector3(dirVector.x, 0f, dirVector.y) * (stride * 0.5f);
+                    Gizmos.DrawLine(center, lineEnd);
+                }
+            }
+
+#if UNITY_EDITOR
+            // 3. Draw text label for Room Coordinates and Type
+            string labelText = $"{room.Coordinates}\n[{room.Type}]";
+            if (room.MergeGroupId != -1)
+            {
+                labelText += $"\nGroup: {room.MergeGroupId}";
+            }
+            UnityEditor.Handles.Label(center + Vector3.up * 0.5f, labelText);
+#endif
+        }
+    }
 }
