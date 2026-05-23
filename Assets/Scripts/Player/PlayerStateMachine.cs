@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -5,6 +6,14 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(NetworkObject))]
 public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
 {
+    /// <summary>
+    /// Server-only registry of every spawned PlayerStateMachine. Populated in
+    /// OnNetworkSpawn (IsServer gate) and drained in OnNetworkDespawn. Consumers
+    /// MUST filter by IsAlive — dead players stay in the list until despawn so
+    /// that revive flows do not need extra plumbing. Empty on non-server peers.
+    /// </summary>
+    public static readonly List<PlayerStateMachine> ServerPlayers = new();
+
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
@@ -53,6 +62,11 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
         {
             NetHealth.Value = maxHealth;
             NetState.Value = (byte)PlayerStateEnum.Alive;
+
+            // Server registry: enemy AI nearest-player lookup uses this.
+            // Duplicate guard for safety against double-spawn callbacks.
+            if (!ServerPlayers.Contains(this))
+                ServerPlayers.Add(this);
         }
 
         if (!IsOwner)
@@ -68,6 +82,9 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
 
     public override void OnNetworkDespawn()
     {
+        if (IsServer)
+            ServerPlayers.Remove(this);
+
         if (IsOwner)
             NetState.OnValueChanged -= OnNetStateChanged;
     }

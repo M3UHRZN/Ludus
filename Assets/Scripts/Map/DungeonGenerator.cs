@@ -114,6 +114,9 @@ public class DungeonGenerator
             if (bl.Size != RoomSize.Small_1x1 || br.Size != RoomSize.Small_1x1 ||
                 tl.Size != RoomSize.Small_1x1 || tr.Size != RoomSize.Small_1x1) continue;
 
+            if (bl.Type == RoomType.Start || br.Type == RoomType.Start ||
+                tl.Type == RoomType.Start || tr.Type == RoomType.Start) continue;
+
             if (!bl.HasConnection(ConnectionDirection.East)  || !bl.HasConnection(ConnectionDirection.North)) continue;
             if (!br.HasConnection(ConnectionDirection.West)  || !br.HasConnection(ConnectionDirection.North)) continue;
             if (!tl.HasConnection(ConnectionDirection.East)  || !tl.HasConnection(ConnectionDirection.South)) continue;
@@ -137,6 +140,7 @@ public class DungeonGenerator
                 data.TryGetRoom(c + Vector2Int.right,    out var rb) &&
                 data.TryGetRoom(c + new Vector2Int(2,0), out var rc) &&
                 ra.Size == RoomSize.Small_1x1 && rb.Size == RoomSize.Small_1x1 && rc.Size == RoomSize.Small_1x1 &&
+                ra.Type != RoomType.Start && rb.Type != RoomType.Start && rc.Type != RoomType.Start &&
                 ra.HasConnection(ConnectionDirection.East) &&
                 rb.HasConnection(ConnectionDirection.West) && rb.HasConnection(ConnectionDirection.East) &&
                 rc.HasConnection(ConnectionDirection.West))
@@ -152,6 +156,7 @@ public class DungeonGenerator
                 data.TryGetRoom(c + Vector2Int.up,       out var re) &&
                 data.TryGetRoom(c + new Vector2Int(0,2), out var rf) &&
                 rd.Size == RoomSize.Small_1x1 && re.Size == RoomSize.Small_1x1 && rf.Size == RoomSize.Small_1x1 &&
+                rd.Type != RoomType.Start && re.Type != RoomType.Start && rf.Type != RoomType.Start &&
                 rd.HasConnection(ConnectionDirection.North) &&
                 re.HasConnection(ConnectionDirection.South) && re.HasConnection(ConnectionDirection.North) &&
                 rf.HasConnection(ConnectionDirection.South))

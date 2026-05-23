@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 3721968940818894303}
   - component: {fileID: 4980901525323588654}
   - component: {fileID: 3803185247580872368}
+  - component: {fileID: 951586055614787218}
   m_Layer: 8
   m_Name: Enemy B
   m_TagString: Enemy
@@ -80,6 +81,11 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   _useWanderMode: 1
+  _useRangedAttack: 0
+  _rangedAttackRange: 12
+  _projectilePrefab: {fileID: 0}
+  _firePoint: {fileID: 0}
+  _muzzleFlashPrefab: {fileID: 0}
 --- !u!114 &5946491812327709379
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -153,9 +159,55 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c930089c35f0b1478dcf748daefda3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimator
-  _animator: {fileID: 0}
+  _animator: {fileID: 9085945780746650390}
   _damping: 0.12
   _speedMultiplier: 1
+--- !u!114 &951586055614787218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2378715969404602837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Components.NetworkTransform
+  ShowTopMostFoldoutHeaderGroup: 1
+  NetworkTransformExpanded: 0
+  AutoOwnerAuthorityTickOffset: 1
+  PositionInterpolationType: 0
+  RotationInterpolationType: 0
+  ScaleInterpolationType: 0
+  PositionLerpSmoothing: 1
+  PositionMaxInterpolationTime: 0.1
+  RotationLerpSmoothing: 1
+  RotationMaxInterpolationTime: 0.1
+  ScaleLerpSmoothing: 1
+  ScaleMaxInterpolationTime: 0.1
+  AuthorityMode: 0
+  TickSyncChildren: 0
+  UseUnreliableDeltas: 0
+  SyncPositionX: 1
+  SyncPositionY: 1
+  SyncPositionZ: 1
+  SyncRotAngleX: 1
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
+  SyncScaleX: 1
+  SyncScaleY: 1
+  SyncScaleZ: 1
+  PositionThreshold: 0.001
+  RotAngleThreshold: 0.01
+  ScaleThreshold: 0.01
+  UseQuaternionSynchronization: 0
+  UseQuaternionCompression: 0
+  UseHalfFloatPrecision: 0
+  InLocalSpace: 0
+  SwitchTransformSpaceWhenParented: 0
+  Interpolate: 1
+  SlerpPosition: 0
 --- !u!1001 &6190044320885638518
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -167,7 +219,7 @@ PrefabInstance:
     - target: {fileID: -6057140222963153312, guid: 410bf1fe2c38e9343928c7a73adca007, type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: 0197deda1b3471142935b01992dbc366, type: 2}
+      objectReference: {fileID: 9100000, guid: 84d1bf83a4c046741bb91c32a22292ca, type: 2}
     - target: {fileID: -6057140222963153312, guid: 410bf1fe2c38e9343928c7a73adca007, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
@@ -224,5 +276,10 @@ PrefabInstance:
 --- !u!4 &1197324517119733356 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -4216859302048453862, guid: 410bf1fe2c38e9343928c7a73adca007, type: 3}
+  m_PrefabInstance: {fileID: 6190044320885638518}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9085945780746650390 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: -6057140222963153312, guid: 410bf1fe2c38e9343928c7a73adca007, type: 3}
   m_PrefabInstance: {fileID: 6190044320885638518}
   m_PrefabAsset: {fileID: 0}

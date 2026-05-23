@@ -1,0 +1,126 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4316964319486497241
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6298865203257829260}
+  - component: {fileID: 7842319674091346411}
+  - component: {fileID: 8263069494151423026}
+  - component: {fileID: 2411607401240497955}
+  - component: {fileID: 7536654037564606846}
+  m_Layer: 0
+  m_Name: DungeonManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6298865203257829260
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4316964319486497241}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7842319674091346411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4316964319486497241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 957779581
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &8263069494151423026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4316964319486497241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a90a29019058167479803e02f33838dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Map::DungeonGeneratorRunner
+  ShowTopMostFoldoutHeaderGroup: 1
+  _config: {fileID: 11400000, guid: 6e394c1811b12fc458f892baed41cee3, type: 2}
+--- !u!114 &2411607401240497955
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4316964319486497241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 760917fed1872734ea7c61e9f8230303, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Map::DungeonVisualizer
+  _floorPrefab: {fileID: 7531107819641134348, guid: 5596eda8b4e57f74e883eee785b497fb, type: 3}
+  _wallNorthPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
+  _wallSouthPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
+  _wallEastPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
+  _wallWestPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
+  _doorNorthPrefab: {fileID: 564116690699485667, guid: 76260b60a0b77314aa22b69f22a46257, type: 3}
+  _doorSouthPrefab: {fileID: 564116690699485667, guid: 76260b60a0b77314aa22b69f22a46257, type: 3}
+  _doorEastPrefab: {fileID: 564116690699485667, guid: 76260b60a0b77314aa22b69f22a46257, type: 3}
+  _doorWestPrefab: {fileID: 564116690699485667, guid: 76260b60a0b77314aa22b69f22a46257, type: 3}
+  _corridorFloorPrefab: {fileID: 1908169676927345683, guid: 3662e48b046f6294fbe10eeedb7a8e8e, type: 3}
+  _mergedFloor2x2Prefab: {fileID: 2715353074314832260, guid: 81d514b978dde604d990866230ecd1a1, type: 3}
+  _mergedFloorH1x3Prefab: {fileID: 2589127317185105089, guid: ebe733bdba637c14d84c82ab7ac77a38, type: 3}
+  _mergedFloorV3x1Prefab: {fileID: 9077843509619995459, guid: 7899fe991c75c474d87a89e561630f9c, type: 3}
+  _entryFloorPrefab: {fileID: 4775201487903581722, guid: a3abb4d5f95103443a26211002cefa97, type: 3}
+  _entryWallPrefab: {fileID: 0}
+  _entryDoorPrefab: {fileID: 0}
+  _roomSize: 10
+  _corridorLength: 5
+--- !u!114 &7536654037564606846
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4316964319486497241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee108bccae72ac541b9cd311730bc1f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MapEnemyBridge
+  _spawnPointsPerSmallRoom: 1
+  _spawnPointsPerLargeRoom: 1
+  _createPatrolGroups: 1
+  _waypointSpreadFactor: 0.6
+  _bakeNavMeshAtRuntime: 1
+  _bakeDelayFrames: 1
+  _publishMapReadyEvent: 1
+  _verbose: 1

@@ -20,8 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scripts/FearSystem/Scene/FearSceneTest.unity
     guid: d67da4a0e94d04365aaf57ad46cee2d8
-    path: Assets/Scenes/DevTest/AlpTest_WithMap.unity
-    guid: b22b707abce8d7048a9fd92328eb56ec
+  - enabled: 1
+    path: Assets/Scenes/RNGmap.unity
+    guid: 7f334f245fbbb0943a45469f98a5cf54
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 47739f536577cc741b07ac27361a257d, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 574b071b177b5804e9d76fce97f3c719, type: 3}
