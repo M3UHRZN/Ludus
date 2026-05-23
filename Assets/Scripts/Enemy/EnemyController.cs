@@ -42,7 +42,39 @@ public class EnemyController : MonoBehaviour
 
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
-    public Transform PlayerTransform { get; private set; }
+    /// <summary>
+    /// Sunucu tarafindan canli en yakin oyuncuya isaret eder. Multiplayer'da bu
+    /// her erisimde yeniden hesaplanir; tek bir Start() snapshot'i degildir.
+    /// Hicbir canli oyuncu yoksa null doner — tum tuketicilerin null kontrolu
+    /// var (CanSeePlayer, AttackBehavior, ChaseBehavior, FleeBehavior).
+    /// </summary>
+    public Transform PlayerTransform
+    {
+        get
+        {
+            var players = PlayerStateMachine.ServerPlayers;
+            if (players == null || players.Count == 0) return null;
+
+            Transform best = null;
+            float bestSqr = float.PositiveInfinity;
+            Vector3 here = transform.position;
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                var p = players[i];
+                if (p == null) continue;          // despawn arasi null slot
+                if (!p.IsAlive) continue;          // olu oyuncuyu hedef alma
+
+                float sqr = (p.transform.position - here).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = p.transform;
+                }
+            }
+            return best;
+        }
+    }
     public Transform CurrentTarget { get; set; }
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
@@ -68,12 +100,6 @@ public class EnemyController : MonoBehaviour
             this.enabled = false;
             return;
         }
-
-        var playerObj = GameObject.FindWithTag("Player");
-        if (playerObj != null)
-            PlayerTransform = playerObj.transform;
-        else
-            Debug.LogWarning("[EnemyController] 'Player' tag'li obje bulunamadı.");
 
         SwitchBehavior(CreateDefaultBehavior());
     }
