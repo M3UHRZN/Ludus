@@ -83,6 +83,46 @@ public class NetworkedItemSpawner : NetworkBehaviour
             Debug.Log($"[NetworkedItemSpawner] Run sonu spawn sayisi: {_totalSpawned}/{_maxItemsPerRun}.");
     }
 
+    /// <summary>
+    /// Loot table'dan agirliklara gore bir entry secer. Tum agirliklar
+    /// toplanir, [0,total) araliginda bir sayi cekilir, cumulative olarak
+    /// hangi entry'ye dustugu bulunur. 0 veya negatif weight'li entry'ler
+    /// haric tutulur. Gecerli entry yoksa null doner.
+    /// </summary>
+    private LootEntry? PickWeighted(System.Random rng)
+    {
+        float totalWeight = 0f;
+        for (int i = 0; i < _lootTable.Length; i++)
+        {
+            if (_lootTable[i].Weight > 0f && _lootTable[i].Prefab != null)
+                totalWeight += _lootTable[i].Weight;
+        }
+
+        if (totalWeight <= 0f)
+        {
+            Debug.LogWarning("[NetworkedItemSpawner] LootTable'da gecerli weight'li entry yok.");
+            return null;
+        }
+
+        float roll = (float)rng.NextDouble() * totalWeight;
+        float cumulative = 0f;
+        for (int i = 0; i < _lootTable.Length; i++)
+        {
+            if (_lootTable[i].Weight <= 0f || _lootTable[i].Prefab == null) continue;
+            cumulative += _lootTable[i].Weight;
+            if (roll <= cumulative)
+                return _lootTable[i];
+        }
+
+        // Float drift fallback: en son gecerli entry
+        for (int i = _lootTable.Length - 1; i >= 0; i--)
+        {
+            if (_lootTable[i].Weight > 0f && _lootTable[i].Prefab != null)
+                return _lootTable[i];
+        }
+        return null;
+    }
+
     // Sonraki task'larda doldurulacak — su an no-op.
     private void DistributeItems(System.Random rng, Bounds[] rooms)
     {
