@@ -24,6 +24,10 @@ public class PlayerInventory : NetworkBehaviour
     private InputAction _useAction;
     private InputAction _dropAction;
 
+    // ── UI REFERANSLARI ──────────────────────────────────────────────
+    //private InventoryUIController _inventoryUI;
+    //private WeightSystem _weightSystem;
+
     public override void OnNetworkSpawn()
     {
         if (!IsOwner)
@@ -37,6 +41,40 @@ public class PlayerInventory : NetworkBehaviour
         _useAction    = input.actions["Gameplay/UseItem"];
         _dropAction   = input.actions["Gameplay/Drop"];
     }
+
+    // ── UI BAĞLANTISI VE DİNLEYİCİLER, ustteki silinecek! ──────────────────────────────────────────────
+    //public override void OnNetworkSpawn()
+    //{
+    //    if (!IsOwner)
+    //    {
+    //        enabled = false;
+    //        return;
+    //    }
+
+    //    // --- ESMANUR UI BAGLANTISI VE DİNLEYİCİLER ---
+    //    _inventoryUI = FindFirstObjectByType<InventoryUIController>();
+    //    _weightSystem = GetComponent<WeightSystem>();
+
+    //    // Envantere eşya eklenip çıkarsa veya farenin tekerleğiyle slot değişirse anında UI'ı yenile!
+    //    Slots.OnListChanged += (changeEvent) => RefreshUI();
+    //    ActiveSlot.OnValueChanged += (prev, current) => RefreshUI();
+
+    //    // Oyun başladığında arayüzü bir kere sıfırla
+    //    RefreshUI();
+    //    // ---------------------------------------------
+
+    //    var input = GetComponent<PlayerInput>();
+    //    _scrollAction = input.actions["Gameplay/Scroll"];
+    //    _useAction = input.actions["Gameplay/UseItem"];
+    //    _dropAction = input.actions["Gameplay/Drop"];
+    //}
+
+    //public override void OnNetworkDespawn()
+    //{
+    //    if (!IsOwner) return;
+    //    Slots.OnListChanged -= (changeEvent) => RefreshUI();
+    //    ActiveSlot.OnValueChanged -= (prev, current) => RefreshUI();
+    //}
 
     private void Update()
     {
@@ -156,4 +194,48 @@ public class PlayerInventory : NetworkBehaviour
         if (Slots.Count == 0) return;
         Debug.Log($"[Inventory] Use item at slot {ActiveSlot.Value}: ID={Slots[ActiveSlot.Value]}");
     }
+
+    //// ── UI GÜNCELLEME SİSTEMİ ─────────────────────────────────────────
+    //private void RefreshUI()
+    //{
+    //    if (_inventoryUI == null) return;
+
+    //    Sprite[] icons = new Sprite[MaxSlots]; // MaxSlots kadar resim dizisi aç
+
+    //    for (int i = 0; i < MaxSlots; i++)
+    //    {
+    //        if (i < Slots.Count)
+    //        {
+    //            ushort itemId = Slots[i];
+    //            // Yasin'in Registry'sinden eşyayı bul
+    //            BaseItem prefab = ItemRegistry.Instance != null ? ItemRegistry.Instance.GetPrefab(itemId) : null;
+
+    //            // Eğer prefab bulunduysa resmini al, yoksa boş bırak
+    //            icons[i] = prefab != null ? prefab.ItemIcon : null;
+    //        }
+    //        else
+    //        {
+    //            icons[i] = null; // Slot boş
+    //        }
+    //    }
+
+    //    // Toplam ağırlığı çek
+    //    float totalWeight = _weightSystem != null ? _weightSystem.CalculateTotalWeight(this) : 0f;
+
+    //    // Esmanur'un arayüz koduna bilgileri yolla!
+    //    _inventoryUI.UpdateInventory(icons, ActiveSlot.Value, totalWeight);
+
+    //    // Toplam ağırlığa göre çarpanı hesapla (Örn: WeightSystem içindeki formülü kullan veya direkt oranla)
+    //    // Maksimum ağırlığı 14 kg varsayarsak:
+    //    float speedRatio = 1f - (totalWeight / 14.0f);
+    //    speedRatio = Mathf.Clamp(speedRatio, 0.2f, 1f); // Hız %20'nin altına düşmesin
+
+    //    // PlayerMovement kodunu bul ve çarpanı yolla
+    //    if (TryGetComponent<PlayerMovement>(out var movement))
+    //    {
+    //        movement.SetSpeedMultiplier(speedRatio);
+    //    }
+
+    //}
+    //// ─────────────────────────────────────────────────────────────────────────
 }

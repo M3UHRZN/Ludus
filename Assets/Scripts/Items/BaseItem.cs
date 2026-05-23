@@ -9,6 +9,10 @@ public class BaseItem : MonoBehaviour, IItem
     [SerializeField] private ItemSize _size        = ItemSize.Small;
     [SerializeField] private float    _creditValue = 10f;
 
+    // --- UI ÝÇÝN EKLENEN RESÝM ---
+    //[SerializeField] private Sprite _itemIcon;
+    //public Sprite ItemIcon => _itemIcon;
+
     public string   ItemName    => _itemName;
     public ItemSize Size        => _size;
     public int      Weight      => _size switch {

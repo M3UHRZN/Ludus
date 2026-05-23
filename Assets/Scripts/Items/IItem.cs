@@ -7,6 +7,9 @@ public interface IItem
     int      Weight      { get; }
     float    CreditValue { get; }
 
+    // --- UI ÝÇÝN EKLENEN YENÝ SATIR ---
+    //UnityEngine.Sprite ItemIcon { get; }
+
     void OnPickup(PlayerInventory inventory);
     void OnDrop();
 }
