@@ -193,3 +193,11 @@ public struct LevelEndedEvent
         PlayerAliveStates = playerAliveStates;
     }
 }
+
+// Karakter koştuğunda veya staminası değiştiğinde fırlatılacak Event
+public struct StaminaUpdatedEvent
+{
+    public float CurrentStamina;
+    public float MaxStamina;
+    public bool IsExhausted; // True ise karakter nefes nefese kalmış ve HP kaybetmeye başlamıştır
+}
