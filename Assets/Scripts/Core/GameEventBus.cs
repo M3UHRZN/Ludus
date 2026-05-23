@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// GameEventBus - Observer Pattern
@@ -179,11 +180,26 @@ public struct MapReadyEvent
 {
     public int Seed;
     public int RoomCount;
+    /// <summary>
+    /// Her bir oda icin world-space AABB. NetworkedItemSpawner bu bounds'larin
+    /// icine NavMesh snap'li rastgele item pozisyonlari uretir.
+    /// Null veya empty array de gecerlidir (eski caller'lar icin) — bu durumda
+    /// item spawn atlanir.
+    /// </summary>
+    public Bounds[] RoomBounds;
 
     public MapReadyEvent(int seed, int roomCount)
     {
         Seed = seed;
         RoomCount = roomCount;
+        RoomBounds = null;
+    }
+
+    public MapReadyEvent(int seed, int roomCount, Bounds[] roomBounds)
+    {
+        Seed = seed;
+        RoomCount = roomCount;
+        RoomBounds = roomBounds;
     }
 }
 
