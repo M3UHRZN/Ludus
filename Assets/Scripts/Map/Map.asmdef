@@ -1,7 +1,9 @@
 {
     "name": "Map",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "Unity.Netcode.Runtime"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
