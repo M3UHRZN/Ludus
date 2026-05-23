@@ -74,7 +74,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7725366710265274635}
   - component: {fileID: 4816452303606460296}
-  - component: {fileID: 2440557790932783720}
   m_Layer: 8
   m_Name: space_man_model
   m_TagString: Enemy
@@ -122,27 +121,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!111 &2440557790932783720
-Animation:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1551894360443677225}
-  m_Enabled: 0
-  serializedVersion: 4
-  m_Animation: {fileID: 7400000, guid: afb6ef035e041ee47bcf60f70f5f1adc, type: 3}
-  m_Animations:
-  - {fileID: 7400000, guid: afb6ef035e041ee47bcf60f70f5f1adc, type: 3}
-  - {fileID: 7400000, guid: 5aa297bdf08ca674caff7a7a7fb33301, type: 3}
-  - {fileID: 7400000, guid: 6d654999dbb48624ca6304d8d5b49be5, type: 3}
-  - {fileID: 7400000, guid: 0869a73c0e0ae734aa743d2ce50a7ad1, type: 3}
-  - {fileID: 7400000, guid: 338747b53ccb281438ca94866ff1d744, type: 3}
-  m_WrapMode: 0
-  m_PlayAutomatically: 1
-  m_AnimatePhysics: 0
-  m_UpdateMode: 0
-  m_CullingType: 0
 --- !u!1 &1877822932346923591
 GameObject:
   m_ObjectHideFlags: 0
@@ -376,6 +354,7 @@ GameObject:
   - component: {fileID: 3721968940818894303}
   - component: {fileID: 4980901525323588654}
   - component: {fileID: 6241695860925129447}
+  - component: {fileID: 8935302959408887167}
   m_Layer: 8
   m_Name: Enemy
   m_TagString: Enemy
@@ -553,6 +532,21 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &8935302959408887167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2378715969404602837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c930089c35f0b1478dcf748daefda3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimator
+  _animator: {fileID: 4816452303606460296}
+  _damping: 0.12
+  _speedMultiplier: 1
 --- !u!1 &2822342150497661104
 GameObject:
   m_ObjectHideFlags: 0
