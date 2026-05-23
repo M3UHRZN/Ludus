@@ -13,9 +13,15 @@ using UnityEngine;
 ///   gore normalize edilir; 0 veya negatif olursa entry asla secilmez.
 /// - MinPerRoom / MaxPerRoom: Oda basina kac instance dusebilir.
 ///   Spawner her oda icin Random.Range(min, max+1) kullanarak hedef
-///   sayiyi belirler. 0 / 0 = "bu prefab oda basina garantili degil,
-///   sadece global agirlikla cikar" anlamina gelmez — 0/0 entry asla
-///   spawn etmez. En azindan MaxPerRoom >= 1 vermek gerek.
+///   sayiyi belirler. **Onemli**: Loot table'da N entry varsa, bir
+///   odanin toplam target sayisi *her entry icin* (Min..Max) araliginda
+///   bir sayi cekilip toplanarak hesaplanir. Yani 5 entry'de hepsinin
+///   MaxPerRoom=6 ise tek bir oda 30 item hedefleyebilir; bu spawner'in
+///   _maxItemsPerRun bugesi ile sinirlanir ama erken odalar buyuk
+///   pay alabilir. Dengeli dagilim icin Max'leri kucuk tutun veya
+///   _maxItemsPerRun'i room sayisina gore ayarlayin.
+///   0 / 0 entry asla spawn etmez. En azindan MaxPerRoom >= 1 vermek
+///   gerek.
 /// </summary>
 [Serializable]
 public struct LootEntry

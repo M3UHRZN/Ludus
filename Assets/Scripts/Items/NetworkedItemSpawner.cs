@@ -39,7 +39,7 @@ public class NetworkedItemSpawner : NetworkBehaviour
     [SerializeField] private int _placementRetryCount = 4;
 
     [Header("Debug")]
-    [SerializeField] private bool _verbose = true;
+    [SerializeField] private bool _verbose = false;
 
     private int _totalSpawned;
 
@@ -76,7 +76,6 @@ public class NetworkedItemSpawner : NetworkBehaviour
         if (_verbose)
             Debug.Log($"[NetworkedItemSpawner] MapReadyEvent alindi (seed={evt.Seed}, rooms={evt.RoomBounds.Length}). Spawn baslıyor.");
 
-        // Asil placement sonraki task'larda doldurulacak.
         DistributeItems(rng, evt.RoomBounds);
 
         if (_verbose)
@@ -123,9 +122,114 @@ public class NetworkedItemSpawner : NetworkBehaviour
         return null;
     }
 
-    // Sonraki task'larda doldurulacak — su an no-op.
+    /// <summary>
+    /// Verilen bounds icinde rastgele bir nokta secer, NavMesh'e snap eder.
+    /// Snap basarili olursa pozisyonu yazip true doner. Aksi halde
+    /// _placementRetryCount kadar tekrar dener; hala basarisizsa false doner.
+    /// </summary>
+    private bool TryPickPositionInRoom(System.Random rng, Bounds room, out Vector3 position)
+    {
+        position = Vector3.zero;
+
+        Vector3 min = room.min + new Vector3(_boundsInset, 0f, _boundsInset);
+        Vector3 max = room.max - new Vector3(_boundsInset, 0f, _boundsInset);
+
+        if (max.x <= min.x || max.z <= min.z)
+        {
+            // Inset, oda sinirindan buyuk. Tam bounds kullaniliyor.
+            min = room.min;
+            max = room.max;
+        }
+
+        for (int attempt = 0; attempt < _placementRetryCount; attempt++)
+        {
+            float rx = Mathf.Lerp(min.x, max.x, (float)rng.NextDouble());
+            float rz = Mathf.Lerp(min.z, max.z, (float)rng.NextDouble());
+            Vector3 candidate = new Vector3(rx, room.center.y, rz);
+
+            if (NavMesh.SamplePosition(candidate, out var hit, _navMeshSampleRadius, NavMesh.AllAreas))
+            {
+                position = hit.position;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Her oda icin LootEntry tablosunu gezer, MinPerRoom..MaxPerRoom
+    /// araliginda hedef sayi belirler, her birinde PickWeighted ile prefab
+    /// secer ve NavMesh-snap'li pozisyona NetworkObject.Spawn eder.
+    /// _maxItemsPerRun'a ulasinca durur.
+    /// </summary>
     private void DistributeItems(System.Random rng, Bounds[] rooms)
     {
-        // Task 6 + 7 + 8 burayi dolduracak.
+        _totalSpawned = 0;
+
+        for (int r = 0; r < rooms.Length; r++)
+        {
+            if (_totalSpawned >= _maxItemsPerRun) break;
+
+            // Bu oda icin hedef sayi: her entry'nin Min..Max araligindan rastgele,
+            // sonra hepsini toplama. Boylece "her odada 2-5 item arasi" gibi
+            // organik bir dagilim cikar.
+            int targetForRoom = 0;
+            for (int e = 0; e < _lootTable.Length; e++)
+            {
+                var entry = _lootTable[e];
+                if (entry.Prefab == null || entry.Weight <= 0f) continue;
+                int min = Mathf.Max(0, entry.MinPerRoom);
+                int max = Mathf.Max(min, entry.MaxPerRoom);
+                if (max <= 0) continue;
+                // [min, max] inclusive — System.Random.Next(min, max+1)
+                targetForRoom += rng.Next(min, max + 1);
+            }
+
+            for (int i = 0; i < targetForRoom; i++)
+            {
+                if (_totalSpawned >= _maxItemsPerRun) break;
+
+                var pick = PickWeighted(rng);
+                if (!pick.HasValue) break;
+
+                if (!TryPickPositionInRoom(rng, rooms[r], out var pos))
+                {
+                    if (_verbose)
+                        Debug.LogWarning($"[NetworkedItemSpawner] Oda {r} icin NavMesh snap basarisiz, atlandi.");
+                    continue;
+                }
+
+                SpawnOne(pick.Value.Prefab, pos);
+                _totalSpawned++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Server'da prefab'i Instantiate edip NetworkObject.Spawn cagirir.
+    /// Prefab'da NetworkObject yoksa hata loglayip atlar (ItemRegistry'deki
+    /// prefab'lari guncellemek inspector isi — kod runtime crash'i secmez).
+    /// </summary>
+    private void SpawnOne(BaseItem prefab, Vector3 position)
+    {
+        if (prefab == null)
+        {
+            Debug.LogError("[NetworkedItemSpawner] SpawnOne null prefab ile cagrildi. Atlandi.");
+            return;
+        }
+
+        var go = Instantiate(prefab.gameObject, position, Quaternion.identity);
+        var netObj = go.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogError($"[NetworkedItemSpawner] Prefab '{prefab.name}' uzerinde NetworkObject yok. Spawn iptal edildi.");
+            Destroy(go);
+            return;
+        }
+
+        netObj.Spawn();
+
+        if (_verbose)
+            Debug.Log($"[NetworkedItemSpawner] Spawned '{prefab.name}' at {position}.");
     }
 }
