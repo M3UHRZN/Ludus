@@ -118,8 +118,23 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     private static PlayerInteraction TryGetLocalPlayerInteraction()
     {
         var nm = NetworkManager.Singleton;
-        if (nm == null || nm.LocalClient == null || nm.LocalClient.PlayerObject == null) return null;
-        return nm.LocalClient.PlayerObject.GetComponent<PlayerInteraction>();
+        if (nm == null) return null;
+
+        if (nm.LocalClient != null && nm.LocalClient.PlayerObject != null)
+        {
+            var pi = nm.LocalClient.PlayerObject.GetComponent<PlayerInteraction>();
+            if (pi != null) return pi;
+        }
+
+        // Fallback for manually placed or custom spawned players where PlayerObject is null
+        var allInteractions = FindObjectsByType<PlayerInteraction>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var pi in allInteractions)
+        {
+            if (pi.IsOwner)
+                return pi;
+        }
+
+        return null;
     }
 
     public void SetHighlight(bool active)

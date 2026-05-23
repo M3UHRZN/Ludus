@@ -93,7 +93,22 @@ public class CorpseItem : NetworkBehaviour
         var nm = NetworkManager.Singleton;
         if (nm == null || clientId == ulong.MaxValue) return null;
         if (!nm.ConnectedClients.TryGetValue(clientId, out var client)) return null;
-        return client.PlayerObject?.GetComponent<PlayerInventory>();
+        
+        if (client.PlayerObject != null)
+        {
+            var inv = client.PlayerObject.GetComponent<PlayerInventory>();
+            if (inv != null) return inv;
+        }
+
+        // Fallback for manually placed or custom spawned players where PlayerObject is null
+        var allInventories = FindObjectsByType<PlayerInventory>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var inv in allInventories)
+        {
+            if (inv.OwnerClientId == clientId)
+                return inv;
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------ Revival
