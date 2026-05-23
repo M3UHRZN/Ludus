@@ -79,7 +79,7 @@ public class MapEnemyBridge : MonoBehaviour
             yield break;
         }
 
-        int roomCount = SetupRooms(dungeonRoot);
+        int roomCount = SetupRooms(dungeonRoot, out var roomBoundsList);
 
         if (_bakeNavMeshAtRuntime)
         {
@@ -91,9 +91,9 @@ public class MapEnemyBridge : MonoBehaviour
         if (_publishMapReadyEvent)
         {
             int seed = ExtractSeedSafe();
-            GameEventBus.Publish(new MapReadyEvent(seed, roomCount));
+            GameEventBus.Publish(new MapReadyEvent(seed, roomCount, roomBoundsList.ToArray()));
             if (_verbose)
-                Debug.Log($"[MapEnemyBridge] MapReadyEvent yayinlandi (seed={seed}, rooms={roomCount}).");
+                Debug.Log($"[MapEnemyBridge] MapReadyEvent yayinlandi (seed={seed}, rooms={roomCount}, bounds={roomBoundsList.Count}).");
         }
     }
 
@@ -101,9 +101,10 @@ public class MapEnemyBridge : MonoBehaviour
     // Oda iyileme: marker ekle
     // ------------------------------------------------------------------
 
-    private int SetupRooms(Transform dungeonRoot)
+    private int SetupRooms(Transform dungeonRoot, out List<Bounds> roomBoundsList)
     {
         int processed = 0;
+        roomBoundsList = new List<Bounds>();
 
         // Snapshot al — child collection runtime'da degisiyor (waypoint ekledigimiz icin)
         var rooms = new List<Transform>(dungeonRoot.childCount);
@@ -123,6 +124,7 @@ public class MapEnemyBridge : MonoBehaviour
             if (_createPatrolGroups)
                 AddPatrolGroup(room, bounds);
 
+            roomBoundsList.Add(bounds);
             processed++;
         }
 
