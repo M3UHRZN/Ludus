@@ -39,22 +39,22 @@ public class ExtractionUIController : MonoBehaviour
         // Baþlýk
         if (evt.IsSuccess)
         {
-            titleText.text = "GÖREV TAMAMLANDI";
+            titleText.text = "MISSION CLEAR";
             titleText.color = Color.white;
         }
         else
         {
-            titleText.text = "KOTA BAÞARISIZ";
+            titleText.text = "MISSION FAILED";
             titleText.color = Color.red;
         }
 
         // Krediler
-        creditsText.text = "Toplanan Kredi: " + evt.CollectedCredits;
+        creditsText.text = "COLLECTED CREDITS: " + evt.CollectedCredits;
 
         // Ceza Yazýsý
         if (evt.PenaltyAmount > 0)
         {
-            penaltyText.text = "Terk Cezasý: -" + evt.PenaltyAmount + " Kredi";
+            penaltyText.text = "PENALTY: -" + evt.PenaltyAmount + " CREDITS";
             penaltyText.gameObject.SetActive(true);
         }
         else

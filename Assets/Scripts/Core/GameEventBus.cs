@@ -153,6 +153,23 @@ public struct PlayerRevivedEvent
     }
 }
 
+///// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+//public struct LevelEndedEvent
+//{
+//    public bool IsSuccess;
+//    public int CollectedCredits;
+//    public int PenaltyAmount;
+//    public float QuotaFillAmount;
+
+//    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+//    {
+//        IsSuccess = isSuccess;
+//        CollectedCredits = collectedCredits;
+//        PenaltyAmount = penaltyAmount;
+//        QuotaFillAmount = quotaFillAmount;
+//    }
+//}
+
 /// <summary>Seviye sona erdiğinde yayınlanır.</summary>
 public struct LevelEndedEvent
 {
@@ -161,11 +178,18 @@ public struct LevelEndedEvent
     public int PenaltyAmount;
     public float QuotaFillAmount;
 
-    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    // --- UI İÇİN EKLENEN YENİ VERİLER ---
+    public float TimeLeft;
+    public bool[] PlayerAliveStates;
+
+    // Constructor (Oluşturucu) fonksiyonu da yeni verilere göre güncellendi
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount, float timeLeft, bool[] playerAliveStates)
     {
         IsSuccess = isSuccess;
         CollectedCredits = collectedCredits;
         PenaltyAmount = penaltyAmount;
         QuotaFillAmount = quotaFillAmount;
+        TimeLeft = timeLeft;
+        PlayerAliveStates = playerAliveStates;
     }
 }
