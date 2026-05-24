@@ -127,6 +127,17 @@ public class PlayerMovement : NetworkBehaviour
         _speedMultiplier = multiplier;
     }
 
+    /// <summary>
+    /// Dis kaynakli anlik yer degistirme (knockback gibi). CharacterController'i
+    /// dogrudan iter. Bu script stun sirasinda disabled olsa bile calisir cunku
+    /// CharacterController ayri ve hala enabled bir component'tir.
+    /// </summary>
+    public void ApplyExternalMove(Vector3 delta)
+    {
+        if (_controller != null && _controller.enabled)
+            _controller.Move(delta);
+    }
+
     private void CheckGround()
     {
         _isGrounded = _controller.isGrounded ||

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(NetworkObject))]
-public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
+public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, IKnockbackable
 {
     /// <summary>
     /// Server-only registry of every spawned PlayerStateMachine. Populated in
@@ -177,6 +177,73 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable
         // Stun bittikten sonra Alive'a don (Dead degillerse)
         if (IsAlive && (PlayerStateEnum)NetState.Value == PlayerStateEnum.Stunned)
             NetState.Value = prev;
+    }
+
+    private const float KnockbackSlideDuration  = 0.3f;
+    private const float KnockbackShakeAmplitude = 0.25f;  // kamera sarsilma siddeti
+    private const float KnockbackShakeFrequency = 25f;     // sarsilma hizi
+    private const float KnockbackShakeDuration  = 0.4f;    // sarsilma suresi (sn)
+
+    /// <summary>
+    /// IKnockbackable — dusman yakin vurusu: oyuncuyu kaynaktan uzaga firlatir +
+    /// kisa sure stun eder. Server-only tetiklenir (enemy AI server'da kosar).
+    /// Stun NetState ile sync olur; knockback hareketi owner-authoritative oldugu
+    /// icin owner'a Rpc ile gonderilir.
+    /// </summary>
+    public void ApplyKnockback(Vector3 sourcePosition, float force, float stunDuration)
+    {
+        if (!IsServer || !IsAlive) return;
+
+        Vector3 dir = transform.position - sourcePosition;
+        dir.y = 0f;
+        dir = dir.sqrMagnitude > 0.0001f ? dir.normalized : -transform.forward;
+
+        ForceStun(stunDuration);
+        ApplyKnockbackRpc(dir * force);
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void ApplyKnockbackRpc(Vector3 horizontalVelocity)
+    {
+        if (Movement != null)
+            StartCoroutine(KnockbackRoutine(horizontalVelocity));
+
+        // Sert vurus hissi: kamerayi sars. Stun PlayerLook'u kapatsa bile bu coroutine
+        // PlayerStateMachine'de (hep acik) kostugu icin calisir. cameraTarget'i sarsmak
+        // vcam->brain->Main Camera zinciriyle ekrana yansir, ekstra kurulum gerekmez.
+        Transform camT = Look != null ? Look.CameraTarget : null;
+        if (camT != null)
+            StartCoroutine(CameraShakeRoutine(camT));
+    }
+
+    private System.Collections.IEnumerator KnockbackRoutine(Vector3 horizontalVelocity)
+    {
+        float t = 0f;
+        while (t < KnockbackSlideDuration)
+        {
+            float frac = 1f - (t / KnockbackSlideDuration);   // dogrusal sonumlenme
+            Vector3 step = horizontalVelocity * (frac * Time.deltaTime);
+            step.y = -9.81f * Time.deltaTime;                  // zemine yapis (egimde havalanmasin)
+            Movement.ApplyExternalMove(step);
+            t += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    private System.Collections.IEnumerator CameraShakeRoutine(Transform camT)
+    {
+        Vector3 origin = camT.localPosition;
+        float elapsed = 0f;
+        while (elapsed < KnockbackShakeDuration)
+        {
+            float fade = 1f - (elapsed / KnockbackShakeDuration);   // sonumlenme
+            float ox = (Mathf.PerlinNoise(elapsed * KnockbackShakeFrequency, 0f) - 0.5f) * 2f * KnockbackShakeAmplitude * fade;
+            float oy = (Mathf.PerlinNoise(0f, elapsed * KnockbackShakeFrequency) - 0.5f) * 2f * KnockbackShakeAmplitude * fade;
+            camT.localPosition = origin + new Vector3(ox, oy, 0f);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        camT.localPosition = origin;   // dinlenme pozisyonuna don
     }
 
     public void SwitchActionMap(string mapName)
