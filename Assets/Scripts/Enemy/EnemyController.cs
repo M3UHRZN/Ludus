@@ -14,6 +14,13 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
 
+    [Header("Gorus Konisi")]
+    [Tooltip("TUM dusmanlar sadece bu acidaki koni icinde (yuzunun baktigi yer) gorur; " +
+             "arkadan/yandan yaklasinca fark etmezler. Ek olarak ranged (Type A robot) dusman " +
+             "sese SAGIRDIR, yakin dovus (Type B) ise sesi de duyar. Ses farki _useRangedAttack'tan gelir.")]
+    [Range(30f, 360f)]
+    [SerializeField] private float _fieldOfViewAngle = 110f;
+
     [Header("Davranis Modu")]
     [Tooltip("True ise enemy spawn'da WanderingBehavior (tum haritada gezen) ile baslar. " +
              "False ise PatrolBehavior (oda waypoint turu). Type B dusman icin true.")]
@@ -85,6 +92,12 @@ public class EnemyController : MonoBehaviour
 
     private IEnemyBehavior _current;
 
+    // Gecici hiz dusurme (orn. guclu vurus sonrasi toparlanma) — davranistan bagimsiz,
+    // EnemyController yonetir ki davranis degisse de (Attack->Chase) etki devam etsin.
+    private float _baseAgentSpeed;
+    private float _slowTimer;
+    private bool  _isSlowed;
+
     private void Awake()
     {
         Agent = GetComponent<NavMeshAgent>();
@@ -101,6 +114,7 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
+        _baseAgentSpeed = Agent != null ? Agent.speed : 3.5f;
         SwitchBehavior(CreateDefaultBehavior());
     }
 
@@ -135,6 +149,14 @@ public class EnemyController : MonoBehaviour
 
         if (distance > _sightRange) return false;
 
+        // Gorus konisi: TUM dusmanlar (hem Type A hem Type B) sadece yuzunun baktigi
+        // koni icini gorur. Arkadan/yandan yaklasilirsa fark etmezler.
+        Vector3 flatDir = direction;
+        flatDir.y = 0f;
+        if (flatDir.sqrMagnitude > 0.0001f &&
+            Vector3.Angle(transform.forward, flatDir) > _fieldOfViewAngle * 0.5f)
+            return false;
+
         if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
             return hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform);
 
@@ -143,7 +165,32 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
+        TickSelfSlow();
         _current?.Tick(this);
+    }
+
+    private void TickSelfSlow()
+    {
+        if (!_isSlowed) return;
+        _slowTimer -= Time.deltaTime;
+        if (_slowTimer <= 0f)
+        {
+            if (Agent != null) Agent.speed = _baseAgentSpeed;
+            _isSlowed = false;
+        }
+    }
+
+    /// <summary>
+    /// Dusmanin hareket hizini gecici olarak dusurur (orn. guclu vurus sonrasi
+    /// toparlanma). Sure boyunca Agent.speed = base * multiplier; sure bitince
+    /// eski hizina doner. Davranis degisse bile (Attack->Chase) etki surer.
+    /// </summary>
+    public void ApplySelfSlow(float multiplier, float duration)
+    {
+        if (Agent == null) return;
+        Agent.speed = _baseAgentSpeed * Mathf.Clamp01(multiplier);
+        _slowTimer = duration;
+        _isSlowed = true;
     }
 
     private void OnEnable()
@@ -178,6 +225,9 @@ public class EnemyController : MonoBehaviour
     /// </summary>
     public void OnNoiseHeard(Vector3 source, float sourceRange)
     {
+        // Ranged (Type A robot) dusman sese SAGIRDIR; sadece gorusle algilar.
+        if (_useRangedAttack) return;
+
         float dist = Vector3.Distance(transform.position, source);
 
         // Ses menzili belirleyici: kosma (genis menzil) uzaktan, yurume (dar) yakindan
@@ -253,8 +303,20 @@ public class EnemyController : MonoBehaviour
         Gizmos.color = new Color(1f, 1f, 0f, 0.08f);
         Gizmos.DrawSphere(transform.position, _sightRange);
 
-        Gizmos.color = new Color(1f, 0.5f, 0f, 0.15f);
-        Gizmos.DrawSphere(transform.position, _noiseDetectionRadius);
+        // Gorus konisi kenarlari (tum dusmanlar)
+        Gizmos.color = Color.yellow;
+        Vector3 eye = transform.position + Vector3.up * 1.5f;
+        Vector3 left  = Quaternion.Euler(0f, -_fieldOfViewAngle * 0.5f, 0f) * transform.forward;
+        Vector3 right = Quaternion.Euler(0f,  _fieldOfViewAngle * 0.5f, 0f) * transform.forward;
+        Gizmos.DrawRay(eye, left  * _sightRange);
+        Gizmos.DrawRay(eye, right * _sightRange);
+
+        // Ses algilama alani (sadece sesi duyan yakin dovus Type B dusmanda gosterilir)
+        if (!_useRangedAttack)
+        {
+            Gizmos.color = new Color(1f, 0.5f, 0f, 0.15f);
+            Gizmos.DrawSphere(transform.position, _noiseDetectionRadius);
+        }
     }
 #endif
 }

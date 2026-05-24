@@ -4,8 +4,14 @@ public class AttackBehavior : IEnemyBehavior
 {
     private const float AttackRange = 1.8f;     // bu mesafeden uzakta = Chase
     private const float HitRange = 2.2f;        // hasar aralii (biraz tampon)
-    private const float DamagePerHit = 15f;
+    private const float DamagePerHit = 50f;   // guclu yakin vurus (knockback'li slam)
     private const float HitCooldown = 1.2f;
+
+    // Yakin vurus tepkisi (Type B / yakin dovus dusmani)
+    private const float KnockbackForce      = 55f;   // geri firlatma hizi (m/s) — duvara yapistiracak kadar guclu
+    private const float PlayerStunDuration  = 1.5f;  // oyuncunun hareketsiz kalma suresi (sn)
+    private const float EnemySlowMultiplier = 0.5f;  // vurustan sonra dusmanin hiz carpani
+    private const float EnemySlowDuration   = 10f;   // dusmanin yavas kalma suresi (sn)
 
     private float _cooldown;
 
@@ -69,6 +75,16 @@ public class AttackBehavior : IEnemyBehavior
         // Dusman server'da calistigi icin attacker olarak server client id (0) gecilebilir
         dmg.TakeDamage(DamagePerHit, hitPoint, 0UL);
 
-        Debug.Log($"[AttackBehavior] Vurus: {DamagePerHit} hasar.");
+        // Yakin vurus tepkisi: oyuncuyu uzaga firlat + kisa sure sersemlet.
+        // dmg ile AYNI component kullanilir (PlayerStateMachine hem IDamageable hem
+        // IKnockbackable). PlayerTransform'u TEKRAR OKUMA: oldurucu vurus sonrasi oyuncu
+        // olur, PlayerTransform null doner ve NullReferenceException olur.
+        var knock = dmg as IKnockbackable;
+        knock?.ApplyKnockback(enemy.transform.position, KnockbackForce, PlayerStunDuration);
+
+        // Guclu vurusun bedeli: dusman bir sure yavaslar -> oyuncuya kacis penceresi.
+        enemy.ApplySelfSlow(EnemySlowMultiplier, EnemySlowDuration);
+
+        Debug.Log($"[AttackBehavior] Vurus: {DamagePerHit} hasar + knockback; dusman {EnemySlowDuration:F0}sn yavasladi.");
     }
 }

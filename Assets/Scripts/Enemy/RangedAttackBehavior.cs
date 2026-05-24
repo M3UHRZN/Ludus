@@ -12,11 +12,12 @@ using UnityEngine;
 /// </summary>
 public class RangedAttackBehavior : IEnemyBehavior
 {
-    private const float DamagePerShot  = 10f;
+    private const float DamagePerShot  = 7f;    // azaltildi (oyuncu uzerindeki baskiyi dusur)
     private const float DisengageRange = 16f;   // bu mesafeden uzaklasirsa Chase'e don
     private const float AimTurnSpeed   = 8f;
+    private const float LostSightGrace = 0.8f;  // gorus anlik kaybolursa hemen Chase'e gecme toleransi
 
-    private const float FireCooldown   = 0.8f;  // sarjor icinde iki atis arasi
+    private const float FireCooldown   = 1.5f;  // sarjor icinde iki atis arasi (yavaslatildi)
     private const int   MagazineSize   = 5;     // bir sarjordeki atis sayisi
     private const float ReloadTime     = 2.5f;  // reload suresi (atessiz pencere)
 
@@ -24,6 +25,7 @@ public class RangedAttackBehavior : IEnemyBehavior
     private int   _shotsLeft;
     private bool  _reloading;
     private float _reloadTimer;
+    private float _lostSightGrace;
 
     public void Enter(EnemyController enemy)
     {
@@ -33,6 +35,7 @@ public class RangedAttackBehavior : IEnemyBehavior
         _cooldown = 0.6f;
         _shotsLeft = MagazineSize;
         _reloading = false;
+        _lostSightGrace = LostSightGrace;
         Debug.Log("[RangedAttackBehavior] Atis pozisyonu alindi.");
     }
 
@@ -58,12 +61,26 @@ public class RangedAttackBehavior : IEnemyBehavior
             return;
         }
 
-        // Gorus kaybedildi veya menzil disi -> tekrar kovala
-        if (!enemy.CanSeePlayer() || dist > DisengageRange)
+        // Menzil disina cikti -> tekrar kovala
+        if (dist > DisengageRange)
         {
             enemy.SwitchBehavior(new ChaseBehavior());
             return;
         }
+
+        // Gorus kaybi: kisa bir tolerans tani (anlik kaybolmada Chase'e gecip flapping yapma).
+        // Tolerans dolarsa kovalamaya don; tolerans icinde ates etme ama davranis da degistirme.
+        if (!enemy.CanSeePlayer())
+        {
+            _lostSightGrace -= Time.deltaTime;
+            if (_lostSightGrace <= 0f)
+            {
+                enemy.SwitchBehavior(new ChaseBehavior());
+                return;
+            }
+            return;
+        }
+        _lostSightGrace = LostSightGrace;   // gorunce toleransi tazele
 
         _cooldown -= Time.deltaTime;
         if (_cooldown <= 0f && _shotsLeft > 0)
