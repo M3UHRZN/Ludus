@@ -83,13 +83,14 @@ public class PlayerStamina : NetworkBehaviour
 
     private void ApplyExhaustionDamage()
     {
-        // Metin veya Alp karakterin can sistemini (Health) hangi koda yazdýysa ona ulaþýyoruz.
-        // DÝKKAT: "PlayerHealth" kýsmý Metin'in yazdýðý kodun ismine göre deðiþebilir (Örn: CharacterHealth, HealthSystem vb.)
-        if (TryGetComponent(out PlayerHealth health))
+        // Karakterin ana beynine (PlayerStateMachine) ulaþýyoruz
+        if (TryGetComponent(out PlayerStateMachine stateMachine))
         {
-            // O koddaki hasar alma fonksiyonunu çaðýr (Bunun da adýný Metin'e sorabilirsin)
-            health.TakeDamage(exhaustionDamage);
-            Debug.Log("Karakter nefessizlikten " + exhaustionDamage + " can kaybetti!");
+            // TakeDamage fonksiyonu 3 veri istiyor: (Hasar Miktarý, Vuruþ Noktasý, Saldýranýn ID'si)
+            // Kendi kendimize hasar verdiðimiz için kendi pozisyonumuzu ve kendi ID'mizi gönderiyoruz
+            stateMachine.TakeDamage(exhaustionDamage, transform.position, OwnerClientId);
+
+            Debug.Log("Karakter nefessizlikten " + exhaustionDamage + " can kaybetti! Kalan Can: " + stateMachine.CurrentHealth);
         }
     }
 
