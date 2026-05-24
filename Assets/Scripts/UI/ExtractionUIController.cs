@@ -1,12 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement; // Sahneler arasý geçiþ için þart!
 
+// Bu sýnýf, Extraction (Görev Tamamlama) ekranýný yönetir. Görev tamamlandýðýnda veya kota baþarýsýz olduðunda bu ekran açýlýr ve ilgili bilgileri gösterir.
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
-    public GameObject extractionPanel; // Tüm ekraný açýp kapatmak için
+    public GameObject extractionPanel;
 
     [Header("Metinler")]
     public TextMeshProUGUI titleText;
@@ -18,11 +18,9 @@ public class ExtractionUIController : MonoBehaviour
 
     private void Start()
     {
-        // Oyun baþladýðýnda bu ekrani gizli yaparýz, sadece görev bittiðinde gösterilecek
-        extractionPanel.SetActive(false);
+        extractionPanel.SetActive(false); // Oyun baþlarken gizli
     }
 
-    // --- EVENTBUS ABONELÝKLERÝ BAÞLANGICI ---
     private void OnEnable()
     {
         GameEventBus.Subscribe<LevelEndedEvent>(OnLevelEnded);
@@ -33,43 +31,30 @@ public class ExtractionUIController : MonoBehaviour
         GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
     }
 
-    // Olay tetiklendiðinde çalýþacak fonksiyon
     private void OnLevelEnded(LevelEndedEvent evt)
     {
-        // Event'ten gelen verileri alýp, ekran gösterme fonksiyonuna gonderiyoruz
-        // !!!Degisken isimlerini ben belirledim, sen event struct'ýnda ne isim verdin ise onu yazarsýn. Benim verdiðim isimler sadece örnek!!!
-        ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
-    }
-    // --- EVENTBUS ABONELÝKLERÝ BÝTÝÞÝ ---
-
-    public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
-    {
-
-        // 1. Ekraný görünür yap
+        // Ekraný aç
         extractionPanel.SetActive(true);
 
-        // 2. OYUNU DURDUR!
-        Time.timeScale = 0f;
-
-        // 3. Baþlýðý baþarý durumuna göre ayarla
-        if (isSuccess)
+        // Baþlýk
+        if (evt.IsSuccess)
         {
-            titleText.text = "GÖREV TAMAMLANDI";
+            titleText.text = "MISSION CLEAR";
             titleText.color = Color.white;
         }
         else
         {
-            titleText.text = "KOTA BAÞARISIZ";
+            titleText.text = "MISSION FAILED";
             titleText.color = Color.red;
         }
 
-        // 4. Kredileri yazdýr
-        creditsText.text = "Toplanan Kredi: " + collectedCredits;
+        // Krediler
+        creditsText.text = "COLLECTED CREDITS: " + evt.CollectedCredits;
 
-        // 5. Ceza kontrolü (Ceza yoksa yazýyý tamamen gizle)
-        if (penaltyAmount > 0)
+        // Ceza Yazýsý
+        if (evt.PenaltyAmount > 0)
         {
-            penaltyText.text = "Terk Cezasý: -" + penaltyAmount + " Kredi";
+            penaltyText.text = "PENALTY: -" + evt.PenaltyAmount + " CREDITS";
             penaltyText.gameObject.SetActive(true);
         }
         else
@@ -77,21 +62,14 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
-        // 6. Kota barýný doldur (0 ile 1 arasýnda bir deðer, örn: %80 için 0.8f)
-        quotaFillImage.fillAmount = quotaFillAmount;
+        // Kota Barý
+        if (quotaFillImage != null)
+            quotaFillImage.fillAmount = evt.QuotaFillAmount;
     }
 
-    // Bu fonksiyonu "Gemiye Dön" butonunun OnClick() kýsmýna baðlanacak!!!!!!!!
     public void ReturnToShip()
     {
-        // 1. Zamaný mutlaka geri baþlat! (Yoksa lobi sahnesi de donuk kalýr, týklayamazsýn bile)
-        Time.timeScale = 1f;
-
-        // 2. Lobi sahnesini yükle!
-        // Not: Metin lobi sahnesinin adýný (örneðin "LobbyMenu") kesinleþtirdiðinde 
-        // aþaðýdaki yorum satýrýný kaldýrýp o ismi yazarsýn. Þimdilik test için Debug atýyoruz.
-
         Debug.Log("Sistem: Gemiye Dönülüyor... Lobi sahnesi yüklenecek.");
-        // SceneManager.LoadScene("LobbyScene"); 
+        // UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene"); 
     }
 }

@@ -122,7 +122,7 @@ public class GameSessionManager : NetworkBehaviour
         if (!NetIsActive.Value) return;
 
         NetRemainingTime.Value = Mathf.Max(0f, NetRemainingTime.Value - Time.deltaTime);
-        GameEventBus.Publish(new TimerEventTriggered(NetRemainingTime.Value));
+        GameEventBus.Publish(new TimerEventTriggered(NetRemainingTime.Value, sessionDuration));
 
         if (NetRemainingTime.Value <= 0f)
             EndSession(SessionEndReason.TimeUp);
@@ -130,7 +130,7 @@ public class GameSessionManager : NetworkBehaviour
 
     private void OnTimerChanged(float previous, float current)
     {
-        GameEventBus.Publish(new TimerEventTriggered(current));
+        GameEventBus.Publish(new TimerEventTriggered(current, sessionDuration));
     }
 
     private void OnSessionActiveChanged(bool previous, bool current)
