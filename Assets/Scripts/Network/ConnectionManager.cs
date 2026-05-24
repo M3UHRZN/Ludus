@@ -9,7 +9,7 @@ using UnityEngine;
 
 public class ConnectionManager : MonoBehaviour
 {
-    private static readonly TimeSpan NetworkStartTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan NetworkStartTimeout = TimeSpan.FromSeconds(60);
 
     // ──────────────────────────────────────────────────────────────────────────
     // Public API
@@ -147,16 +147,18 @@ public class ConnectionManager : MonoBehaviour
     }
 
     /// <summary>Queries open sessions. Callers may call StartPolling on the result.</summary>
-    public async Task<QuerySessionsResults> QuerySessionsAsync()
+    public async Task<QuerySessionsResults> QuerySessionsAsync(string displayName = null)
     {
         await _initializeTask;
 
-        // QuerySessionsAsync requires an authenticated user — sign in if not already done.
-        if (!AuthenticationService.Instance.IsSignedIn)
-        {
-            var profile = string.IsNullOrWhiteSpace(DisplayName) ? "browser-anon" : DisplayName;
+        // Sign in with the provided display name so browse and join share the same profile,
+        // avoiding a sign-out/re-sign-in cycle when the player subsequently joins a session.
+        var profile = !string.IsNullOrWhiteSpace(displayName) ? displayName
+                    : !string.IsNullOrWhiteSpace(DisplayName) ? DisplayName
+                    : "browser-anon";
+
+        if (!AuthenticationService.Instance.IsSignedIn || AuthenticationService.Instance.Profile != profile)
             await SignInWithProfileAsync(profile);
-        }
 
         var options = new QuerySessionsOptions
         {
