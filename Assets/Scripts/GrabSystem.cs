@@ -51,14 +51,22 @@ public class GrabSystem : MonoBehaviour
     private bool isChargingThrow = false;
     private float chargeStartTime = 0f;
 
+    private Unity.Netcode.NetworkObject _netObj;
+    private PlayerStateMachine _playerStateMachine;
+
     void Awake()
     {
         if (playerCamera == null)
             playerCamera = Camera.main;
+
+        _netObj = GetComponentInParent<Unity.Netcode.NetworkObject>();
+        _playerStateMachine = GetComponentInParent<PlayerStateMachine>();
     }
 
     void Update()
     {
+        if (_netObj != null && !_netObj.IsOwner) return;
+
         HandleLook();
         HandleInput();
         UpdateHoldDistance();
@@ -92,7 +100,7 @@ public class GrabSystem : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, grabRange, grabbableLayers))
         {
             PhysicsObject po = hit.collider.GetComponent<PhysicsObject>();
-            if (po != null && !po.isHeld)
+            if (po != null && !po.IsHeld)
             {
                 lookedObject = po;
                 po.SetHighlight(true);
@@ -153,7 +161,7 @@ public class GrabSystem : MonoBehaviour
         heldObject = lookedObject;
         lookedObject = null;
 
-        heldObject.OnGrab();
+        heldObject.OnGrab(_playerStateMachine);
         Debug.Log($"[GrabSystem] Tutuldu: {heldObject.gameObject.name}");
     }
 

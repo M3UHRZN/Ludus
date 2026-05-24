@@ -1,27 +1,58 @@
+using Unity.Cinemachine;
+using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-public class PlayerLook : MonoBehaviour
+public class PlayerLook : NetworkBehaviour
 {
-    [SerializeField] private float mouseSensitivity = 200f;
+    [Header("Hassasiyet")]
+    [SerializeField] private float mouseSensitivity = 0.15f;
+
+    [Header("Referanslar")]
     [SerializeField] private Transform playerBody;
+    [SerializeField] private Transform cameraTarget;
+
+    [Header("Pitch Sinirlari")]
+    [SerializeField] private float minPitch = -85f;
+    [SerializeField] private float maxPitch = 85f;
+
+    public Transform CameraTarget => cameraTarget;
 
     private float _xRotation;
+    private InputAction _lookAction;
+    private CinemachineCamera _vcam;
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
+        if (cameraTarget != null)
+            _vcam = cameraTarget.GetComponent<CinemachineCamera>();
+
+        if (!IsOwner)
+        {
+            if (_vcam != null) _vcam.enabled = false;
+            enabled = false;
+            return;
+        }
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        var input = GetComponent<PlayerInput>();
+        _lookAction = input.actions["Gameplay/Look"];
+
+        // Bu oyuncunun vcam'ini aktif et — CinemachineBrain otomatik devralir
+        if (_vcam != null) _vcam.enabled = true;
     }
 
     private void Update()
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        if (_lookAction == null) return;
+        Vector2 delta = _lookAction.ReadValue<Vector2>();
 
-        _xRotation -= mouseY;
-        _xRotation = Mathf.Clamp(_xRotation, -90f, 90f);
+        _xRotation -= delta.y * mouseSensitivity;
+        _xRotation = Mathf.Clamp(_xRotation, minPitch, maxPitch);
 
-        transform.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
-        playerBody.Rotate(Vector3.up * mouseX);
+        cameraTarget.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
+        playerBody.Rotate(Vector3.up * (delta.x * mouseSensitivity));
     }
 }

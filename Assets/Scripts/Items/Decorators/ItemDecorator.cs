@@ -65,30 +65,12 @@ public class FlashbangDecorator : ItemDecorator
 
     private void TriggerFlashbang(PlayerInventory inventory)
     {
-        // Inventory sahibinin pozisyonundan çevre taraması
-        Vector3 origin = inventory != null
-            ? inventory.transform.position
-            : Vector3.zero;
+        if (inventory == null) return;
 
-        // Çevredeki tüm collider'ları tara
-        Collider[] hits = Physics.OverlapSphere(origin, _flashRadius);
+        // Server-authoritative: client sadece request atar; gercek OverlapSphere ve SetBlinded server'da olur.
+        Vector3 origin = inventory.transform.position;
+        inventory.RequestFlashbang(origin, _flashRadius, _blindDuration);
 
-        foreach (Collider hit in hits)
-        {
-            // EnemyController bileşeni var mı - kontrol (Alp'in scripti)
-            EnemyController enemy = hit.GetComponent<EnemyController>();
-            if (enemy == null) continue;
-
-            // Düşmanı körleştir ve PatrolBehavior'a geri döndür
-            enemy.SetBlinded(true, _blindDuration);
-
-            Debug.Log($"[FlashbangDecorator] {hit.name} körleştirildi ({_blindDuration}s)");
-        }
-
-        // GameEventBus üzerinden herkese bildir (ses, HUD vb.)
-        // GameEventBus.Publish(new FlashbangTriggeredEvent(origin, _flashRadius));
-        // Not: FlashbangTriggeredEvent gerekirse GameEventBus.cs'e eklenebilir
-
-        Debug.Log($"[FlashbangDecorator] Flashbang tetiklendi! Merkez: {origin}, Yarıçap: {_flashRadius}");
+        Debug.Log($"[FlashbangDecorator] Flashbang istegi gonderildi. Merkez: {origin}, Yaricap: {_flashRadius}");
     }
 }

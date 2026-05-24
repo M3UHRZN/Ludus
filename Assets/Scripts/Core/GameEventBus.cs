@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// GameEventBus - Observer Pattern
@@ -88,6 +89,19 @@ public struct ItemPickedUpEvent
     }
 }
 
+/// <summary>!!!Oyuncu bir eşyayı yere bıraktığında yayınlanır. <----- sonradan ekledim -esmnr- </summary>
+public struct ItemDroppedEvent
+{
+    public string ItemName;
+    public int Weight;
+
+    public ItemDroppedEvent(string itemName, int weight)
+    {
+        ItemName = itemName;
+        Weight = weight;
+    }
+}
+
 /// <summary>Oyuncu hasar aldığında yayınlanır.</summary>
 public struct PlayerDamagedEvent
 {
@@ -126,5 +140,111 @@ public struct PlayerDiedEvent
     {
         PlayerId = playerId;
         DeathPosition = deathPosition;
+    }
+}
+
+public enum SessionEndReason { TimeUp, AllDead, Escaped }
+
+/// <summary>Oyun oturumu başladığında yayınlanır.</summary>
+public struct SessionStartedEvent
+{
+    public int PlayerCount;
+    public float SessionDuration;
+
+    public SessionStartedEvent(int playerCount, float sessionDuration)
+    {
+        PlayerCount = playerCount;
+        SessionDuration = sessionDuration;
+    }
+}
+
+/// <summary>Oyun oturumu sona erdiğinde yayınlanır.</summary>
+public struct SessionEndedEvent
+{
+    public SessionEndReason Reason;
+    public float TotalCreditCollected;
+
+    public SessionEndedEvent(SessionEndReason reason, float totalCredit)
+    {
+        Reason = reason;
+        TotalCreditCollected = totalCredit;
+    }
+}
+
+/// <summary>
+/// Prosedürel harita üretimi tamamlandığında MapGenerator tarafından yayınlanır.
+/// EnemySpawner ve diğer dinleyiciler bu event'ten sonra
+/// sahnedeki marker'ları (EnemySpawnPoint, PatrolWaypointGroup) taramaya başlar.
+/// </summary>
+public struct MapReadyEvent
+{
+    public int Seed;
+    public int RoomCount;
+    /// <summary>
+    /// Her bir oda icin world-space AABB. NetworkedItemSpawner bu bounds'larin
+    /// icine NavMesh snap'li rastgele item pozisyonlari uretir.
+    /// Null veya empty array de gecerlidir (eski caller'lar icin) — bu durumda
+    /// item spawn atlanir.
+    /// </summary>
+    public Bounds[] RoomBounds;
+
+    public MapReadyEvent(int seed, int roomCount)
+    {
+        Seed = seed;
+        RoomCount = roomCount;
+        RoomBounds = null;
+    }
+
+    public MapReadyEvent(int seed, int roomCount, Bounds[] roomBounds)
+    {
+        Seed = seed;
+        RoomCount = roomCount;
+        RoomBounds = roomBounds;
+    }
+}
+
+/// <summary>Ölen bir oyuncu Infirmary'de canlandırıldığında yayınlanır. <----- sprint2 de eklenecek ben simdiden ekledim 8.5.26 -esmnr- </summary>
+public struct PlayerRevivedEvent
+{
+    public int PlayerId;
+
+    public PlayerRevivedEvent(int playerId)
+    {
+        PlayerId = playerId;
+    }
+}
+
+/// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+public struct LevelEndedEvent
+{
+    public bool IsSuccess;
+    public int CollectedCredits;
+    public int PenaltyAmount;
+    public float QuotaFillAmount;
+
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
+    }
+}
+
+/// <summary>
+/// Sahnede bir ses kaynagi olustugunda yayinlanir (ayak sesi, item dusurme,
+/// silah sesi, vs.). EnemyController bunu dinler ve menzilindeyse Chase'e gecer.
+/// </summary>
+public struct NoiseEmittedEvent
+{
+    public UnityEngine.Vector3 Position;
+    public float Range;
+    public string Source;
+
+    public NoiseEmittedEvent(UnityEngine.Vector3 position, float range, string source = null)
+    {
+        Position = position;
+        Range = range;
+        Source = source;
     }
 }

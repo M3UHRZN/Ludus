@@ -1,7 +1,10 @@
+using System;
+using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerMovement : MonoBehaviour
+public class PlayerMovement : NetworkBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 5f;
@@ -20,23 +23,82 @@ public class PlayerMovement : MonoBehaviour
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.3f;
-    [SerializeField] private LayerMask groundMask = ~0; // varsayılan: her şeyi algıla
+    [SerializeField] private LayerMask groundMask = ~0;
 
     [Header("Crouch Visual")]
-    [SerializeField] private Transform visualMesh; // kapsülün mesh objesi
+    [SerializeField] private Transform visualMesh;
+
+    public readonly NetworkVariable<bool> NetCrouching = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
+
+    public readonly NetworkVariable<bool> NetGrounded = new(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner);
 
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isCrouching;
+    private bool _wantCrouch;
+    private float _speedMultiplier = 1f;
+
+    private InputAction _moveAction;
+    private InputAction _jumpAction;
+    private InputAction _crouchAction;
+    private InputAction _sprintAction;
+
+    private Action<InputAction.CallbackContext> _onCrouchStarted;
+    private Action<InputAction.CallbackContext> _onCrouchCanceled;
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
     }
 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner)
+        {
+            NetCrouching.OnValueChanged += OnNetCrouchingChanged;
+            enabled = false;
+            return;
+        }
+
+        var input = GetComponent<PlayerInput>();
+        _moveAction   = input.actions["Gameplay/Move"];
+        _jumpAction   = input.actions["Gameplay/Jump"];
+        _crouchAction = input.actions["Gameplay/Crouch"];
+        _sprintAction = input.actions["Gameplay/Sprint"];
+
+        _onCrouchStarted  = _ => _wantCrouch = true;
+        _onCrouchCanceled = _ => _wantCrouch = false;
+        _crouchAction.started  += _onCrouchStarted;
+        _crouchAction.canceled += _onCrouchCanceled;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (!IsOwner)
+        {
+            NetCrouching.OnValueChanged -= OnNetCrouchingChanged;
+            return;
+        }
+
+        if (_crouchAction != null)
+        {
+            if (_onCrouchStarted  != null) _crouchAction.started  -= _onCrouchStarted;
+            if (_onCrouchCanceled != null) _crouchAction.canceled -= _onCrouchCanceled;
+        }
+    }
+
+    private void OnNetCrouchingChanged(bool prev, bool current) { }
+
     private void Update()
     {
+        if (_moveAction == null) return;
         CheckGround();
         HandleCrouch();
         HandleMovement();
@@ -44,25 +106,62 @@ public class PlayerMovement : MonoBehaviour
         ApplyGravity();
     }
 
+    public bool IsGrounded => _isGrounded;
+    public float RunSpeed   => runSpeed;
+
+    // Aktif yatay hız (m/s) — animatör blend tree direkt bunu okur
+    public float CurrentSpeed
+    {
+        get
+        {
+            if (_moveAction == null) return 0f;
+            if (_moveAction.ReadValue<Vector2>().magnitude < 0.1f) return 0f;
+            if (_isCrouching)  return crouchSpeed;
+            if (_sprintAction != null && _sprintAction.IsPressed()) return runSpeed;
+            return walkSpeed;
+        }
+    }
+
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        _speedMultiplier = multiplier;
+    }
+
+    /// <summary>
+    /// Dis kaynakli anlik yer degistirme (knockback gibi). CharacterController'i
+    /// dogrudan iter. Bu script stun sirasinda disabled olsa bile calisir cunku
+    /// CharacterController ayri ve hala enabled bir component'tir.
+    /// </summary>
+    public void ApplyExternalMove(Vector3 delta)
+    {
+        if (_controller != null && _controller.enabled)
+            _controller.Move(delta);
+    }
+
     private void CheckGround()
     {
-        // groundMask atanmamışsa CharacterController'ın kendi kontrolünü de kullan
         _isGrounded = _controller.isGrounded ||
                       Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask);
 
         if (_isGrounded && _velocity.y < 0f)
             _velocity.y = -2f;
+
+        if (NetGrounded.Value != _isGrounded)
+            NetGrounded.Value = _isGrounded;
     }
 
     private void HandleCrouch()
     {
-        bool wantCrouch = Input.GetKey(KeyCode.LeftControl);
+        bool shouldCrouch = _wantCrouch;
 
-        // Prevent standing up if blocked above
-        if (_isCrouching && !wantCrouch && !CanStandUp())
-            wantCrouch = true;
+        if (_isCrouching && !shouldCrouch && !CanStandUp())
+            shouldCrouch = true;
 
-        _isCrouching = wantCrouch;
+        bool prev = _isCrouching;
+        _isCrouching = shouldCrouch;
+
+        if (_isCrouching != prev)
+            NetCrouching.Value = _isCrouching;
 
         float targetHeight = _isCrouching ? crouchHeight : standingHeight;
         _controller.height = Mathf.Lerp(_controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
@@ -71,43 +170,35 @@ public class PlayerMovement : MonoBehaviour
         center.y = _controller.height / 2f;
         _controller.center = center;
 
-        // Görsel mesh'i de küçült (atanmışsa)
-        if (visualMesh != null)
-        {
-            float targetScaleY = _isCrouching ? 0.5f : 1f;
-            Vector3 s = visualMesh.localScale;
-            s.y = Mathf.Lerp(s.y, targetScaleY, Time.deltaTime * crouchTransitionSpeed);
-            visualMesh.localScale = s;
-        }
     }
 
     private bool CanStandUp()
     {
-        // Spherecast upward to check for ceiling
-        return !Physics.Raycast(transform.position, Vector3.up, standingHeight + 0.1f);
+        // Capsule'ın tepesinden başla — transform.position'dan başlarsa kendi kapsülüne çarpar
+        float capsuleTop = _controller.height + 0.05f;
+        float checkDist  = standingHeight - _controller.height;
+        return !Physics.Raycast(transform.position + Vector3.up * capsuleTop, Vector3.up, checkDist);
     }
 
     private void HandleMovement()
     {
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * h + transform.forward * v;
+        Vector2 input = _moveAction.ReadValue<Vector2>();
+        Vector3 move = transform.right * input.x + transform.forward * input.y;
 
         float speed;
         if (_isCrouching)
             speed = crouchSpeed;
-        else if (Input.GetKey(KeyCode.LeftShift))
+        else if (_sprintAction.IsPressed())
             speed = runSpeed;
         else
             speed = walkSpeed;
 
-        _controller.Move(move * (speed * Time.deltaTime));
+        _controller.Move(move * (speed * _speedMultiplier * Time.deltaTime));
     }
 
     private void HandleJump()
     {
-        if (Input.GetButtonDown("Jump") && _isGrounded && !_isCrouching)
+        if (_jumpAction.WasPressedThisFrame() && _isGrounded && !_isCrouching)
             _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
     }
 
