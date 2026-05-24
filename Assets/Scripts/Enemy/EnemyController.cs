@@ -278,6 +278,26 @@ public class EnemyController : MonoBehaviour
             SwitchBehavior(new FleeBehavior(threat, duration > 0f ? duration : 3f));
         }
     }
+    public void SetStunned(bool stunned, float duration)
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
+        if (stunned && Agent != null)
+        {
+            Agent.isStopped = true;
+            Invoke(nameof(ResumeFromStun), duration > 0f ? duration : 2f);
+            Debug.Log($"[EnemyController] Stun applied ({duration}s)");
+        }
+    }
+
+    private void ResumeFromStun()
+    {
+        if (Agent != null)
+            Agent.isStopped = false;
+
+        SwitchBehavior(CreateDefaultBehavior());
+        Debug.Log("[EnemyController] Stun ended, returning to default behavior.");
+    }
 
 #if UNITY_EDITOR
     private void OnDrawGizmos()
