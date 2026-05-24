@@ -499,7 +499,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NetworkedItemSpawner
   ShowTopMostFoldoutHeaderGroup: 1
   _lootTable:
-  - Prefab: {fileID: 2136776967511240784, guid: b4266d86713704ea8ae2b0b5493c2b15, type: 3}
+  - Prefab: {fileID: 8906665426514316541, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
     Weight: 1
     MinPerRoom: 0
     MaxPerRoom: 2
