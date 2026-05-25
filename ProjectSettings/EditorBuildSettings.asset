@@ -26,9 +26,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scripts/Flashbang/Scene/FlashbangTest.unity
     guid: 872559a9e191f4a6c8e21031a5af9411
-  - enabled: 1
-    path: Assets/Scenes/DevTest/YasinTest/YasinTest.unity
-    guid: 93f413a10cd844113b8517c686f9b36d
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 47739f536577cc741b07ac27361a257d, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 574b071b177b5804e9d76fce97f3c719, type: 3}
