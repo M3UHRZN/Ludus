@@ -1,28 +1,28 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement; // Sahneler arasï¿½ geï¿½iï¿½ iï¿½in ï¿½art!
+using UnityEngine.SceneManagement; // Sahneler arasý geçiþ için þart!
 
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
-    public GameObject extractionPanel; // Tï¿½m ekranï¿½ aï¿½ï¿½p kapatmak iï¿½in
+    public GameObject extractionPanel; // Tüm ekraný açýp kapatmak için
 
     [Header("Metinler")]
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI creditsText;
     public TextMeshProUGUI penaltyText;
 
-    [Header("Kota Barï¿½")]
+    [Header("Kota Barý")]
     public Image quotaFillImage;
 
     private void Start()
     {
-        // Oyun baï¿½ladï¿½ï¿½ï¿½nda bu ekrani gizli yaparï¿½z, sadece gï¿½rev bittiï¿½inde gï¿½sterilecek
+        // Oyun baþladýðýnda bu ekrani gizli yaparýz, sadece görev bittiðinde gösterilecek
         extractionPanel.SetActive(false);
     }
 
-    // --- EVENTBUS ABONELï¿½KLERï¿½ BAï¿½LANGICI ---
+    // --- EVENTBUS ABONELÝKLERÝ BAÞLANGICI ---
     private void OnEnable()
     {
         GameEventBus.Subscribe<LevelEndedEvent>(OnLevelEnded);
@@ -33,43 +33,43 @@ public class ExtractionUIController : MonoBehaviour
         GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
     }
 
-    // Olay tetiklendiï¿½inde ï¿½alï¿½ï¿½acak fonksiyon
+    // Olay tetiklendiðinde çalýþacak fonksiyon
     private void OnLevelEnded(LevelEndedEvent evt)
     {
-        // Event'ten gelen verileri alï¿½p, ekran gï¿½sterme fonksiyonuna gonderiyoruz
-        // !!!Degisken isimlerini ben belirledim, sen event struct'ï¿½nda ne isim verdin ise onu yazarsï¿½n. Benim verdiï¿½im isimler sadece ï¿½rnek!!!
+        // Event'ten gelen verileri alýp, ekran gösterme fonksiyonuna gonderiyoruz
+        // !!!Degisken isimlerini ben belirledim, sen event struct'ýnda ne isim verdin ise onu yazarsýn. Benim verdiðim isimler sadece örnek!!!
         ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
     }
-    // --- EVENTBUS ABONELï¿½KLERï¿½ Bï¿½Tï¿½ï¿½ï¿½ ---
+    // --- EVENTBUS ABONELÝKLERÝ BÝTÝÞÝ ---
 
     public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
     {
 
-        // 1. Ekranï¿½ gï¿½rï¿½nï¿½r yap
+        // 1. Ekraný görünür yap
         extractionPanel.SetActive(true);
 
         // 2. OYUNU DURDUR!
         Time.timeScale = 0f;
 
-        // 3. Baï¿½lï¿½ï¿½ï¿½ baï¿½arï¿½ durumuna gï¿½re ayarla
+        // 3. Baþlýðý baþarý durumuna göre ayarla
         if (isSuccess)
         {
-            titleText.text = "Gï¿½REV TAMAMLANDI";
+            titleText.text = "GÖREV TAMAMLANDI";
             titleText.color = Color.white;
         }
         else
         {
-            titleText.text = "KOTA BAï¿½ARISIZ";
+            titleText.text = "KOTA BAÞARISIZ";
             titleText.color = Color.red;
         }
 
-        // 4. Kredileri yazdï¿½r
+        // 4. Kredileri yazdýr
         creditsText.text = "Toplanan Kredi: " + collectedCredits;
 
-        // 5. Ceza kontrolï¿½ (Ceza yoksa yazï¿½yï¿½ tamamen gizle)
+        // 5. Ceza kontrolü (Ceza yoksa yazýyý tamamen gizle)
         if (penaltyAmount > 0)
         {
-            penaltyText.text = "Terk Cezasï¿½: -" + penaltyAmount + " Kredi";
+            penaltyText.text = "Terk Cezasý: -" + penaltyAmount + " Kredi";
             penaltyText.gameObject.SetActive(true);
         }
         else
@@ -77,15 +77,21 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
-        // 6. Kota barï¿½nï¿½ doldur (0 ile 1 arasï¿½nda bir deï¿½er, ï¿½rn: %80 iï¿½in 0.8f)
+        // 6. Kota barýný doldur (0 ile 1 arasýnda bir deðer, örn: %80 için 0.8f)
         quotaFillImage.fillAmount = quotaFillAmount;
     }
 
-    // Bu fonksiyonu "Gemiye Dï¿½n" butonunun OnClick() kï¿½smï¿½na baï¿½lanacak!!!!!!!!
+    // Bu fonksiyonu "Gemiye Dön" butonunun OnClick() kýsmýna baðlanacak!!!!!!!!
     public void ReturnToShip()
     {
+        // 1. Zamaný mutlaka geri baþlat! (Yoksa lobi sahnesi de donuk kalýr, týklayamazsýn bile)
         Time.timeScale = 1f;
-        extractionPanel.SetActive(false);
-        Debug.Log("[ExtractionUIController] UI closed, scene transition handled by NetworkManager.");
+
+        // 2. Lobi sahnesini yükle!
+        // Not: Metin lobi sahnesinin adýný (örneðin "LobbyMenu") kesinleþtirdiðinde 
+        // aþaðýdaki yorum satýrýný kaldýrýp o ismi yazarsýn. Þimdilik test için Debug atýyoruz.
+
+        Debug.Log("Sistem: Gemiye Dönülüyor... Lobi sahnesi yüklenecek.");
+        // SceneManager.LoadScene("LobbyScene"); 
     }
 }

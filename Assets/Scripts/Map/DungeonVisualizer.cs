@@ -31,12 +31,6 @@ public class DungeonVisualizer : MonoBehaviour
     [Tooltip("Giriş odası (Start) için özel kapı prefabı (opsiyonel)")]
     [SerializeField] private GameObject _entryDoorPrefab;
 
-    [Header("Çıkış Odası Prefabları")]
-    [Tooltip("End odasına spawn edilecek ExtractZone prefabı")]
-    [SerializeField] private GameObject _extractZonePrefab;
-    [Tooltip("End odasına spawn edilecek ExitZone prefabı")]
-    [SerializeField] private GameObject _exitZonePrefab;
-
     [Header("Boyutlar (dünya birimi)")]
     [Tooltip("Oda prefabının XZ boyutu")]
     [SerializeField] private float _roomSize = 6f;
@@ -70,6 +64,8 @@ public class DungeonVisualizer : MonoBehaviour
             room.Coordinates.x * stride, 0,
             room.Coordinates.y * stride);
 
+        // Birleşik odalar birden fazla parent GO'ya bölünür: origin hücre floor'u taşır,
+        // diğer hücreler yalnızca dış duvarlarını taşır.
         var parent = new GameObject(RoomName(room)).transform;
         parent.SetParent(_root);
         parent.position = worldPos;
@@ -79,17 +75,6 @@ public class DungeonVisualizer : MonoBehaviour
         SpawnSide(room, ConnectionDirection.South, worldPos, parent, data);
         SpawnSide(room, ConnectionDirection.East,  worldPos, parent, data);
         SpawnSide(room, ConnectionDirection.West,  worldPos, parent, data);
-
-        if (room.Type == RoomType.Start)
-        {
-            if (_extractZonePrefab != null)
-                Instantiate(_extractZonePrefab, worldPos + new Vector3(-1.5f, 0, 1f), Quaternion.identity, parent);
-
-            if (_exitZonePrefab != null)
-                Instantiate(_exitZonePrefab, worldPos + new Vector3(1.5f, 0, 1f), Quaternion.identity, parent);
-
-            Debug.Log($"[DungeonVisualizer] ExtractZone ve ExitZone spawn edildi: {room.Coordinates}");
-        }
     }
 
     private void SpawnFloor(RoomNode room, DungeonData data, Transform parent)
