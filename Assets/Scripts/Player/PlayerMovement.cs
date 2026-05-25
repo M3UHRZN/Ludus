@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerMovement : NetworkBehaviour
+public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
 {
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 5f;
