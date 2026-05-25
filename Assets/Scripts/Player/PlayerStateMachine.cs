@@ -42,8 +42,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     // NetState server'dan roundtrip ile gelir; owner local state ise aninda guncellenir.
     public PlayerStateEnum LocalState => _currentState != null ? StateToEnum(_currentState) : (PlayerStateEnum)NetState.Value;
 
-    public Transform SpectateTarget => Look != null ? Look.CameraTarget : transform;
-    public string DisplayName => $"Player-{OwnerClientId}";
+    public Transform SpectateTarget => transform;    public string DisplayName => $"Player-{OwnerClientId}";
     public bool CanBeSpectated => IsAlive;
 
     private void Awake()
