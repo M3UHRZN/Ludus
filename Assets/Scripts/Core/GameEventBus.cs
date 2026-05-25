@@ -229,6 +229,7 @@ public struct LevelEndedEvent
         PenaltyAmount = penaltyAmount;
         QuotaFillAmount = quotaFillAmount;
     }
+    
 }
 
 /// <summary>
