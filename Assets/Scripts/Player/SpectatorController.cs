@@ -45,7 +45,7 @@ public class SpectatorController : NetworkBehaviour
         SetupSpectateCamera();
 
         if (_targets.Count > 0)
-            FocusTarget(0);
+        FocusTarget(0);
     }
 
     private void OnDisable()
@@ -95,7 +95,26 @@ public class SpectatorController : NetworkBehaviour
             _spectateCamera = go.AddComponent<CinemachineCamera>();
         }
 
-        _spectateCamera.Priority = 20;
+        _spectateCamera.Priority.Value = 100;
+
+        // Position ve Rotation control ekle
+        if (_spectateCamera.GetComponent<CinemachineFollow>() == null)
+            _spectateCamera.gameObject.AddComponent<CinemachineFollow>();
+
+        if (_spectateCamera.GetComponent<CinemachineRotationComposer>() == null)
+            _spectateCamera.gameObject.AddComponent<CinemachineRotationComposer>();
+
+        var follow = _spectateCamera.GetComponent<CinemachineFollow>();
+        if (follow != null)
+        {
+            follow.FollowOffset = new Vector3(0, 3f, -4f);
+        }
+
+        var composer = _spectateCamera.GetComponent<CinemachineRotationComposer>();
+        if (composer != null)
+        {
+            composer.TargetOffset = new Vector3(0, 0.5f, 0);
+        }     
     }
 
     private void FocusTarget(int index)
@@ -107,6 +126,7 @@ public class SpectatorController : NetworkBehaviour
         var target = _targets[_currentIndex];
         _spectateCamera.Follow = target.SpectateTarget;
         _spectateCamera.LookAt = target.SpectateTarget;
+        _spectateCamera.transform.rotation = Quaternion.identity;
     }
 
     private void CycleTarget(int direction)
