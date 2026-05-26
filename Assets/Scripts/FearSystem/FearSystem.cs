@@ -120,11 +120,30 @@ public class FearSystem : MonoBehaviour
     private float _smoothedHeartbeatLevel;
     private Vector3 _cameraRestLocalPosition;
     private bool _hasCameraRestPosition;
+    private ISpeedModifiable _speed;   // gercek PlayerMovement ya da test TestPlayer
+    private Volume _runtimeVolume;     // sahnede Volume yoksa kod ile olusturulan
+    private GameObject _runtimeOverlayGo;  // sahnede kirmizi overlay yoksa kod ile olusturulan
 
     // ---------------------------------------------------------------
 
     private void Start()
     {
+        // Hiz cezasi icin ISpeedModifiable'i coz: elle atanan playerMovement (test sahnesi)
+        // ya da bu oyuncudaki gercek PlayerMovement. Boylece hem standalone test sahnesinde
+        // hem de networked gercek oyuncuda calisir.
+        _speed = playerMovement as ISpeedModifiable;
+        if (_speed == null) _speed = GetComponentInParent<ISpeedModifiable>();
+
+        // Sahne Global Volume'u prefab uzerinde elle atanamaz; runtime'da otomatik bul.
+        if (postProcessVolume == null) postProcessVolume = FindFirstObjectByType<Volume>();
+        // Sahnede hic Volume yoksa kendi post-process Volume'umuzu kod ile olustur
+        // (Anil'in efektleri icin elle Volume kurulumu gerekmesin).
+        if (postProcessVolume == null) postProcessVolume = CreateRuntimeVolume();
+        // URP'de kameranin post-processing'i kapali ise efektler gorunmez — ac.
+        EnableCameraPostProcessing();
+        // Sahnede tam-ekran kirmizi korku overlay'i yoksa kod ile olustur (Anil'in kirmizi efekti).
+        if (fearOverlay == null) fearOverlay = CreateRuntimeOverlay();
+
         if (postProcessVolume != null)
         {
             postProcessVolume.profile.TryGet(out _vignette);
@@ -145,6 +164,88 @@ public class FearSystem : MonoBehaviour
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
         GameEventBus.Unsubscribe<PlayerDamagedEvent>(OnPlayerDamaged);
         ResetCameraPosition();
+
+        if (_runtimeVolume != null)
+        {
+            if (_runtimeVolume.profile != null) Destroy(_runtimeVolume.profile);
+            Destroy(_runtimeVolume.gameObject);
+        }
+        if (_runtimeOverlayGo != null) Destroy(_runtimeOverlayGo);
+    }
+
+    /// <summary>
+    /// Sahnede Volume yoksa post-process efektleri (vignette, kromatik, lens, blur) icin
+    /// kod ile global bir Volume + profil olusturur. Boylece elle Volume kurulumu gerekmez.
+    /// </summary>
+    private Volume CreateRuntimeVolume()
+    {
+        var go = new GameObject("FearSystem_RuntimeVolume");
+        go.transform.SetParent(transform, false);
+
+        var vol = go.AddComponent<Volume>();
+        vol.isGlobal = true;
+        vol.priority = 100f;
+
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        vol.profile = profile;
+
+        var vig = profile.Add<Vignette>(true);
+        vig.intensity.value = 0.2f;
+        vig.color.value = new Color(0.5f, 0f, 0f);   // kirmizi vignette (Anil'in sahnesindeki gibi)
+
+        var ca = profile.Add<ChromaticAberration>(true);
+        ca.intensity.value = 0f;
+
+        var ld = profile.Add<LensDistortion>(true);
+        ld.intensity.value = 0f;
+
+        var dof = profile.Add<DepthOfField>(true);
+        dof.mode.value = DepthOfFieldMode.Gaussian;
+        dof.gaussianMaxRadius.value = 0f;
+        dof.active = true;
+
+        _runtimeVolume = vol;
+        Debug.Log("[FearSystem] Runtime post-process Volume olusturuldu.");
+        return vol;
+    }
+
+    /// <summary>
+    /// Sahnede tam-ekran kirmizi korku overlay'i yoksa kod ile olusturur (Anil'in
+    /// FearSceneTest'teki kirmizi efektin ayni si). Alpha'si korkuyla ApplyVisualEffects'te artar.
+    /// </summary>
+    private UnityEngine.UI.Image CreateRuntimeOverlay()
+    {
+        var canvasGo = new GameObject("FearSystem_RuntimeOverlay");
+        canvasGo.transform.SetParent(transform, false);
+
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 999;   // her seyin ustunde
+        canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+
+        var imgGo = new GameObject("Overlay");
+        imgGo.transform.SetParent(canvasGo.transform, false);
+        var img = imgGo.AddComponent<UnityEngine.UI.Image>();
+        img.color = new Color(0.55f, 0f, 0f, 0f);   // kirmizi, baslangic alpha 0
+        img.raycastTarget = false;
+
+        var rt = img.rectTransform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        _runtimeOverlayGo = canvasGo;
+        return img;
+    }
+
+    /// <summary>URP'de aktif kameranin post-processing'ini acar (kapaliysa efekt gorunmez).</summary>
+    private void EnableCameraPostProcessing()
+    {
+        var cam = Camera.main;
+        if (cam == null) return;
+        var data = cam.GetUniversalAdditionalCameraData();
+        if (data != null) data.renderPostProcessing = true;
     }
 
     // ---------------------------------------------------------------
@@ -165,14 +266,13 @@ public class FearSystem : MonoBehaviour
 
         if (dark) fearTarget = Mathf.Max(fearTarget, 30f);
 
-        _smoothedFearTarget = Mathf.MoveTowards(
-            _smoothedFearTarget,
-            fearTarget,
-            fearTargetFollowSpeed * dt);
-
-        // Smoothly move fear toward target
-        float speed = _smoothedFearTarget > _fearLevel ? 12f : fearDecayRate;
-        _fearLevel = Mathf.MoveTowards(_fearLevel, _smoothedFearTarget, speed * dt);
+        // Tehdit yaklasinca korku ANINDA hedefe ziplar (mesafeye gore direkt tepki);
+        // tehdit uzaklasinca yavasca iner (gerilim kademeli dagilir).
+        _smoothedFearTarget = fearTarget;
+        if (fearTarget > _fearLevel)
+            _fearLevel = fearTarget;
+        else
+            _fearLevel = Mathf.MoveTowards(_fearLevel, fearTarget, fearDecayRate * dt);
 
         ApplyVisualEffects(_fearLevel);
         ApplySpeedPenalty(_fearLevel);
@@ -219,7 +319,7 @@ public class FearSystem : MonoBehaviour
         ApplyVisualEffects(0f);
         ResetCameraPosition();
         UpdateHeartbeat(0f, 0f);
-        playerMovement?.SetSpeedMultiplier(1f);
+        _speed?.SetSpeedMultiplier(1f);
     }
 
     // ---------------------------------------------------------------
@@ -286,7 +386,10 @@ public class FearSystem : MonoBehaviour
         }
 
         bool approaching = rawDistance < _smoothedClosestDistance;
-        float followSpeed = approaching ? distanceApproachFollowSpeed : distanceRetreatFollowSpeed;
+        // Yaklasirken hizli guncelle (tehdit aninda hissedilsin), uzaklasirken yumusat.
+        float followSpeed = approaching
+            ? Mathf.Max(distanceApproachFollowSpeed, 25f)
+            : distanceRetreatFollowSpeed;
         _smoothedClosestDistance = Mathf.MoveTowards(_smoothedClosestDistance, rawDistance, followSpeed * dt);
         return _smoothedClosestDistance;
     }
@@ -343,9 +446,9 @@ public class FearSystem : MonoBehaviour
 
     private void ApplySpeedPenalty(float fear)
     {
-        if (playerMovement == null) return;
+        if (_speed == null) return;
         float penalty = Mathf.InverseLerp(70f, 100f, fear);
-        playerMovement.SetSpeedMultiplier(Mathf.Lerp(1f, maxFearSpeedMultiplier, penalty));
+        _speed.SetSpeedMultiplier(Mathf.Lerp(1f, maxFearSpeedMultiplier, penalty));
     }
 
     private void ConfigureHeartbeatSource()
@@ -417,7 +520,7 @@ public class FearSystem : MonoBehaviour
         _panicThresholdTimer = 0f;
         _stunned   = true;
 
-        playerMovement?.SetSpeedMultiplier(0f);
+        _speed?.SetSpeedMultiplier(0f);
         ResetCameraPosition();
 
         // Camera shake + blur during stun
@@ -427,7 +530,7 @@ public class FearSystem : MonoBehaviour
         yield return new WaitForSeconds(panicStunDuration);
 
         _stunned = false;
-        playerMovement?.SetSpeedMultiplier(1f);
+        _speed?.SetSpeedMultiplier(1f);
 
         yield return new WaitForSeconds(panicCooldown);
         _panicLock = false;

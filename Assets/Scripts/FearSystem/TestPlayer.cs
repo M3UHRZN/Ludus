@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 /// FearSystem calls SetSpeedMultiplier() to apply speed penalty.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
-public class TestPlayer : MonoBehaviour
+public class TestPlayer : MonoBehaviour, ISpeedModifiable
 {
     [Header("Movement")]
     public float walkSpeed        = 5f;
