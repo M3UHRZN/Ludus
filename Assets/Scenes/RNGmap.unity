@@ -1934,6 +1934,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExtractionManager
   ShowTopMostFoldoutHeaderGroup: 1
+  lobbySceneName: LobbyScene
 --- !u!1001 &1255193815
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3875,7 +3876,7 @@ MonoBehaviour:
   GlobalObjectIdHash: 1019243682
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
-  Ownership: 1
+  Ownership: 8
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0

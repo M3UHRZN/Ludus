@@ -1,13 +1,9 @@
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem;
 
 public class ExitZoneInteractable : MonoBehaviour, IInteractable
 {
-    [Header("Scene")]
-    public string lobbySceneName = "LobbyScene";
-
     [Header("Prompts")]
     public string readyPrompt    = "Return to Lobby [E]";
     public string notReadyPrompt = "Drop an item first!";
@@ -29,14 +25,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
     {
         Debug.Log("[ExitZone] Interact çağrıldı!");
         if (!CanInteract(machine)) return;
-
-        ShowResultsLocalUI();
-
-        ExtractionManager.Instance?.ResetForNewRun();
-
-        NetworkManager.Singleton.SceneManager.LoadScene(
-            lobbySceneName,
-            LoadSceneMode.Single);
+        ExtractionManager.Instance?.RequestTeamExtractionRpc();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -76,16 +65,4 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
         }
     }
 
-    private void ShowResultsLocalUI()
-    {
-        var manager = ExtractionManager.Instance;
-        if (manager == null) return;
-
-        GameEventBus.Publish(new LevelEndedEvent(
-            isSuccess:        true,
-            collectedCredits: manager.TotalCredits.Value,
-            penaltyAmount:    0,
-            quotaFillAmount:  Mathf.Clamp01(manager.ExtractedItemCount.Value / 10f)
-        ));
-    }
 }

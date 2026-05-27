@@ -1,9 +1,16 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class ExtractionManager : NetworkBehaviour
 {
     public static ExtractionManager Instance { get; private set; }
+
+    [Header("Scene")]
+    [SerializeField] private string lobbySceneName = "LobbyScene";
+
+    // Server-only: bir oyuncu extraction'ı tetikledikten sonra tekrar tetiklemeyi engeller.
+    private bool _runEnding;
 
     public readonly NetworkVariable<int> ExtractedItemCount = new(
         0,
@@ -57,5 +64,17 @@ public class ExtractionManager : NetworkBehaviour
         if (!IsServer) return;
         ExtractedItemCount.Value = 0;
         TotalCredits.Value       = 0;
+        _runEnding               = false;
+    }
+
+    // Bir oyuncu exit zone'da E'ye basınca çağrılır. Server tüm takımı doğrudan lobby'e döndürür.
+    // (Sonuç ekranı sonradan lobby tarafında gösterilecek.)
+    [Rpc(SendTo.Server)]
+    public void RequestTeamExtractionRpc()
+    {
+        if (_runEnding) return;
+        if (!HasExtractedItems) return;
+        _runEnding = true;   // çift tetiklemeye karşı kilit; sahne reload'unda manager taze spawn olur
+        NetworkManager.SceneManager.LoadScene(lobbySceneName, LoadSceneMode.Single);
     }
 }
