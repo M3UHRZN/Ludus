@@ -44,12 +44,25 @@ public class DungeonVisualizer : MonoBehaviour
     [SerializeField] private float _corridorLength = 4f;
     private float Stride => _roomSize + _corridorLength;
 
+    [Header("Dekor Props")]
+    [Tooltip("Yerleştirilecek dekor modellerinin palette'i")]
+    [SerializeField] private PropPaletteSO _propPalette;
+    [Tooltip("Prop yerleştirmeyi aç/kapat")]
+    [SerializeField] private bool _placeProps = true;
+    [Tooltip("Oda başına minimum prop sayısı")]
+    [SerializeField] private int _minPropsPerRoom = 2;
+    [Tooltip("Oda başına maksimum prop sayısı")]
+    [SerializeField] private int _maxPropsPerRoom = 5;
+
+    private int _seed;
+
     private DungeonData _dungeonData;
     private Transform _root;
 
-    public void Visualize(DungeonData data)
+    public void Visualize(DungeonData data, int seed)
     {
         _dungeonData = data;
+        _seed = seed;
         if (_root != null)
         {
             if (Application.isPlaying)
@@ -113,7 +126,36 @@ public class DungeonVisualizer : MonoBehaviour
         }
 
         if (prefab == null) return;
-        Instantiate(prefab, GroupFloorCenter(room), Quaternion.identity, parent);
+        var floorInstance = Instantiate(prefab, GroupFloorCenter(room), Quaternion.identity, parent);
+        PlaceProps(room, floorInstance.transform);
+    }
+
+    private void PlaceProps(RoomNode room, Transform floorInstance)
+    {
+        if (!_placeProps || _propPalette == null) return;
+        if (room.Type == RoomType.Start) return; // Start odası temiz kalsın
+
+        var anchors = floorInstance.GetComponentsInChildren<PropAnchor>(true);
+        if (anchors.Length == 0) return;
+
+        var categories = new PropCategory[anchors.Length];
+        for (int i = 0; i < anchors.Length; i++)
+            categories[i] = anchors[i].category;
+
+        var rng = new System.Random(PropPlacer.RoomSeed(_seed, room.Coordinates));
+        var placements = PropPlacer.SelectPlacements(
+            categories, _propPalette.entries, _minPropsPerRoom, _maxPropsPerRoom, rng);
+
+        foreach (var p in placements)
+        {
+            var entry = _propPalette.entries[p.EntryIndex];
+            if (entry.prefab == null) continue;
+
+            var anchor = anchors[p.AnchorIndex];
+            var rot = anchor.transform.rotation * Quaternion.Euler(0f, p.Yaw, 0f);
+            var go = Instantiate(entry.prefab, anchor.transform.position, rot, anchor.transform);
+            go.transform.localScale *= p.Scale;
+        }
     }
 
     private void SpawnSide(RoomNode room, ConnectionDirection dir,
