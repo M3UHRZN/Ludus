@@ -146,6 +146,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c31501b18d95d82419dad970a9527842, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4064958296200407397}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c31501b18d95d82419dad970a9527842, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7649722019915016057}
   m_SourcePrefab: {fileID: 100100000, guid: c31501b18d95d82419dad970a9527842, type: 3}
 --- !u!4 &203571165200434538 stripped
 Transform:
@@ -270,6 +273,21 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &7649722019915016057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691560146198372304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72b2708ef572772478b4d97731bcc64e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAudioController
+  footstepClip: {fileID: 8300000, guid: ae89872e4620cd546a041497b5a2865d, type: 3}
+  fallClip: {fileID: 8300000, guid: 5b55f88f63cd69744ac6b08174429952, type: 3}
+  deathClip: {fileID: 8300000, guid: b359fa91f19320b418d71953b10468aa, type: 3}
 --- !u!4 &1028237385370330574 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 800668680855996239, guid: c31501b18d95d82419dad970a9527842, type: 3}

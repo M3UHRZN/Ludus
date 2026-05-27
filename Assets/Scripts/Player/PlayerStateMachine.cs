@@ -204,6 +204,11 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     [Rpc(SendTo.Owner)]
     private void ApplyKnockbackRpc(Vector3 horizontalVelocity)
     {
+        // === DÜŞMAN YAKIN VURUŞ SESİ ===
+        var audioCtrl = GetComponentInChildren<PlayerAudioController>();
+        if (audioCtrl != null) audioCtrl.PlayPunchSound();
+        // ===============================
+
         if (Movement != null)
             StartCoroutine(KnockbackRoutine(horizontalVelocity));
 
@@ -285,6 +290,10 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
     private void ApplyDamage(float amount, Vector3 hitPoint, ulong attackerClientId)
     {
+        // ApplyDamage fonksiyonunun içinde canın sıfırdan büyük olduğu ama hasar aldığı yere:
+        var audioCtrl = GetComponentInChildren<PlayerAudioController>();
+        if (audioCtrl != null) audioCtrl.PlayShotSound();
+
         if (!IsServer || !IsAlive) return;
 
         // Sanity checks: accidental negative/NaN/infinite values should never mutate health.

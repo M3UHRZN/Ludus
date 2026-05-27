@@ -5,6 +5,15 @@ public class DeadState : IPlayerState
 {
     public void Enter(PlayerStateMachine machine)
     {
+        // === SES TETİKLEYİCİ ===
+        // machine (yani karakterin kök objesi) içindeki modelleri tarayıp ses kodumuzu bulur
+        var audioController = machine.GetComponentInChildren<PlayerAudioController>();
+        if (audioController != null)
+        {
+            audioController.PlayDeathSound();
+        }
+        // =========================================================
+
         // Oyuncu kamerasını kapat
         var look = machine.Look;
         if (look != null && look.CameraTarget != null)

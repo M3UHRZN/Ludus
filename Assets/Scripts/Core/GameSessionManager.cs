@@ -31,6 +31,8 @@ public class GameSessionManager : NetworkBehaviour
     public float TotalCreditCollected  => NetTotalCredit.Value;
     public int   PlayerCount           => NetPlayerCount.Value;
 
+    private bool _last10SecPlayed = false;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -79,6 +81,8 @@ public class GameSessionManager : NetworkBehaviour
 
     public void StartSession(int playerCount)
     {
+        _last10SecPlayed = false;
+
         if (NetworkManager.Singleton == null || !IsSpawned)
         {
             Debug.LogWarning("[GameSessionManager] StartSession network'e baglanmadi.");
@@ -123,6 +127,17 @@ public class GameSessionManager : NetworkBehaviour
 
         NetRemainingTime.Value = Mathf.Max(0f, NetRemainingTime.Value - Time.deltaTime);
         GameEventBus.Publish(new TimerEventTriggered(NetRemainingTime.Value));
+
+        // === SON 10 SANİYE SES TETİKLEYİCİSİ ===
+        if (NetRemainingTime.Value <= 10f && !_last10SecPlayed && NetRemainingTime.Value > 0f)
+        {
+            _last10SecPlayed = true;
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.last10SecSound);
+            }
+        }
+        // =======================================
 
         if (NetRemainingTime.Value <= 0f)
             EndSession(SessionEndReason.TimeUp);
