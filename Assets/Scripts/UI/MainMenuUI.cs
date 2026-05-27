@@ -227,7 +227,7 @@ public class MainMenuUI : MonoBehaviour
 
     private async System.Threading.Tasks.Task RefreshSessionListAsync()
     {
-        _queryResult = await _cm.QuerySessionsAsync();
+        _queryResult = await _cm.QuerySessionsAsync(DisplayName);
 
         if (this == null) return;
 
