@@ -1,9 +1,18 @@
 using UnityEngine;
+using Unity.Cinemachine;
 
 public class DeadState : IPlayerState
 {
     public void Enter(PlayerStateMachine machine)
     {
+        // Oyuncu kamerasını kapat
+        var look = machine.Look;
+        if (look != null && look.CameraTarget != null)
+        {
+            var vcam = look.CameraTarget.GetComponent<CinemachineCamera>();
+            if (vcam != null) vcam.enabled = false;
+        }
+
         machine.SwitchActionMap("Spectator");
         machine.SetComponentsEnabled(
             movement: false,

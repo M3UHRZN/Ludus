@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement; // Sahneler arasï¿½ geï¿½iï¿½ iï¿½in ï¿½art!
 
-// Bu sýnýf, Extraction (Görev Tamamlama) ekranýný yönetir. Görev tamamlandýðýnda veya kota baþarýsýz olduðunda bu ekran açýlýr ve ilgili bilgileri gösterir.
+// Bu sï¿½nï¿½f, Extraction (Gï¿½rev Tamamlama) ekranï¿½nï¿½ yï¿½netir. Gï¿½rev tamamlandï¿½ï¿½ï¿½nda veya kota baï¿½arï¿½sï¿½z olduï¿½unda bu ekran aï¿½ï¿½lï¿½r ve ilgili bilgileri gï¿½sterir.
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
@@ -13,12 +14,12 @@ public class ExtractionUIController : MonoBehaviour
     public TextMeshProUGUI creditsText;
     public TextMeshProUGUI penaltyText;
 
-    [Header("Kota Barý")]
+    [Header("Kota Barï¿½")]
     public Image quotaFillImage;
 
     private void Start()
     {
-        extractionPanel.SetActive(false); // Oyun baþlarken gizli
+        extractionPanel.SetActive(false); // Oyun baï¿½larken gizli
     }
 
     private void OnEnable()
@@ -33,13 +34,35 @@ public class ExtractionUIController : MonoBehaviour
 
     private void OnLevelEnded(LevelEndedEvent evt)
     {
-        // Ekraný aç
+        // Ekranï¿½ aï¿½
         extractionPanel.SetActive(true);
 
-        // Baþlýk
+        // Baï¿½lï¿½k
         if (evt.IsSuccess)
         {
             titleText.text = "MISSION CLEAR";
+    // Olay tetiklendiï¿½inde ï¿½alï¿½ï¿½acak fonksiyon
+    private void OnLevelEnded(LevelEndedEvent evt)
+    {
+        // Event'ten gelen verileri alï¿½p, ekran gï¿½sterme fonksiyonuna gonderiyoruz
+        // !!!Degisken isimlerini ben belirledim, sen event struct'ï¿½nda ne isim verdin ise onu yazarsï¿½n. Benim verdiï¿½im isimler sadece ï¿½rnek!!!
+        ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
+    }
+    // --- EVENTBUS ABONELï¿½KLERï¿½ Bï¿½Tï¿½ï¿½ï¿½ ---
+
+    public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+
+        // 1. Ekranï¿½ gï¿½rï¿½nï¿½r yap
+        extractionPanel.SetActive(true);
+
+        // 2. OYUNU DURDUR!
+        Time.timeScale = 0f;
+
+        // 3. Baï¿½lï¿½ï¿½ï¿½ baï¿½arï¿½ durumuna gï¿½re ayarla
+        if (isSuccess)
+        {
+            titleText.text = "Gï¿½REV TAMAMLANDI";
             titleText.color = Color.white;
         }
         else
@@ -51,7 +74,7 @@ public class ExtractionUIController : MonoBehaviour
         // Krediler
         creditsText.text = "COLLECTED CREDITS: " + evt.CollectedCredits;
 
-        // Ceza Yazýsý
+        // Ceza Yazï¿½sï¿½
         if (evt.PenaltyAmount > 0)
         {
             penaltyText.text = "PENALTY: -" + evt.PenaltyAmount + " CREDITS";
@@ -62,14 +85,24 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
-        // Kota Barý
+        // Kota Barï¿½
         if (quotaFillImage != null)
             quotaFillImage.fillAmount = evt.QuotaFillAmount;
     }
 
     public void ReturnToShip()
     {
-        Debug.Log("Sistem: Gemiye Dönülüyor... Lobi sahnesi yüklenecek.");
+        Debug.Log("Sistem: Gemiye Dï¿½nï¿½lï¿½yor... Lobi sahnesi yï¿½klenecek.");
         // UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene"); 
+        // 6. Kota barï¿½nï¿½ doldur (0 ile 1 arasï¿½nda bir deï¿½er, ï¿½rn: %80 iï¿½in 0.8f)
+        quotaFillImage.fillAmount = quotaFillAmount;
+    }
+
+    // Bu fonksiyonu "Gemiye Dï¿½n" butonunun OnClick() kï¿½smï¿½na baï¿½lanacak!!!!!!!!
+    public void ReturnToShip()
+    {
+        Time.timeScale = 1f;
+        extractionPanel.SetActive(false);
+        Debug.Log("[ExtractionUIController] UI closed, scene transition handled by NetworkManager.");
     }
 }

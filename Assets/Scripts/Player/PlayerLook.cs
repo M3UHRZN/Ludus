@@ -27,9 +27,14 @@ public class PlayerLook : NetworkBehaviour
         if (cameraTarget != null)
             _vcam = cameraTarget.GetComponent<CinemachineCamera>();
 
+        // Korku sistemi (varsa) sadece local oyuncuda calismali: post-processing,
+        // ses ve hiz cezasi yalnizca kendi ekranimizi etkiler.
+        var fear = GetComponent<FearSystem>();
+
         if (!IsOwner)
         {
             if (_vcam != null) _vcam.enabled = false;
+            if (fear != null) fear.enabled = false;
             enabled = false;
             return;
         }
@@ -42,6 +47,7 @@ public class PlayerLook : NetworkBehaviour
 
         // Bu oyuncunun vcam'ini aktif et — CinemachineBrain otomatik devralir
         if (_vcam != null) _vcam.enabled = true;
+        if (fear != null) fear.enabled = true;   // local oyuncuda korku efektleri aktif
     }
 
     private void Update()

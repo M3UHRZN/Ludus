@@ -179,6 +179,7 @@ GameObject:
   - component: {fileID: 400766111}
   - component: {fileID: 400766110}
   - component: {fileID: 400766114}
+  - component: {fileID: 400766115}
   m_Layer: 0
   m_Name: DungeonManager
   m_TagString: Untagged
@@ -231,6 +232,9 @@ MonoBehaviour:
   _mergedFloor2x2Prefab: {fileID: 2715353074314832260, guid: 81d514b978dde604d990866230ecd1a1, type: 3}
   _mergedFloorH1x3Prefab: {fileID: 2589127317185105089, guid: ebe733bdba637c14d84c82ab7ac77a38, type: 3}
   _mergedFloorV3x1Prefab: {fileID: 9077843509619995459, guid: 7899fe991c75c474d87a89e561630f9c, type: 3}
+  _entryFloorPrefab: {fileID: 0}
+  _entryWallPrefab: {fileID: 0}
+  _entryDoorPrefab: {fileID: 0}
   _roomSize: 10
   _corridorLength: 5
 --- !u!114 &400766112
@@ -245,6 +249,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a90a29019058167479803e02f33838dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Map::DungeonGeneratorRunner
+  ShowTopMostFoldoutHeaderGroup: 1
   _config: {fileID: 11400000, guid: 6e394c1811b12fc458f892baed41cee3, type: 2}
 --- !u!4 &400766113
 Transform:
@@ -275,6 +280,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSpawnSafetySnap
   _searchRadius: 40
   _heightOffset: 0.5
+--- !u!114 &400766115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 400766109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 3559247510
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &461029261
 GameObject:
   m_ObjectHideFlags: 0
@@ -317,6 +347,7 @@ GameObject:
   - component: {fileID: 562914243}
   - component: {fileID: 562914242}
   - component: {fileID: 562914241}
+  - component: {fileID: 562914244}
   m_Layer: 0
   m_Name: TestController
   m_TagString: Untagged
@@ -372,6 +403,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &562914244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 562914240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65723bb46d5885046b611a0f552c312e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FearDebugHUD
 --- !u!1 &793046192
 GameObject:
   m_ObjectHideFlags: 0
@@ -1024,8 +1067,71 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1406411620}
   m_SourcePrefab: {fileID: 100100000, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+--- !u!1 &1406411619 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8460012054609115418, guid: a20ec3c8dd307d445b360fd81a2e0d45, type: 3}
+  m_PrefabInstance: {fileID: 1406411618}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1406411620
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1406411619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c78fe6a883ca4cd4afe7ebbbeadbe5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FearSystem
+  fearDecayRate: 15
+  darknessRate: 3
+  fearTargetFollowSpeed: 5
+  nearDeathRadius: 15
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  darkThreshold: 0.3
+  enemyDetectRadius: 8
+  enemyFalloffBuffer: 2
+  distanceApproachFollowSpeed: 2.5
+  distanceRetreatFollowSpeed: 8
+  distanceFearTable:
+  - distance: 8
+    fear: 10
+  - distance: 5
+    fear: 40
+  - distance: 3
+    fear: 70
+  - distance: 1
+    fear: 95
+  deathWitnessAdd: 30
+  damageAdd: 15
+  panicThreshold: 90
+  panicRearmFear: 75
+  panicTriggerHoldTime: 1.25
+  panicStunDuration: 2
+  panicCooldown: 8
+  shakeCamera: {fileID: 0}
+  shakeAmount: 0.05
+  shakeFrequency: 20
+  highFearBlurRadius: 0.45
+  maxFearSpeedMultiplier: 0.6
+  playerMovement: {fileID: 0}
+  heartbeatSource: {fileID: 0}
+  heartbeatClip: {fileID: 0}
+  heartbeatStartFear: 35
+  heartbeatMaxVolume: 0.8
+  heartbeatMinPitch: 0.9
+  heartbeatMaxPitch: 1.35
+  heartbeatFollowSpeed: 2.5
+  postProcessVolume: {fileID: 0}
+  fearOverlay: {fileID: 0}
 --- !u!1 &1709098103
 GameObject:
   m_ObjectHideFlags: 0

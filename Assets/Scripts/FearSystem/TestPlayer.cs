@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 /// FearSystem calls SetSpeedMultiplier() to apply speed penalty.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
-public class TestPlayer : MonoBehaviour
+public class TestPlayer : MonoBehaviour, ISpeedModifiable
 {
     [Header("Movement")]
     public float walkSpeed        = 5f;
@@ -20,6 +20,7 @@ public class TestPlayer : MonoBehaviour
     private float               _xRotation;
     private Vector3             _velocity;
     private float               _speedMultiplier = 1f;
+    private bool                _inputEnabled    = true;
 
     private void Start()
     {
@@ -31,6 +32,8 @@ public class TestPlayer : MonoBehaviour
 
     private void Update()
     {
+        if (!_inputEnabled) return;
+
         // Escape — toggle cursor lock
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
@@ -81,5 +84,11 @@ public class TestPlayer : MonoBehaviour
     public void SetSpeedMultiplier(float multiplier)
     {
         _speedMultiplier = Mathf.Clamp01(multiplier);
+    }
+
+    /// <summary>Called by MarketUIController to freeze/unfreeze player input.</summary>
+    public void SetInputEnabled(bool enabled)
+    {
+        _inputEnabled = enabled;
     }
 }

@@ -25,6 +25,7 @@ public class DungeonGenerator
         Phase3_AddLoops(data);
         if (_config.enableRoomMerging)
             ApplyMerging(data);
+        Phase5_AssignEndRoom(data);
         return data;
     }
 
@@ -165,6 +166,30 @@ public class DungeonGenerator
                 rd.Size = re.Size = rf.Size = RoomSize.Long_3x1;
                 rd.MergeGroupId = re.MergeGroupId = rf.MergeGroupId = groupId;
             }
+        }
+    }
+
+    private void Phase5_AssignEndRoom(DungeonData data)
+    {
+        RoomNode farthest = null;
+        float maxDist = -1f;
+
+        foreach (var room in data.AllRooms)
+        {
+            if (room.Type == RoomType.Start) continue;
+
+            float dist = Vector2Int.Distance(Vector2Int.zero, room.Coordinates);
+            if (dist > maxDist)
+            {
+                maxDist = dist;
+                farthest = room;
+            }
+        }
+
+        if (farthest != null)
+        {
+            farthest.Type = RoomType.End;
+            Debug.Log($"[DungeonGenerator] End odası atandı: {farthest.Coordinates}");
         }
     }
 }

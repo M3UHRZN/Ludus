@@ -271,6 +271,7 @@ public struct LevelEndedEvent
         TimeLeft = timeLeft;
         PlayerAliveStates = playerAliveStates;
     }
+    
 }
 
 // Karakter koştuğunda veya staminası değiştiğinde fırlatılacak Event
