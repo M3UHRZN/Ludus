@@ -1934,7 +1934,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExtractionManager
   ShowTopMostFoldoutHeaderGroup: 1
-  lobbySceneName: LobbyScene
 --- !u!1001 &1255193815
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -46,15 +46,6 @@ public class NetworkedItemSpawner : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         if (!IsServer) return;
-
-        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        if (activeScene == SceneNames.Lobby || activeScene == SceneNames.MainMenu)
-        {
-            if (_verbose)
-                Debug.Log("[NetworkedItemSpawner] Lobi veya Ana Menü sahnesi algılandı, spawner devre dışı bırakıldı.");
-            return;
-        }
-
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
         if (_verbose)
             Debug.Log("[NetworkedItemSpawner] OnNetworkSpawn (server). MapReadyEvent dinleniyor.");

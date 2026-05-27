@@ -30,7 +30,6 @@ public class PlayerInteraction : NetworkBehaviour
         NetworkVariableWritePermission.Server);
 
     private PhysicsObject _heldObject;
-    public PhysicsObject HeldObject => _heldObject;
     private IInteractable _lookedInteractable;
     private bool _isChargingThrow;
     private float _chargeStartTime;

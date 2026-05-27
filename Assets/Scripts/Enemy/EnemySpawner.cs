@@ -73,13 +73,6 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        if (activeScene == SceneNames.Lobby || activeScene == SceneNames.MainMenu)
-        {
-            Debug.Log("[EnemySpawner] Lobi veya Ana Menü sahnesi algılandı, spawner devre dışı bırakıldı.");
-            return;
-        }
-
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
         GameEventBus.Subscribe<EnemyDiedEvent>(OnEnemyDied);
         Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent + EnemyDiedEvent dinlemeye basladi.");
