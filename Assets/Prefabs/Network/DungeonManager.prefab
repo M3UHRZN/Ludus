@@ -47,14 +47,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 957779581
-  InScenePlacedSourceGlobalObjectIdHash: 0
+  GlobalObjectIdHash: 1753897001
+  InScenePlacedSourceGlobalObjectIdHash: 1587577752
   DeferredDespawnTick: 0
   Ownership: 1
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
+  SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
@@ -86,7 +86,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 760917fed1872734ea7c61e9f8230303, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Map::DungeonVisualizer
-  _floorPrefab: {fileID: 7531107819641134348, guid: 5596eda8b4e57f74e883eee785b497fb, type: 3}
+  _floorPrefab: {fileID: 8559447516315551342, guid: fdf2aaf41ad3b264899089a7c2cc5bd1, type: 3}
   _wallNorthPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
   _wallSouthPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
   _wallEastPrefab: {fileID: 9031359138367068163, guid: bf05a2a0cd892de4095471d090d76f76, type: 3}
@@ -102,8 +102,14 @@ MonoBehaviour:
   _entryFloorPrefab: {fileID: 4775201487903581722, guid: a3abb4d5f95103443a26211002cefa97, type: 3}
   _entryWallPrefab: {fileID: 0}
   _entryDoorPrefab: {fileID: 0}
+  _extractZonePrefab: {fileID: 8248402072063123718, guid: d9f0418a0ab42463a81cce1a8042fcf7, type: 3}
+  _exitZonePrefab: {fileID: 1265017767116444800, guid: f4fd201f41dd14d4cb7c85396760cc10, type: 3}
   _roomSize: 10
   _corridorLength: 5
+  _propPalette: {fileID: 11400000, guid: 276d03c2acc86844e8423901e83f79d1, type: 2}
+  _placeProps: 1
+  _minPropsPerRoom: 5
+  _maxPropsPerRoom: 20
 --- !u!114 &7536654037564606846
 MonoBehaviour:
   m_ObjectHideFlags: 0
