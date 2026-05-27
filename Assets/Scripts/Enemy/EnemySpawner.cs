@@ -189,7 +189,9 @@ public class EnemySpawner : NetworkBehaviour
             return false;
         }
 
-        netObj.Spawn();
+        // destroyWithScene: true — RNGmap unload olunca NGO bu enemy'yi otomatik despawn etsin.
+        // (NGO 2.11 Spawn() varsayilani false; false objeler sahne gecisinde lobiye/yeni run'a tasiniyor.)
+        netObj.Spawn(true);
 
         // Her enemy'ye farkli avoidance priority ver. Ayni priority'de iki agent
         // dar gecitte/kapida birbirine yol vermeyip kilitleniyor (deadlock).

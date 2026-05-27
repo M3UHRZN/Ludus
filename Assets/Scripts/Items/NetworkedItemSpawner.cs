@@ -236,7 +236,9 @@ public class NetworkedItemSpawner : NetworkBehaviour
             return;
         }
 
-        netObj.Spawn();
+        // destroyWithScene: true — RNGmap unload olunca NGO bu item'i otomatik despawn etsin.
+        // (NGO 2.11 Spawn() varsayilani false; false objeler sahne gecisinde lobiye/yeni run'a tasiniyor.)
+        netObj.Spawn(true);
 
         if (_verbose)
             Debug.Log($"[NetworkedItemSpawner] Spawned '{prefab.name}' at {position}.");

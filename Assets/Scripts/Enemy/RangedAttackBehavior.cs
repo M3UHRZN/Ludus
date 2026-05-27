@@ -137,7 +137,8 @@ public class RangedAttackBehavior : IEnemyBehavior
         {
             var proj = Object.Instantiate(enemy.ProjectilePrefab, origin, Quaternion.LookRotation(dir));
             var netObj = proj.GetComponent<NetworkObject>();
-            if (netObj != null) netObj.Spawn();
+            // destroyWithScene: true — in-flight mermi de sahne gecisinde NGO tarafindan despawn edilsin.
+            if (netObj != null) netObj.Spawn(true);
 
             var projScript = proj.GetComponent<EnemyProjectile>();
             if (projScript != null) projScript.Launch(dir, DamagePerShot);
