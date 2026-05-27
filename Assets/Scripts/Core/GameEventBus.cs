@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -271,7 +271,17 @@ public struct LevelEndedEvent
         TimeLeft = timeLeft;
         PlayerAliveStates = playerAliveStates;
     }
-    
+
+    // Overloaded constructor for compatibility with 4-parameter calls
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
+        TimeLeft = 0f;
+        PlayerAliveStates = null;
+    }
 }
 
 // Karakter koştuğunda veya staminası değiştiğinde fırlatılacak Event

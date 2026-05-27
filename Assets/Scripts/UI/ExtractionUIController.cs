@@ -34,35 +34,23 @@ public class ExtractionUIController : MonoBehaviour
 
     private void OnLevelEnded(LevelEndedEvent evt)
     {
-        // Ekran� a�
-        extractionPanel.SetActive(true);
-
-        // Ba�l�k
-        if (evt.IsSuccess)
-        {
-            titleText.text = "MISSION CLEAR";
-    // Olay tetiklendi�inde �al��acak fonksiyon
-    private void OnLevelEnded(LevelEndedEvent evt)
-    {
-        // Event'ten gelen verileri al�p, ekran g�sterme fonksiyonuna gonderiyoruz
-        // !!!Degisken isimlerini ben belirledim, sen event struct'�nda ne isim verdin ise onu yazars�n. Benim verdi�im isimler sadece �rnek!!!
+        // Event'ten gelen verileri alp, ekran gsterme fonksiyonuna gonderiyoruz
         ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
     }
-    // --- EVENTBUS ABONEL�KLER� B�T��� ---
+    // --- EVENTBUS ABONELKLER BT ---
 
     public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
     {
-
-        // 1. Ekran� g�r�n�r yap
+        // 1. Ekran grnr yap
         extractionPanel.SetActive(true);
 
         // 2. OYUNU DURDUR!
         Time.timeScale = 0f;
 
-        // 3. Ba�l��� ba�ar� durumuna g�re ayarla
+        // 3. Bal baar durumuna gre ayarla
         if (isSuccess)
         {
-            titleText.text = "G�REV TAMAMLANDI";
+            titleText.text = "GREV TAMAMLANDI";
             titleText.color = Color.white;
         }
         else
@@ -72,12 +60,12 @@ public class ExtractionUIController : MonoBehaviour
         }
 
         // Krediler
-        creditsText.text = "COLLECTED CREDITS: " + evt.CollectedCredits;
+        creditsText.text = "COLLECTED CREDITS: " + collectedCredits;
 
-        // Ceza Yaz�s�
-        if (evt.PenaltyAmount > 0)
+        // Ceza Yazs
+        if (penaltyAmount > 0)
         {
-            penaltyText.text = "PENALTY: -" + evt.PenaltyAmount + " CREDITS";
+            penaltyText.text = "PENALTY: -" + penaltyAmount + " CREDITS";
             penaltyText.gameObject.SetActive(true);
         }
         else
@@ -85,20 +73,12 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
-        // Kota Bar�
+        // Kota Bar
         if (quotaFillImage != null)
-            quotaFillImage.fillAmount = evt.QuotaFillAmount;
+            quotaFillImage.fillAmount = quotaFillAmount;
     }
 
-    public void ReturnToShip()
-    {
-        Debug.Log("Sistem: Gemiye D�n�l�yor... Lobi sahnesi y�klenecek.");
-        // UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene"); 
-        // 6. Kota bar�n� doldur (0 ile 1 aras�nda bir de�er, �rn: %80 i�in 0.8f)
-        quotaFillImage.fillAmount = quotaFillAmount;
-    }
-
-    // Bu fonksiyonu "Gemiye D�n" butonunun OnClick() k�sm�na ba�lanacak!!!!!!!!
+    // Bu fonksiyon "Gemiye Dn" butonunun OnClick() ksmna balanacak!!!!!!!!
     public void ReturnToShip()
     {
         Time.timeScale = 1f;
