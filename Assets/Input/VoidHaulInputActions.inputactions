@@ -70,6 +70,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Hold",
+                    "type": "Button",
+                    "id": "b756707f-bafb-43c0-80d6-508f13dc0928",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Flashlight",
                     "type": "Button",
                     "id": "adc13cfb-978c-45a6-a46c-55a5f54f191f",
@@ -265,11 +274,22 @@
                 {
                     "name": "",
                     "id": "d8eef07b-13e9-45af-a863-f2c427b90f32",
-                    "path": "<Mouse>/leftButton",
+                    "path": "<Mouse>/rightButton",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Throw",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ba9f48b5-438e-4538-a6bf-754b60df7753",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Hold",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
