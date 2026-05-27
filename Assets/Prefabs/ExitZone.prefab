@@ -44,11 +44,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1265017767116444800}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: baa3d3a7f3db2424e97bd1dc20bb8fcd, type: 3}
+  m_Script: {fileID: 11500000, guid: 5e39d65213ef84b03a18fce3e7a8cecb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExitZoneInteractable
   lobbySceneName: LobbyScene
-  readyPrompt: Return to Lobby
+  readyPrompt: 'Return to Lobby [E]'
   notReadyPrompt: Drop an item first!
 --- !u!65 &4895385691105555540
 BoxCollider:
@@ -69,7 +69,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 5, y: 5, z: 5}
+  m_Size: {x: 1, y: 5, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!33 &6031211716376879945
 MeshFilter:
@@ -104,7 +104,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 2869040b8ad60416ba98d4b7e895d9e5, type: 2}
+  - {fileID: 2100000, guid: 0c30d0ac5b738c8459f24eeaf6273d47, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -117,18 +117,18 @@ public struct PlayerDamagedEvent
     }
 }
 
-/// <summary>Event timer tetiklendiğinde yayınlanır.</summary>
-public struct TimerEventTriggered
-{
-    public float RemainingSeconds;
-    public bool IsUrgent;          // 10 saniyenin altında mı
+///// <summary>Event timer tetiklendiğinde yayınlanır.</summary>
+//public struct TimerEventTriggered
+//{
+//    public float RemainingSeconds;
+//    public bool IsUrgent;          // 10 saniyenin altında mı
 
-    public TimerEventTriggered(float remainingSeconds)
-    {
-        RemainingSeconds = remainingSeconds;
-        IsUrgent = remainingSeconds <= 10f;
-    }
-}
+//    public TimerEventTriggered(float remainingSeconds)
+//    {
+//        RemainingSeconds = remainingSeconds;
+//        IsUrgent = remainingSeconds <= 10f;
+//    }
+//}
 
 /// <summary>Oyuncu öldüğünde yayınlanır.</summary>
 public struct PlayerDiedEvent
@@ -214,23 +214,22 @@ public struct PlayerRevivedEvent
     }
 }
 
-/// <summary>Seviye sona erdiğinde yayınlanır.</summary>
-public struct LevelEndedEvent
-{
-    public bool IsSuccess;
-    public int CollectedCredits;
-    public int PenaltyAmount;
-    public float QuotaFillAmount;
+///// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+//public struct LevelEndedEvent
+//{
+//    public bool IsSuccess;
+//    public int CollectedCredits;
+//    public int PenaltyAmount;
+//    public float QuotaFillAmount;
 
-    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
-    {
-        IsSuccess = isSuccess;
-        CollectedCredits = collectedCredits;
-        PenaltyAmount = penaltyAmount;
-        QuotaFillAmount = quotaFillAmount;
-    }
-    
-}
+//    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+//    {
+//        IsSuccess = isSuccess;
+//        CollectedCredits = collectedCredits;
+//        PenaltyAmount = penaltyAmount;
+//        QuotaFillAmount = quotaFillAmount;
+//    }
+//}
 
 /// <summary>
 /// Sahnede bir ses kaynagi olustugunda yayinlanir (ayak sesi, item dusurme,
@@ -247,5 +246,64 @@ public struct NoiseEmittedEvent
         Position = position;
         Range = range;
         Source = source;
+    }
+}
+
+/// <summary>Seviye sona erdiğinde yayınlanır.</summary>
+public struct LevelEndedEvent
+{
+    public bool IsSuccess;
+    public int CollectedCredits;
+    public int PenaltyAmount;
+    public float QuotaFillAmount;
+
+    // --- UI İÇİN EKLENEN YENİ VERİLER ---
+    public float TimeLeft;
+    public bool[] PlayerAliveStates;
+
+    // Constructor (Oluşturucu) fonksiyonu da yeni verilere göre güncellendi
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount, float timeLeft, bool[] playerAliveStates)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
+        TimeLeft = timeLeft;
+        PlayerAliveStates = playerAliveStates;
+    }
+
+    // Overloaded constructor for compatibility with 4-parameter calls
+    public LevelEndedEvent(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
+    {
+        IsSuccess = isSuccess;
+        CollectedCredits = collectedCredits;
+        PenaltyAmount = penaltyAmount;
+        QuotaFillAmount = quotaFillAmount;
+        TimeLeft = 0f;
+        PlayerAliveStates = null;
+    }
+}
+
+// Karakter koştuğunda veya staminası değiştiğinde fırlatılacak Event
+public struct StaminaUpdatedEvent
+{
+    public float CurrentStamina;
+    public float MaxStamina;
+    public bool IsExhausted; // True ise karakter nefes nefese kalmış ve HP kaybetmeye başlamıştır
+}
+
+/// <summary>Event timer tetiklendiğinde/zaman aktığında yayınlanır.</summary>
+public struct TimerEventTriggered 
+{
+    public float RemainingSeconds;
+    public float MaxSeconds;       // <-- UI BARI İÇİN ŞART! 
+    public bool IsUrgent;          // 10 saniyenin altında mı
+
+    // Constructor (Yapıcı Metot) da yeni veriye göre güncellendi
+    public TimerEventTriggered(float remainingSeconds, float maxSeconds)
+    {
+        RemainingSeconds = remainingSeconds;
+        MaxSeconds = maxSeconds;
+        IsUrgent = remainingSeconds <= 10f;
     }
 }

@@ -14,6 +14,7 @@ public class LobbyRoomManager : NetworkBehaviour
     [SerializeField] private TMPro.TMP_Text         startPromptText;
 
     private NetworkList<FixedString64Bytes> _playerNames;
+    private Dictionary<ulong, string>       _clientNames = new(); // server-only
 
     private void Awake()
     {
@@ -35,15 +36,16 @@ public class LobbyRoomManager : NetworkBehaviour
         RenderPlayerList();
 
         if (IsServer)
-        {
-            NetworkManager.OnClientConnectedCallback    += OnClientConnected;
-            NetworkManager.OnClientDisconnectCallback  += OnClientDisconnected;
-            RefreshPlayerList();
-        }
+            NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
 
         if (startPromptText != null)
             startPromptText.gameObject.SetActive(IsHost);
 
+        var cm = FindFirstObjectByType<ConnectionManager>();
+        var name = (cm != null && !string.IsNullOrWhiteSpace(cm.DisplayName))
+            ? cm.DisplayName
+            : $"Player-{NetworkManager.LocalClientId}";
+        RegisterNameServerRpc(name);
     }
 
     public override void OnNetworkDespawn()
@@ -52,8 +54,8 @@ public class LobbyRoomManager : NetworkBehaviour
 
         if (IsServer)
         {
-            NetworkManager.OnClientConnectedCallback    -= OnClientConnected;
-            NetworkManager.OnClientDisconnectCallback  -= OnClientDisconnected;
+            NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+            _clientNames.Clear();
         }
 
         _playerNames.Dispose();
@@ -71,15 +73,30 @@ public class LobbyRoomManager : NetworkBehaviour
         Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
     }
 
-    private void OnClientConnected(ulong clientId) => RefreshPlayerList();
-    private void OnClientDisconnected(ulong clientId) => RefreshPlayerList();
+    [ServerRpc(RequireOwnership = false)]
+    private void RegisterNameServerRpc(string name, ServerRpcParams rpc = default)
+    {
+        _clientNames[rpc.Receive.SenderClientId] = string.IsNullOrWhiteSpace(name)
+            ? $"Player-{rpc.Receive.SenderClientId}"
+            : name;
+        RefreshPlayerList();
+    }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        _clientNames.Remove(clientId);
+        RefreshPlayerList();
+    }
 
     private void RefreshPlayerList()
     {
         if (!IsServer) return;
         _playerNames.Clear();
         foreach (var clientId in NetworkManager.ConnectedClientsIds)
-            _playerNames.Add(new FixedString64Bytes($"Player-{clientId}"));
+        {
+            var n = _clientNames.TryGetValue(clientId, out var stored) ? stored : $"Player-{clientId}";
+            _playerNames.Add(new FixedString64Bytes(n));
+        }
     }
 
     private void OnPlayerListChanged(NetworkListEvent<FixedString64Bytes> changeEvent)

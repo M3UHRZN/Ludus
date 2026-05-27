@@ -8,6 +8,7 @@ public class SpectatorController : NetworkBehaviour
 {
     [SerializeField] private float freeCamSpeed = 5f;
     [SerializeField] private float freeCamSensitivity = 0.15f;
+    [SerializeField] private CinemachineCamera spectatorCamPrefab;
 
     private readonly List<ISpectatable> _targets = new();
     private int _currentIndex;
@@ -91,32 +92,17 @@ public class SpectatorController : NetworkBehaviour
 
         if (_spectateCamera == null)
         {
-            var go = new GameObject("SpectatorCam");
-            _spectateCamera = go.AddComponent<CinemachineCamera>();
+            if (spectatorCamPrefab != null)
+                _spectateCamera = Instantiate(spectatorCamPrefab);
+            else
+            {
+                var go = new GameObject("SpectatorCam");
+                _spectateCamera = go.AddComponent<CinemachineCamera>();
+            }
         }
 
         _spectateCamera.Priority.Value = 100;
-
-        // Position ve Rotation control ekle
-        if (_spectateCamera.GetComponent<CinemachineFollow>() == null)
-            _spectateCamera.gameObject.AddComponent<CinemachineFollow>();
-
-        if (_spectateCamera.GetComponent<CinemachineRotationComposer>() == null)
-            _spectateCamera.gameObject.AddComponent<CinemachineRotationComposer>();
-
-        var follow = _spectateCamera.GetComponent<CinemachineFollow>();
-        if (follow != null)
-        {
-            follow.FollowOffset = new Vector3(0, 3f, -4f);
-        }
-
-        var composer = _spectateCamera.GetComponent<CinemachineRotationComposer>();
-        if (composer != null)
-        {
-            composer.TargetOffset = new Vector3(0, 0.5f, 0);
-        }     
     }
-
     private void FocusTarget(int index)
     {
         if (_targets.Count == 0) return;

@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
 public class ExitZoneInteractable : MonoBehaviour, IInteractable
 {
@@ -26,6 +27,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
 
     public void Interact(PlayerStateMachine machine)
     {
+        Debug.Log("[ExitZone] Interact çağrıldı!");
         if (!CanInteract(machine)) return;
 
         ShowResultsLocalUI();
@@ -44,6 +46,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
         if (machine == null || !machine.IsOwner) return;
 
         _playerInZone = machine;
+        Debug.Log("[ExitZone] Oyuncu girdi!");
     }
 
     private void OnTriggerExit(Collider other)
@@ -61,9 +64,15 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
         if (_playerInZone == null) return;
         if (!_playerInZone.IsOwner) return;
 
-        if (Input.GetKeyDown(KeyCode.E))
+        var playerInput = _playerInZone.PlayerInput;
+        if (playerInput != null)
         {
-            Interact(_playerInZone);
+            var interactAction = playerInput.actions.FindAction("Interact") ?? playerInput.actions["Gameplay/Interact"];
+            if (interactAction != null && interactAction.WasPressedThisFrame())
+            {
+                Debug.Log("[ExitZone] Interact aksiyonu tetiklendi!");
+                Interact(_playerInZone);
+            }
         }
     }
 

@@ -1,106 +1,54 @@
 using UnityEngine;
-using UnityEngine.UI;   // Image bileï¿½eni iï¿½in gerekli
+using UnityEngine.UI;
 using TMPro;
 
+// Bu sýnýf, oyun içi HUD (Heads-Up Display) elemanlarýný yönetir. Süre göstergesi ve takým arkadaþý durum ikonlarýný içerir.
 public class HUDController : MonoBehaviour
 {
-    [Header("UI Elementleri")]
+    [Header("Süre Elementleri")]
     public TextMeshProUGUI timerText;
-    public Image timerFillImage; // Radial Bar
+    public Image timerFillImage;
+    public float maxTime = 60f;
 
-    [Header("Sï¿½re Ayarlarï¿½")]
-    public float maxTime = 60f; // Oyunun baï¿½langï¿½ï¿½ sï¿½resi
-
-    [Header("Aï¿½ï¿½rlï¿½k Barï¿½ Ayarlarï¿½")]
-    public Image weightBarImage;
-    public float fillSpeed = 5f; // Barï¿½n ne kadar hï¿½zlï¿½ akacaï¿½ï¿½nï¿½ belirler
-
-    private int currentTotalWeight = 0; // Oyuncunun o anki toplam aï¿½ï¿½rlï¿½ï¿½ï¿½
-    private int maxWeight = 10; // Bar 10 kutu olduï¿½u iï¿½in sï¿½nï¿½r 10
-    private float targetWeightFill = 0f; // Barï¿½n ulaï¿½mak istediï¿½i hedef nokta
-
-    [Header("Teammate ï¿½konlarï¿½")]
+    [Header("Takým Arkadaþý Ýkonlarý (Sol Menü)")]
     public Image[] teammateIcons;
-    public Sprite aliveIcon; 
-    public Sprite deadIcon;  
+    public Sprite aliveIcon;
+    public Sprite deadIcon;
 
     private void OnEnable()
     {
-        // Script aktif olduï¿½unda EventBus'a abone oluyoruz
+        // Sadece Süre ve Ölüm/Canlanma eventlerini dinliyoruz
         GameEventBus.Subscribe<TimerEventTriggered>(OnTimerUpdated);
-        GameEventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);      // Yeni eï¿½ya alï¿½ndï¿½ï¿½ï¿½nda aï¿½ï¿½rlï¿½k barï¿½nï¿½ gï¿½ncellemek iï¿½in
         GameEventBus.Subscribe<PlayerDiedEvent>(OnTeammateDied);
-        GameEventBus.Subscribe<SessionStartedEvent>(OnSessionStarted);
-        GameEventBus.Subscribe<ItemDroppedEvent>(OnItemDropped);        // Eï¿½ya bï¿½rakï¿½ldï¿½ï¿½ï¿½nda aï¿½ï¿½rlï¿½k barï¿½nï¿½ gï¿½ncellemek iï¿½in
-        GameEventBus.Subscribe<PlayerRevivedEvent>(OnPlayerRevived);    // Oyuncu hayata dï¿½ndï¿½ï¿½ï¿½nde ikonunu gï¿½ncellemek iï¿½in
+        GameEventBus.Subscribe<PlayerRevivedEvent>(OnPlayerRevived);
     }
 
     private void OnDisable()
     {
-        // Script kapandï¿½ï¿½ï¿½nda hafï¿½za sï¿½zï¿½ntï¿½sï¿½ olmamasï¿½ iï¿½in abonelikten ï¿½ï¿½kï¿½yoruz
         GameEventBus.Unsubscribe<TimerEventTriggered>(OnTimerUpdated);
-        GameEventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnTeammateDied);
-        GameEventBus.Unsubscribe<SessionStartedEvent>(OnSessionStarted);
-        GameEventBus.Unsubscribe<ItemDroppedEvent>(OnItemDropped);
         GameEventBus.Unsubscribe<PlayerRevivedEvent>(OnPlayerRevived);
     }
 
-    // --- EVENT Dï¿½NLEYï¿½Cï¿½ FONKSï¿½YONLAR ---
-
     private void OnTimerUpdated(TimerEventTriggered evt)
     {
-        // 1. Sayï¿½yï¿½ ekrana yazdï¿½r
         timerText.text = evt.RemainingSeconds.ToString("F1");
+        if (timerFillImage != null) timerFillImage.fillAmount = evt.RemainingSeconds / maxTime;
 
-        // 2. Barï¿½n doluluk oranï¿½nï¿½ ayarla (0 ile 1 arasï¿½nda bir deï¿½er olmalï¿½)
-        timerFillImage.fillAmount = evt.RemainingSeconds / maxTime;
-
-        // 3. Son 10 saniye kontrolï¿½ 
         if (evt.IsUrgent)
         {
-            // Acil durum: Yazï¿½ ve bar kï¿½rmï¿½zï¿½ olsun!
             timerText.color = Color.red;
-            timerFillImage.color = Color.red;
+            if (timerFillImage != null) timerFillImage.color = Color.red;
         }
         else
         {
-            // Normal durum: Yazï¿½ beyaz, bar ise havalï¿½ bir bilim-kurgu mavisi
             timerText.color = Color.white;
-            timerFillImage.color = new Color(0f, 0.8f, 1f); // Rengi istediï¿½in gibi deï¿½iï¿½tirebilirsin
+            if (timerFillImage != null) timerFillImage.color = new Color(0f, 0.8f, 1f); // Mavi
         }
-    }
-
-    private void OnItemPickedUp(ItemPickedUpEvent evt)
-    {
-        // 1. Yeni eï¿½yanï¿½n aï¿½ï¿½rlï¿½ï¿½ï¿½nï¿½ toplam aï¿½ï¿½rlï¿½ï¿½a ekle
-        currentTotalWeight += evt.Weight;
-
-        // 2. Aï¿½ï¿½rlï¿½k sï¿½nï¿½rï¿½ aï¿½masï¿½n diye kontrol et
-        if (currentTotalWeight > maxWeight)
-        {
-            currentTotalWeight = maxWeight;
-        }
-
-        // Barï¿½ anï¿½nda doldurmak YERï¿½NE, hedefimizi belirliyoruz
-        targetWeightFill = (float)currentTotalWeight / maxWeight;
-
-        // Aï¿½ï¿½rlï¿½k 0'dan bï¿½yï¿½kse barï¿½ gï¿½rï¿½nï¿½r yap
-        if (currentTotalWeight > 0)
-        {
-            weightBarImage.enabled = true;
-        }
-    }
-
-    private void OnSessionStarted(SessionStartedEvent evt)
-    {
-        maxTime = evt.SessionDuration;
-        SetPlayerCount(evt.PlayerCount);
     }
 
     private void OnTeammateDied(PlayerDiedEvent evt)
     {
-        // ï¿½len oyuncunun ikonunu kuru kafa yap ve rengini kï¿½rmï¿½zï¿½ya ï¿½evir
         if (evt.PlayerId >= 0 && evt.PlayerId < teammateIcons.Length)
         {
             teammateIcons[evt.PlayerId].sprite = deadIcon;
@@ -108,53 +56,22 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    // Bu fonksiyonu GameSessionManager oyun baï¿½larken ï¿½aï¿½ï¿½racak
-    public void SetPlayerCount(int playerCount)
-    {
-        for (int i = 0; i < teammateIcons.Length; i++)
-        {
-            // Eï¿½er i deï¿½eri oyuncu sayï¿½sï¿½ndan kï¿½ï¿½ï¿½kse o ikonu aï¿½ (true), deï¿½ilse gizle (false)
-            teammateIcons[i].gameObject.SetActive(i < playerCount);
-
-            // Yeni el baï¿½ladï¿½ï¿½ï¿½nda herkesi hayata dï¿½ndï¿½r (ï¿½konlarï¿½ resetle)
-            teammateIcons[i].sprite = aliveIcon;
-            teammateIcons[i].color = Color.white;
-        }
-    }
-
-    private void Update()
-    {
-        // Eï¿½er aï¿½ï¿½rlï¿½k barï¿½mï¿½z aktifse, mevcut doluluï¿½u hedefe doï¿½ru yumuï¿½akï¿½a kaydï¿½r (Lerp)
-        if (weightBarImage.enabled)
-        {
-            weightBarImage.fillAmount = Mathf.Lerp(weightBarImage.fillAmount, targetWeightFill, Time.deltaTime * fillSpeed);
-
-            // Eï¿½er eï¿½ya bï¿½rakï¿½lï¿½rsa ve aï¿½ï¿½rlï¿½k 0'a dï¿½nerse, bar tamamen boï¿½aldï¿½ï¿½ï¿½nda onu gizle
-            if (currentTotalWeight == 0 && weightBarImage.fillAmount < 0.01f)
-            {
-                weightBarImage.fillAmount = 0f;
-                weightBarImage.enabled = false;
-            }
-        }
-    }
-
-    private void OnItemDropped(ItemDroppedEvent evt)
-    {
-        currentTotalWeight -= evt.Weight;
-        if (currentTotalWeight < 0) currentTotalWeight = 0;
-
-        // Barï¿½n yeni haline doï¿½ru kaymasï¿½ iï¿½in target'ï¿½ gï¿½ncelle (Lerp kullanï¿½yorduk hatï¿½rla)
-        targetWeightFill = (float)currentTotalWeight / maxWeight;
-    }
-
     private void OnPlayerRevived(PlayerRevivedEvent evt)
     {
         if (evt.PlayerId >= 0 && evt.PlayerId < teammateIcons.Length)
         {
-            // ï¿½konu tekrar hayatta (beyaz ve pointer) yap
             teammateIcons[evt.PlayerId].sprite = aliveIcon;
             teammateIcons[evt.PlayerId].color = Color.white;
         }
     }
-}
 
+    public void SetPlayerCount(int playerCount)
+    {
+        for (int i = 0; i < teammateIcons.Length; i++)
+        {
+            teammateIcons[i].gameObject.SetActive(i < playerCount);
+            teammateIcons[i].sprite = aliveIcon;
+            teammateIcons[i].color = Color.white;
+        }
+    }
+}

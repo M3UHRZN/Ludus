@@ -159,6 +159,7 @@ GameObject:
   - component: {fileID: 3464923751118398266}
   - component: {fileID: 1510060086146854700}
   - component: {fileID: 6456867756280879980}
+  - component: {fileID: 7043670501089851505}
   m_Layer: 6
   m_Name: PlayerV0.3
   m_TagString: Player
@@ -408,6 +409,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   freeCamSpeed: 5
   freeCamSensitivity: 0.15
+  spectatorCamPrefab: {fileID: 7174920901635206700, guid: dc06088a5ba504fa783f95e8bc3ebb76, type: 3}
 --- !u!114 &9147211746451175509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -467,3 +469,58 @@ MonoBehaviour:
   runNoiseRange: 28
   walkStepInterval: 0.5
   runStepInterval: 0.3
+--- !u!114 &7043670501089851505
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c78fe6a883ca4cd4afe7ebbbeadbe5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FearSystem
+  fearDecayRate: 15
+  darknessRate: 3
+  fearTargetFollowSpeed: 5
+  nearDeathRadius: 15
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  darkThreshold: 0.3
+  enemyDetectRadius: 8
+  enemyFalloffBuffer: 2
+  distanceApproachFollowSpeed: 2.5
+  distanceRetreatFollowSpeed: 8
+  distanceFearTable:
+  - distance: 8
+    fear: 10
+  - distance: 5
+    fear: 40
+  - distance: 3
+    fear: 70
+  - distance: 1
+    fear: 95
+  deathWitnessAdd: 30
+  damageAdd: 15
+  panicThreshold: 90
+  panicRearmFear: 75
+  panicTriggerHoldTime: 1.25
+  panicStunDuration: 2
+  panicCooldown: 8
+  shakeCamera: {fileID: 0}
+  shakeAmount: 0.05
+  shakeFrequency: 20
+  highFearBlurRadius: 0.45
+  maxFearSpeedMultiplier: 0.6
+  playerMovement: {fileID: 0}
+  heartbeatSource: {fileID: 0}
+  heartbeatClip: {fileID: 0}
+  heartbeatStartFear: 35
+  heartbeatMaxVolume: 0.8
+  heartbeatMinPitch: 0.9
+  heartbeatMaxPitch: 1.35
+  heartbeatFollowSpeed: 2.5
+  postProcessVolume: {fileID: 0}
+  fearOverlay: {fileID: 0}
