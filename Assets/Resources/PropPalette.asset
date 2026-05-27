@@ -28,11 +28,16 @@ MonoBehaviour:
     weight: 0.1
     randomYaw: 1
     scaleJitter: {x: 1, y: 1}
-  - prefab: {fileID: 117280, guid: 9a7a5471175b6614aabaa0e419ed7ccc, type: 3}
+  - prefab: {fileID: 125854, guid: 4a93fac51166f634bab888f695f8c831, type: 3}
     categories: 00000000
     weight: 0.1
     randomYaw: 1
     scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 122194, guid: 8b4c3f5393e8fc14cbcb6b7d7030dcfc, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 0.5, y: 0.5}
   - prefab: {fileID: 167278, guid: 8909eebb69e093445a7f13a7b7d8721b, type: 3}
     categories: 04000000
     weight: 0.1
