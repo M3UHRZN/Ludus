@@ -503,7 +503,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: gameplaySpawnDelay
-      value: 0.5
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 2807430061452851677, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_Enabled
