@@ -8,6 +8,8 @@ public class ExtractionManager : NetworkBehaviour
 
     [Header("Scene")]
     [SerializeField] private string lobbySceneName = "LobbyScene";
+    public string LobbySceneName => lobbySceneName;
+
 
     // Server-only: bir oyuncu extraction'ı tetikledikten sonra tekrar tetiklemeyi engeller.
     private bool _runEnding;
@@ -75,6 +77,18 @@ public class ExtractionManager : NetworkBehaviour
         if (_runEnding) return;
         if (!HasExtractedItems) return;
         _runEnding = true;   // çift tetiklemeye karşı kilit; sahne reload'unda manager taze spawn olur
-        NetworkManager.SceneManager.LoadScene(lobbySceneName, LoadSceneMode.Single);
+
+        if (ExitZoneInteractable.Instance != null)
+        {
+            ExitZoneInteractable.Instance.PerformExtractionOnServer();
+        }
+        else
+        {
+            if (GameSessionManager.Instance != null)
+            {
+                GameSessionManager.Instance.EndSessionWithPenalty();
+            }
+            NetworkManager.SceneManager.LoadScene(lobbySceneName, LoadSceneMode.Single);
+        }
     }
 }

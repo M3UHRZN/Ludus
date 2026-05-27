@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class ExtractZone : MonoBehaviour
 {
@@ -53,7 +54,10 @@ public class ExtractZone : MonoBehaviour
 
         Debug.Log($"[ExtractZone] Extracted: {physicsObject.name} | Credits: {credits}");
 
-        Destroy(physicsObject.gameObject);
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            Destroy(physicsObject.gameObject);
+        }
     }
 
     private void OnTriggerEnter(Collider other)
