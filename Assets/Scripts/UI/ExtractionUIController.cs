@@ -3,10 +3,11 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement; // Sahneler aras� ge�i� i�in �art!
 
+// Bu s�n�f, Extraction (G�rev Tamamlama) ekran�n� y�netir. G�rev tamamland���nda veya kota ba�ar�s�z oldu�unda bu ekran a��l�r ve ilgili bilgileri g�sterir.
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
-    public GameObject extractionPanel; // T�m ekran� a��p kapatmak i�in
+    public GameObject extractionPanel;
 
     [Header("Metinler")]
     public TextMeshProUGUI titleText;
@@ -18,11 +19,9 @@ public class ExtractionUIController : MonoBehaviour
 
     private void Start()
     {
-        // Oyun ba�lad���nda bu ekrani gizli yapar�z, sadece g�rev bitti�inde g�sterilecek
-        extractionPanel.SetActive(false);
+        extractionPanel.SetActive(false); // Oyun ba�larken gizli
     }
 
-    // --- EVENTBUS ABONEL�KLER� BA�LANGICI ---
     private void OnEnable()
     {
         GameEventBus.Subscribe<LevelEndedEvent>(OnLevelEnded);
@@ -33,6 +32,15 @@ public class ExtractionUIController : MonoBehaviour
         GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
     }
 
+    private void OnLevelEnded(LevelEndedEvent evt)
+    {
+        // Ekran� a�
+        extractionPanel.SetActive(true);
+
+        // Ba�l�k
+        if (evt.IsSuccess)
+        {
+            titleText.text = "MISSION CLEAR";
     // Olay tetiklendi�inde �al��acak fonksiyon
     private void OnLevelEnded(LevelEndedEvent evt)
     {
@@ -59,17 +67,17 @@ public class ExtractionUIController : MonoBehaviour
         }
         else
         {
-            titleText.text = "KOTA BA�ARISIZ";
+            titleText.text = "MISSION FAILED";
             titleText.color = Color.red;
         }
 
-        // 4. Kredileri yazd�r
-        creditsText.text = "Toplanan Kredi: " + collectedCredits;
+        // Krediler
+        creditsText.text = "COLLECTED CREDITS: " + evt.CollectedCredits;
 
-        // 5. Ceza kontrol� (Ceza yoksa yaz�y� tamamen gizle)
-        if (penaltyAmount > 0)
+        // Ceza Yaz�s�
+        if (evt.PenaltyAmount > 0)
         {
-            penaltyText.text = "Terk Cezas�: -" + penaltyAmount + " Kredi";
+            penaltyText.text = "PENALTY: -" + evt.PenaltyAmount + " CREDITS";
             penaltyText.gameObject.SetActive(true);
         }
         else
@@ -77,6 +85,15 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
+        // Kota Bar�
+        if (quotaFillImage != null)
+            quotaFillImage.fillAmount = evt.QuotaFillAmount;
+    }
+
+    public void ReturnToShip()
+    {
+        Debug.Log("Sistem: Gemiye D�n�l�yor... Lobi sahnesi y�klenecek.");
+        // UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene"); 
         // 6. Kota bar�n� doldur (0 ile 1 aras�nda bir de�er, �rn: %80 i�in 0.8f)
         quotaFillImage.fillAmount = quotaFillAmount;
     }
