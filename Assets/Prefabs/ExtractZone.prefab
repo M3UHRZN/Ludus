@@ -44,7 +44,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8248402072063123718}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e3f4287e8fb364c57bf3a82adb1a2b66, type: 3}
+  m_Script: {fileID: 11500000, guid: 808ccd21770f1434dbfabf0c3d4bb4f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExtractZone
   fallbackCreditValue: 10
@@ -104,7 +104,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: dbb4f5cf92e0648328993f26587d305a, type: 2}
+  - {fileID: 2100000, guid: 04a956cdcbc244101bdd6fd6ba7b8538, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

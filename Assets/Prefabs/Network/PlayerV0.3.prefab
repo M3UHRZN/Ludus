@@ -408,6 +408,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   freeCamSpeed: 5
   freeCamSensitivity: 0.15
+  spectatorCamPrefab: {fileID: 7174920901635206700, guid: dc06088a5ba504fa783f95e8bc3ebb76, type: 3}
 --- !u!114 &9147211746451175509
 MonoBehaviour:
   m_ObjectHideFlags: 0

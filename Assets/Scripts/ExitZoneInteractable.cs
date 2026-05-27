@@ -26,6 +26,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
 
     public void Interact(PlayerStateMachine machine)
     {
+        Debug.Log("[ExitZone] Interact çağrıldı!");
         if (!CanInteract(machine)) return;
 
         ShowResultsLocalUI();
@@ -44,6 +45,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
         if (machine == null || !machine.IsOwner) return;
 
         _playerInZone = machine;
+        Debug.Log("[ExitZone] Oyuncu girdi!");
     }
 
     private void OnTriggerExit(Collider other)
@@ -63,6 +65,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
 
         if (Input.GetKeyDown(KeyCode.E))
         {
+            Debug.Log("[ExitZone] E basıldı!");
             Interact(_playerInZone);
         }
     }
