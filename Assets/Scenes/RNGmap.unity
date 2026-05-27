@@ -715,9 +715,21 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
+      propertyPath: _floorPrefab
+      value: 
+      objectReference: {fileID: 8559447516315551342, guid: fdf2aaf41ad3b264899089a7c2cc5bd1, type: 3}
+    - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
+      propertyPath: _propPalette
+      value: 
+      objectReference: {fileID: 11400000, guid: 276d03c2acc86844e8423901e83f79d1, type: 2}
+    - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
       propertyPath: _exitZonePrefab
       value: 
       objectReference: {fileID: 1265017767116444800, guid: f4fd201f41dd14d4cb7c85396760cc10, type: 3}
+    - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
+      propertyPath: _minPropsPerRoom
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
       propertyPath: _extractZonePrefab
       value: 
