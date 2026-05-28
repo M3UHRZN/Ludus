@@ -15,8 +15,11 @@ public class EnemyController : MonoBehaviour, IDamageable
     [SerializeField] private LayerMask _playerLayer;
 
     [Header("Saglik")]
-    [Tooltip("Dusmanin maksimum cani. 0'a inerse Destroy + EnemyDiedEvent.")]
+    [Tooltip("Type A (robot) maksimum cani. 0'a inerse Destroy + EnemyDiedEvent.")]
     [SerializeField] private float _maxHealth = 60f;
+    [Tooltip("Type B (priest) maksimum cani. Robotun cok ustunde: priest 'boss' tier — " +
+             "oldurulebilir ama buyuk koordinasyon gerektirir. Sadece IsPriest ise kullanilir.")]
+    [SerializeField] private float _priestMaxHealth = 1000f;
 
     [Header("Gorus Konisi")]
     [Tooltip("TUM dusmanlar sadece bu acidaki koni icinde (yuzunun baktigi yer) gorur; " +
@@ -124,8 +127,10 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     // Saglik (IDamageable implementasyonu)
     private float _currentHealth;
+    private float _effectiveMaxHealth;   // tipe gore secilmis maksimum (Start'ta hesaplanir)
     public bool IsAlive => _currentHealth > 0f;
     public float CurrentHealth => _currentHealth;
+    public float MaxHealth => _effectiveMaxHealth;
 
     private void Awake()
     {
@@ -169,7 +174,10 @@ public class EnemyController : MonoBehaviour, IDamageable
         }
 
         _baseAgentSpeed = Agent != null ? Agent.speed : 3.5f;
-        _currentHealth = _maxHealth;
+        // Type B (priest) "boss" tier: cok daha tank — Type A robotun ufak
+        // _maxHealth'i kullanmasi yerine kendi _priestMaxHealth alanini alir.
+        _effectiveMaxHealth = IsPriest ? _priestMaxHealth : _maxHealth;
+        _currentHealth = _effectiveMaxHealth;
         SwitchBehavior(CreateDefaultBehavior());
     }
 
@@ -409,7 +417,7 @@ public class EnemyController : MonoBehaviour, IDamageable
         if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return;
 
         _currentHealth = Mathf.Max(0f, _currentHealth - amount);
-        Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_maxHealth:F0})");
+        Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_effectiveMaxHealth:F0})");
 
         if (_currentHealth <= 0f)
         {
