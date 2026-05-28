@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(NetworkObject))]
-public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, IKnockbackable
+public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, IKnockbackable, ISlowable
 {
     /// <summary>
     /// Server-only registry of every spawned PlayerStateMachine. Populated in
@@ -222,6 +222,25 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
         ForceStun(stunDuration);
         ApplyKnockbackRpc(dir * force);
+    }
+
+    /// <summary>
+    /// ISlowable — dusman mermisi vb. dis kaynak oyuncuyu gecici olarak yavaslatir.
+    /// Server'da tetiklenir, owner'a RPC ile gonderilir. Owner'in PlayerMovement
+    /// scripti slow'u uygular (FearSystem'in hiz cezasiyla carpilarak compose).
+    /// </summary>
+    public void ApplySlow(float multiplier, float duration)
+    {
+        if (!IsServer || !IsAlive) return;
+        if (duration <= 0f) return;
+        ApplySlowRpc(Mathf.Clamp(multiplier, 0.05f, 1f), duration);
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void ApplySlowRpc(float multiplier, float duration)
+    {
+        if (Movement != null)
+            Movement.ApplyTemporarySlow(multiplier, duration);
     }
 
     [Rpc(SendTo.Owner)]
