@@ -10,41 +10,48 @@ using UnityEngine.AI;
 /// Davranis donguсu:
 /// - Enter'da NavMeshAgent'a kucuk bir hiz boost'u uygulanir (sustained baski).
 /// - Her Tick'te tasiyicinin guncel transform pozisyonu okunup, en yakin
-///   gecerli NavMesh noktasina snap edilip SetDestination yazilir; tasiyici
-///   hareket ettikce priest pesinden gelir.
-/// - Path tikanik kalir (multi-floor / kopuk NavMesh: duvar ardinda hedef,
-///   agent en yakin noktada donar): 3 saniye stuck'tan sonra tasiyiciya yakin,
-///   tasiyicinin GORMEDIGI bir NavMesh noktasina warp edilir ("priest
-///   sezgisi" / horror shortcut). Warp basarisizsa 8 saniyede vazgec.
+///   gecerli NavMesh noktasina snap edilip SetDestination yazilir.
+/// - Stuck tespiti POZISYONEL: 2 saniyelik pencerede priest 60cm'den az yer
+///   degistirdiyse "stuck". Velocity tabanli check, repath spam'i nedeniyle
+///   guvenilmez oldugu icin transform delta'ya bakiyoruz.
+/// - 1.5sn stuck oldumu: tasiyiciya yakin (7-14m), oncelikli olarak tasiyici
+///   LOS'unda OLMAYAN bir NavMesh noktasi aranir; bulamazsa LOS umursamadan
+///   yakin bir gecerli nokta secilir. Bulunan noktaya Agent.Warp ile isinlanir
+///   ("priest sezgisi" / horror shortcut). Toplam 8sn'de tek warp denenir;
+///   hala stuck'sa default davranisa donulur.
 /// - Tasiyici objeyi BIRAKIRSA (PhysicsObject.IsHeld false) lure aninda biter
 ///   ve default davranisa (Patrol/Wander) donulur.
-/// - Tasiyici hat-of-sight'a girerse hemen ChaseBehavior'a devredilir; oradaki
-///   son gorulen yer + give-up zinciri devam eder.
+/// - Tasiyici hat-of-sight'a girerse hemen ChaseBehavior'a devredilir.
 ///
 /// Strategy pattern'in 9. concrete davranisi. Type A (robot) sagir oldugu icin
 /// bu davranisa hic gecmez (subscribe tarafi _useRangedAttack kontrolu yapar).
 /// </summary>
 public class LureBehavior : IEnemyBehavior
 {
-    private const float SpeedBoostMult     = 1.4f;  // sustained baski; priest "merak" hizi
-    private const float RepathInterval     = 0.25f; // SetDestination spam'i yerine cadence
-    private const float NavSampleRadius    = 4f;    // hedef noktayi NavMesh'e snap'lerken arama yaricapi
+    private const float SpeedBoostMult        = 1.4f;
+    private const float RepathInterval        = 0.25f; // hareket halinde repath cadence
+    private const float StuckRepathInterval   = 1f;    // stuck'ken yavasla
+    private const float NavSampleRadius       = 4f;
 
-    // Stuck / warp parametreleri
-    private const float StuckMovementEps   = 0.04f; // bu hizin altinda "duruyor" sayilir (m/s sqr)
-    private const float StuckRemainingEps  = 1.5f;  // remainingDistance bunun altindayken hala duruyorsa stuck
-    private const float StuckSecondsToWarp = 3f;    // ilk warp denemesi icin sure
-    private const float StuckSecondsToGiveUp = 8f;  // toplam stuck tahammulu
-    private const float WarpMinRadius      = 8f;    // tasiyici etrafindan en yakin warp mesafesi
-    private const float WarpMaxRadius      = 15f;   // tasiyici etrafindan en uzak warp mesafesi
-    private const int   WarpSampleAttempts = 12;    // random nokta deneme sayisi
+    // Stuck tespiti (movement-window based)
+    private const float MoveWindowSec         = 2f;
+    private const float MoveStuckThresholdSqr = 0.6f * 0.6f; // 60cm pencere altinda stuck
+    private const float StuckSecondsToWarp    = 1.5f;
+    private const float StuckSecondsToGiveUp  = 8f;
+
+    // Warp parametreleri
+    private const float WarpMinRadius         = 7f;
+    private const float WarpMaxRadius         = 14f;
+    private const int   WarpSampleAttempts    = 16;
 
     private readonly PhysicsObject _trackedItem;
     private readonly ulong _grabberClientId;
     private readonly Vector3 _fallbackPosition;
 
     private float _repathTimer;
-    private float _stuckTimer;
+    private float _moveWindowTimer;
+    private Vector3 _lastSamplePos;
+    private float _stuckSeconds;
     private float _baseSpeed;
     private bool  _speedBoosted;
     private bool  _warpedOnce;
@@ -59,7 +66,8 @@ public class LureBehavior : IEnemyBehavior
     public void Enter(EnemyController enemy)
     {
         _repathTimer = 0f;
-        _stuckTimer = 0f;
+        _moveWindowTimer = 0f;
+        _stuckSeconds = 0f;
         _warpedOnce = false;
 
         if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
@@ -70,6 +78,7 @@ public class LureBehavior : IEnemyBehavior
 
             SetDestinationSnapped(enemy, ResolveCarrierPosition());
         }
+        _lastSamplePos = enemy.transform.position;
         Debug.Log($"[LureBehavior] Pickup sinyali alindi, tasiyici takip basliyor (clientId={_grabberClientId}).");
     }
 
@@ -91,44 +100,54 @@ public class LureBehavior : IEnemyBehavior
             return;
         }
 
-        // Stuck tespiti: agent neredeyse duruyor + path'in sonuna geldi/yakin.
-        bool isStuck = !enemy.Agent.pathPending &&
-                       enemy.Agent.velocity.sqrMagnitude < StuckMovementEps &&
-                       enemy.Agent.remainingDistance < StuckRemainingEps;
-
-        if (isStuck)
+        // POZISYONEL stuck olcumu (her MoveWindowSec'te bir):
+        // velocity tabanli check repath spam ile birlikte guvenilmezdi —
+        // transform'un fiziksel olarak ne kadar yer degistirdigine bakiyoruz.
+        _moveWindowTimer += Time.deltaTime;
+        if (_moveWindowTimer >= MoveWindowSec)
         {
-            _stuckTimer += Time.deltaTime;
-
-            // Ilk warp penceresi: tasiyicinin gormeyecegi yakin bir koruga isinla.
-            if (!_warpedOnce && _stuckTimer >= StuckSecondsToWarp)
+            float windowDeltaSqr = (enemy.transform.position - _lastSamplePos).sqrMagnitude;
+            if (windowDeltaSqr < MoveStuckThresholdSqr)
             {
-                if (TryWarpBehindCover(enemy))
+                _stuckSeconds += MoveWindowSec;
+
+                if (!_warpedOnce && _stuckSeconds >= StuckSecondsToWarp)
                 {
-                    _warpedOnce = true;
-                    _stuckTimer = 0f;
-                    _repathTimer = 0f; // bir sonraki Tick'te yeni destination yazilsin
-                    Debug.Log("[LureBehavior] Path tikalı, tasiyiciya yakin bir koruga warp yapildi.");
+                    if (TryWarpNearCarrier(enemy))
+                    {
+                        _warpedOnce = true;
+                        _stuckSeconds = 0f;
+                        _repathTimer = 0f;
+                        Debug.Log("[LureBehavior] Path tikalı, tasiyiciya yakin warp yapildi.");
+                    }
+                    else
+                    {
+                        Debug.Log("[LureBehavior] Warp icin uygun NavMesh noktasi bulunamadi.");
+                    }
+                }
+                else if (_stuckSeconds >= StuckSecondsToGiveUp)
+                {
+                    Debug.Log("[LureBehavior] Tasiyiciya ulasilamadi, devriyeye donuluyor.");
+                    enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
+                    return;
                 }
             }
-            else if (_stuckTimer >= StuckSecondsToGiveUp)
+            else
             {
-                Debug.Log("[LureBehavior] Tasiyiciya ulasilamadi, devriyeye donuluyor.");
-                enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
-                return;
+                _stuckSeconds = 0f;
             }
-        }
-        else
-        {
-            _stuckTimer = 0f;
+
+            _lastSamplePos = enemy.transform.position;
+            _moveWindowTimer = 0f;
         }
 
-        // Destination'i kucuk araliklarla yenile (carving + carrier movement).
+        // Destination'i kucuk araliklarla yenile. Stuck'ken yavas yenile
+        // (faydasi yok, sadece dirty flag spam'i olur).
         _repathTimer -= Time.deltaTime;
         if (_repathTimer <= 0f)
         {
             SetDestinationSnapped(enemy, ResolveCarrierPosition());
-            _repathTimer = RepathInterval;
+            _repathTimer = _stuckSeconds > 0f ? StuckRepathInterval : RepathInterval;
         }
     }
 
@@ -169,8 +188,6 @@ public class LureBehavior : IEnemyBehavior
 
     /// <summary>
     /// SetDestination'i ham pozisyonla degil, en yakin gecerli NavMesh noktasiyla yapar.
-    /// Hedef kucuk bir NavMesh adasinin ortasindaysa (orn. duvar disinda) bu sayede
-    /// agent en azindan ulasabilecegi en yakin noktaya yonelir.
     /// </summary>
     private static void SetDestinationSnapped(EnemyController enemy, Vector3 raw)
     {
@@ -181,41 +198,63 @@ public class LureBehavior : IEnemyBehavior
     }
 
     /// <summary>
-    /// Tasiyiciya WarpMinRadius..WarpMaxRadius arasinda, tasiyicinin LOS'unda
-    /// OLMAYAN bir NavMesh noktasi arar ve bulursa Agent.Warp ile priest'i
-    /// oraya isinlar. Server-only kosulur, NetworkTransform replikasyonu
-    /// pozisyonu tum client'lara senkronize eder. Tasiyici tarafindan gorulen
-    /// noktalar elenir, boylece warp "priest gozlerimin onunde belirdi" gibi
-    /// gozukmez — kose arkasi / koridor ardi "supernatural shortcut" hissi olur.
+    /// Tasiyici etrafinda WarpMinRadius..WarpMaxRadius'te yakin bir NavMesh
+    /// noktasi bulup Agent.Warp ile priest'i isinlar. Once tasiyici LOS'unda
+    /// olmayan ("saklanik warp") nokta aranir; bulunamazsa LOS umursamadan
+    /// yakin bir gecerli noktaya isinlanir. Server-only kosulur,
+    /// NetworkTransform pozisyon degisikligini tum client'lara replikator.
     /// </summary>
-    private bool TryWarpBehindCover(EnemyController enemy)
+    private bool TryWarpNearCarrier(EnemyController enemy)
     {
         Vector3 carrierPos = ResolveCarrierPosition();
         Vector3 carrierEye = carrierPos + Vector3.up * 1.5f;
 
+        if (TryFindNavPointNearCarrier(carrierPos, carrierEye, requireBlockedLos: true,  out Vector3 hidden))
+        {
+            enemy.Agent.Warp(hidden);
+            return true;
+        }
+
+        // Fallback: LOS umursamadan herhangi bir gecerli yakin nokta. Iyi degil ama
+        // sonsuz stuck'tan iyi; oyuncu warp'in olusunu gorse de en azindan priest
+        // ulasabilir bir adada belirir.
+        if (TryFindNavPointNearCarrier(carrierPos, carrierEye, requireBlockedLos: false, out Vector3 anyPoint))
+        {
+            enemy.Agent.Warp(anyPoint);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryFindNavPointNearCarrier(Vector3 carrierPos, Vector3 carrierEye,
+                                                   bool requireBlockedLos, out Vector3 result)
+    {
         for (int attempt = 0; attempt < WarpSampleAttempts; attempt++)
         {
-            Vector2 dir = Random.insideUnitCircle.normalized;
+            Vector2 planar = Random.insideUnitCircle.normalized;
             float radius = Random.Range(WarpMinRadius, WarpMaxRadius);
-            Vector3 candidate = carrierPos + new Vector3(dir.x * radius, 0f, dir.y * radius);
+            Vector3 candidate = carrierPos + new Vector3(planar.x * radius, 0f, planar.y * radius);
 
-            // NavMesh'te gecerli bir noktaya snap; degilse atla.
             if (!NavMesh.SamplePosition(candidate, out NavMeshHit navHit, NavSampleRadius, NavMesh.AllAreas))
                 continue;
 
-            // Tasiyici bu noktayi GORMEMELI: carrierEye -> candidate yolunda engel olmali.
-            Vector3 candidateEye = navHit.position + Vector3.up * 1.5f;
-            Vector3 losVec = candidateEye - carrierEye;
-            float losDist = losVec.magnitude;
-            if (losDist < 0.01f) continue;
+            if (requireBlockedLos)
+            {
+                Vector3 candidateEye = navHit.position + Vector3.up * 1.5f;
+                Vector3 losVec = candidateEye - carrierEye;
+                float losDist = losVec.magnitude;
+                if (losDist < 0.01f) continue;
 
-            if (!Physics.Raycast(carrierEye, losVec.normalized, losDist))
-                continue; // tasiyici buradan candidate'i ack-acik gorur — warp etme
+                if (!Physics.Raycast(carrierEye, losVec.normalized, losDist))
+                    continue; // tasiyici buradan candidate'i gorur — LOS'lu turda elenir
+            }
 
-            // Tum kontrolleri gecti: priest'i bu noktaya isinla.
-            enemy.Agent.Warp(navHit.position);
+            result = navHit.position;
             return true;
         }
+
+        result = Vector3.zero;
         return false;
     }
 }
