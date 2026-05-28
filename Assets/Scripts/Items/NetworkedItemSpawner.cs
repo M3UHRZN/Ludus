@@ -52,6 +52,17 @@ public class NetworkedItemSpawner : NetworkBehaviour
              "Boylece SamplePosition mid-air'dan baslayip yukari duvarlara snap'lemez.")]
     [SerializeField] private float _floorYOffset = 0.1f;
 
+    [Tooltip("Snap noktasinin ALTINDA raycast ile gercek Floor mesh oldugu dogrulanir. " +
+             "Yuzey normalinin yukari bakmasi (floor=horizontal) + collider adinda 'Wall' veya " +
+             "'Door' OLMAMASI gerekir. Bu kontrol Anil'in MapEnemyBridge.EstimateRoomBounds " +
+             "wall/door renderer'lari da kapsadigi icin sisirilmis bounds'i gerceklestirir.")]
+    [SerializeField] private bool _requireFloorBelowSnap = true;
+
+    [Tooltip("Floor sayilmasi icin yuzey normal Y'sinin minimum degeri. 1.0 = tam yatay, " +
+             "0.85 = hafif egim. 0.7 altinda duvarlar gibi davranir.")]
+    [Range(0.5f, 1f)]
+    [SerializeField] private float _minFloorNormalY = 0.85f;
+
     [Header("Debug")]
     [SerializeField] private bool _verbose = false;
 
@@ -210,10 +221,46 @@ public class NetworkedItemSpawner : NetworkBehaviour
                 continue;
             }
 
+            // (d) Snap noktasinin ALTINDA gercek floor mesh var mi? Anil'in
+            // EstimateRoomBounds wall+door+floor renderer'larini topladigi icin
+            // sisirilmis bounds icinde olmak yetmiyor — fiziksel kontrol sart.
+            if (_requireFloorBelowSnap && !IsOverFloor(navHit.position))
+            {
+                if (_verbose)
+                    Debug.Log($"[NetworkedItemSpawner] Snap altinda Floor degil ({navHit.position}), retry.");
+                continue;
+            }
+
             position = navHit.position;
             return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Snap noktasindan asagi raycast atip yuzeyin GERCEKTEN floor olup olmadigini
+    /// fiziksel olarak dogrular. 3 kriter:
+    ///   1. Raycast bir collider'a degmeli (havada degil)
+    ///   2. Yuzey normalinin Y'si _minFloorNormalY'den buyuk olmali (yatay yuzey)
+    ///   3. Collider'in gameobject adi "Wall" veya "Door" icermemeli
+    /// </summary>
+    private bool IsOverFloor(Vector3 snapPos)
+    {
+        Vector3 rayStart = snapPos + Vector3.up * 0.5f;
+        // 1.5m max — floor hemen alt olmali; daha uzaktaysa "havada" kabul ediyoruz
+        if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 1.5f))
+            return false;
+
+        // Normal yatay olmali (floor); duvar üstüne snap'lerse normal saga/sola bakar
+        if (hit.normal.y < _minFloorNormalY)
+            return false;
+
+        // Collider sahibi GameObject adinda Wall/Door olmamali (Anil'in adlandirma konvansiyonu)
+        string colliderName = hit.collider.gameObject.name;
+        if (colliderName.IndexOf("Wall", System.StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        if (colliderName.IndexOf("Door", System.StringComparison.OrdinalIgnoreCase) >= 0) return false;
+
+        return true;
     }
 
     /// <summary>
