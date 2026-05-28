@@ -14,8 +14,13 @@ public class DeadState : IPlayerState
         }
 
         machine.SwitchActionMap("Spectator");
+
+        // movement'i KAPATMIYORUZ — PlayerMovement Update'i icinde ApplyGravity var
+        // ve action map "Spectator"a gectigi icin Gameplay/Move girisleri sifir okur,
+        // boylece yatay hareket yok ama yercekimi cesedi zemine yaslar. Aksi takdirde
+        // CharacterController son olduren framedeki konumda donar (havada asili ceset).
         machine.SetComponentsEnabled(
-            movement: false,
+            movement: true,
             look: false,
             interaction: false,
             inventory: false,

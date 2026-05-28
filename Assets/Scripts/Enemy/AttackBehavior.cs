@@ -26,7 +26,13 @@ public class AttackBehavior : IEnemyBehavior
 
     public void Tick(EnemyController enemy)
     {
-        if (enemy.PlayerTransform == null) return;
+        // Hedef yok / oldu — Chase'e devret; Chase tum-oyuncular-olu durumunda
+        // kisa grace ile default davranisa doner, dusman cesedin ustunde takilmaz.
+        if (enemy.PlayerTransform == null)
+        {
+            enemy.SwitchBehavior(new ChaseBehavior());
+            return;
+        }
 
         // Oyuncuya don
         Vector3 toPlayer = enemy.PlayerTransform.position - enemy.transform.position;

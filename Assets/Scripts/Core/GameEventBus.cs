@@ -74,18 +74,43 @@ public struct EnemyDiedEvent
     }
 }
 
-/// <summary>Oyuncu bir eşyayı aldığında yayınlanır.</summary>
+/// <summary>
+/// Oyuncu bir eşyayı aldığında yayınlanır. Position / GrabberClientId / Item
+/// alanlari duyusal AI (orn. priest LureBehavior) icin eklendi; eski 3-arg
+/// constructor hala calisir ve bu alanlari default (Vector3.zero / 0 / null)
+/// birakir, boylece yayinci pozisyon bilmiyorsa dinleyiciler "konum yok, atla"
+/// diyebilir. Item null degilse priest tasiyicinin elinde tuttugu objeyi
+/// takip edip drop anini polle edebilir (kupris -> patrol gecisi temiz olur).
+/// </summary>
 public struct ItemPickedUpEvent
 {
     public string ItemName;
     public int Weight;
     public float CreditValue;
+    public UnityEngine.Vector3 Position;
+    public ulong GrabberClientId;
+    public PhysicsObject Item;
 
     public ItemPickedUpEvent(string itemName, int weight, float creditValue)
     {
         ItemName = itemName;
         Weight = weight;
         CreditValue = creditValue;
+        Position = UnityEngine.Vector3.zero;
+        GrabberClientId = 0UL;
+        Item = null;
+    }
+
+    public ItemPickedUpEvent(string itemName, int weight, float creditValue,
+                             UnityEngine.Vector3 position, ulong grabberClientId,
+                             PhysicsObject item)
+    {
+        ItemName = itemName;
+        Weight = weight;
+        CreditValue = creditValue;
+        Position = position;
+        GrabberClientId = grabberClientId;
+        Item = item;
     }
 }
 

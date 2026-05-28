@@ -41,7 +41,13 @@ public class RangedAttackBehavior : IEnemyBehavior
 
     public void Tick(EnemyController enemy)
     {
-        if (enemy.PlayerTransform == null) return;
+        // Hedef yok / oldu — Chase'e devret; Chase tum-oyuncular-olu durumunda
+        // kisa grace ile default davranisa doner, dusman cesedin ustunde takilmaz.
+        if (enemy.PlayerTransform == null)
+        {
+            enemy.SwitchBehavior(new ChaseBehavior());
+            return;
+        }
 
         // Oyuncuya nisan al (gorsel olarak govdeyi dondur)
         FacePlayer(enemy);

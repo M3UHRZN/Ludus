@@ -15,8 +15,11 @@ public class EnemyController : MonoBehaviour, IDamageable
     [SerializeField] private LayerMask _playerLayer;
 
     [Header("Saglik")]
-    [Tooltip("Dusmanin maksimum cani. 0'a inerse Destroy + EnemyDiedEvent.")]
+    [Tooltip("Type A (robot) maksimum cani. 0'a inerse Destroy + EnemyDiedEvent.")]
     [SerializeField] private float _maxHealth = 60f;
+    [Tooltip("Type B (priest) maksimum cani. Robotun cok ustunde: priest 'boss' tier — " +
+             "oldurulebilir ama buyuk koordinasyon gerektirir. Sadece IsPriest ise kullanilir.")]
+    [SerializeField] private float _priestMaxHealth = 1000f;
 
     [Header("Gorus Konisi")]
     [Tooltip("TUM dusmanlar sadece bu acidaki koni icinde (yuzunun baktigi yer) gorur; " +
@@ -47,45 +50,176 @@ public class EnemyController : MonoBehaviour, IDamageable
     [Tooltip("Atis aninda namluda kisa sure gorunen efekt prefab'i (opsiyonel)")]
     [SerializeField] private GameObject _muzzleFlashPrefab;
 
+    [Header("Priest Ambient (sadece Type B icin)")]
+    [Tooltip("Priest etrafinda loop'lu calan ambient klip (zil/diapaz). Bos birakilirsa sessiz kalir. " +
+             "3D spatial audio kullanilir: yaklasinca yukselir, uzaklasinca solar.")]
+    [SerializeField] private AudioClip _priestAmbientClip;
+    [Tooltip("Ambient klibin temel ses seviyesi.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float _priestAmbientVolume = 0.55f;
+    [Tooltip("Ses tam ses seviyesinde duyulmaya basladigi en yakin mesafe.")]
+    [SerializeField] private float _priestAmbientMinDistance = 2f;
+    [Tooltip("Sesin tamamen kayboldugu en uzak mesafe.")]
+    [SerializeField] private float _priestAmbientMaxDistance = 18f;
+
     public GameObject ProjectilePrefab => _projectilePrefab;
     public Transform FirePoint => _firePoint;
     public GameObject MuzzleFlashPrefab => _muzzleFlashPrefab;
 
+    /// <summary>
+    /// True ise bu enemy yakin dovus / "priest" tipi (Type B): sesi duyar, esya
+    /// alimini sezer, ambient klip calar. False ise uzaktan saldiri (Type A robot):
+    /// sagir + sezgi yok + ambient ses yok. FearSystem priest yakinligini bu
+    /// flag uzerinden filtreler.
+    /// </summary>
+    public bool IsPriest => !_useRangedAttack;
+
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
+
+    // --- Hedef oncelik state'i (multiplayer adaptasyonu) ---
+    // 3 katmanli oncelik: damage source (en yuksek, kisa sure) -> carrier hint
+    // (orta, davranisin refresh ettigi sure boyunca) -> closest alive + hysteresis.
+    private const float TargetSwitchAdvantage = 3f;   // closest fallback'inda yeni hedefe gecmek icin gereken m avantaji
+    private const float DamageTargetDuration  = 4f;   // hasar veren oyuncu kac saniye oncelikli kalir
+
+    private ulong _damageTargetClientId;
+    private float _damageTargetExpiry;
+    private bool  _hasDamageTarget;
+
+    private ulong _carrierTargetClientId;
+    private float _carrierTargetExpiry;
+    private bool  _hasCarrierTarget;
+
+    private Transform _lastClosestTarget;   // hysteresis'te onceki secimi tut
+
     /// <summary>
-    /// Sunucu tarafindan canli en yakin oyuncuya isaret eder. Multiplayer'da bu
-    /// her erisimde yeniden hesaplanir; tek bir Start() snapshot'i degildir.
-    /// Hicbir canli oyuncu yoksa null doner — tum tuketicilerin null kontrolu
-    /// var (CanSeePlayer, AttackBehavior, ChaseBehavior, FleeBehavior).
+    /// Hedef oncelik zinciri: (1) son 4sn icinde hasar veren oyuncu varsa, (2) yoksa
+    /// taraflanmis carrier hint (LureBehavior tarafindan refreshlenir) varsa, (3) yoksa
+    /// en yakin canli oyuncu — 3m'lik hysteresis ile flap onlenir.
+    /// Multiplayer'da bu sayede:
+    /// - 2 oyuncu esit mesafede dururken kafa titremesi olmaz
+    /// - Oyuncu A robotu vurursa robot B'yi birakip A'ya doner (4sn)
+    /// - Priest lure'da carrier'i takip eder, Chase'e gecince hint korunur
+    /// Hicbir canli oyuncu yoksa null doner.
     /// </summary>
     public Transform PlayerTransform
     {
         get
         {
-            var players = PlayerStateMachine.ServerPlayers;
-            if (players == null || players.Count == 0) return null;
+            float now = Time.time;
 
-            Transform best = null;
-            float bestSqr = float.PositiveInfinity;
-            Vector3 here = transform.position;
-
-            for (int i = 0; i < players.Count; i++)
+            // 1) Damage source priority — hasar veren son 4sn oncelikli
+            if (_hasDamageTarget && now < _damageTargetExpiry)
             {
-                var p = players[i];
-                if (p == null) continue;          // despawn arasi null slot
-                if (!p.IsAlive) continue;          // olu oyuncuyu hedef alma
-
-                float sqr = (p.transform.position - here).sqrMagnitude;
-                if (sqr < bestSqr)
-                {
-                    bestSqr = sqr;
-                    best = p.transform;
-                }
+                var dmgPlayer = PlayerStateMachine.GetServerPlayer(_damageTargetClientId);
+                if (dmgPlayer != null) return dmgPlayer.transform;
+                _hasDamageTarget = false;
             }
-            return best;
+            else _hasDamageTarget = false;
+
+            // 2) Carrier hint — LureBehavior / ChaseBehavior tarafindan refresh edilir
+            if (_hasCarrierTarget && now < _carrierTargetExpiry)
+            {
+                var carrier = PlayerStateMachine.GetServerPlayer(_carrierTargetClientId);
+                if (carrier != null) return carrier.transform;
+                _hasCarrierTarget = false;
+            }
+            else _hasCarrierTarget = false;
+
+            // 3) Closest alive + hysteresis
+            return ResolveClosestWithHysteresis();
         }
     }
+
+    private Transform ResolveClosestWithHysteresis()
+    {
+        var players = PlayerStateMachine.ServerPlayers;
+        if (players == null || players.Count == 0)
+        {
+            _lastClosestTarget = null;
+            return null;
+        }
+
+        Transform best = null;
+        float bestSqr = float.PositiveInfinity;
+        Vector3 here = transform.position;
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null) continue;
+            if (!p.IsAlive) continue;
+
+            float sqr = (p.transform.position - here).sqrMagnitude;
+            if (sqr < bestSqr)
+            {
+                bestSqr = sqr;
+                best = p.transform;
+            }
+        }
+
+        if (best == null) { _lastClosestTarget = null; return null; }
+
+        // Hysteresis: onceki hedefi yeterince yakindaysa koru, flap onle
+        if (_lastClosestTarget == null || !IsTransformAliveTarget(_lastClosestTarget))
+        {
+            _lastClosestTarget = best;
+            return best;
+        }
+        if (best == _lastClosestTarget) return best;
+
+        float lastSqr = (_lastClosestTarget.position - here).sqrMagnitude;
+        float advantageSqr = TargetSwitchAdvantage * TargetSwitchAdvantage;
+        if (lastSqr - bestSqr > advantageSqr)
+        {
+            _lastClosestTarget = best;
+            return best;
+        }
+
+        return _lastClosestTarget;
+    }
+
+    private static bool IsTransformAliveTarget(Transform t)
+    {
+        if (t == null) return false;
+        var psm = t.GetComponent<PlayerStateMachine>()
+                  ?? t.GetComponentInParent<PlayerStateMachine>();
+        return psm != null && psm.IsAlive;
+    }
+
+    /// <summary>
+    /// Hasar kaynagini 4sn boyunca oncelikli hedef olarak isaretle. TakeDamage
+    /// otomatik cagirir; attacker server'da bilinen bir canli oyuncu degilse no-op.
+    /// </summary>
+    public void SetDamageTargetPriority(ulong attackerClientId)
+    {
+        var attacker = PlayerStateMachine.GetServerPlayer(attackerClientId);
+        if (attacker == null) return;
+        _damageTargetClientId = attackerClientId;
+        _damageTargetExpiry = Time.time + DamageTargetDuration;
+        _hasDamageTarget = true;
+    }
+
+    /// <summary>
+    /// Carrier hint: LureBehavior'in takip ettigi oyuncuyu, ChaseBehavior'a
+    /// devredildiginde de hedef olarak korumak icin kullanilir. Duration boyunca
+    /// PlayerTransform damage prio yoksa bu oyuncuyu doner.
+    /// </summary>
+    public void SetCarrierTargetHint(ulong carrierClientId, float duration)
+    {
+        if (duration <= 0f) { _hasCarrierTarget = false; return; }
+        var carrier = PlayerStateMachine.GetServerPlayer(carrierClientId);
+        if (carrier == null) return;
+        _carrierTargetClientId = carrierClientId;
+        _carrierTargetExpiry = Time.time + duration;
+        _hasCarrierTarget = true;
+    }
+
+    public void ClearCarrierTargetHint() => _hasCarrierTarget = false;
+
+    /// <summary>Aktif davranisi disardan sorgulamak icin (orn. OnItemPickedUp idempotency).</summary>
+    public IEnemyBehavior CurrentBehavior => _current;
     public Transform CurrentTarget { get; set; }
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
@@ -104,12 +238,39 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     // Saglik (IDamageable implementasyonu)
     private float _currentHealth;
+    private float _effectiveMaxHealth;   // tipe gore secilmis maksimum (Start'ta hesaplanir)
     public bool IsAlive => _currentHealth > 0f;
     public float CurrentHealth => _currentHealth;
+    public float MaxHealth => _effectiveMaxHealth;
 
     private void Awake()
     {
         Agent = GetComponent<NavMeshAgent>();
+        ConfigurePriestAmbientAudio();
+    }
+
+    /// <summary>
+    /// Type B (priest) icin runtime 3D AudioSource olusturup loop'lu calar. Awake'te
+    /// kosulur boylece hem host hem tum client'lar kendi taraflarinda sesi duyar
+    /// (network sync gerekmez — pozisyon zaten NetworkTransform ile sync). Klip
+    /// atanmamissa veya enemy robot ise no-op.
+    /// </summary>
+    private void ConfigurePriestAmbientAudio()
+    {
+        if (!IsPriest) return;
+        if (_priestAmbientClip == null) return;
+
+        var src = gameObject.AddComponent<AudioSource>();
+        src.clip = _priestAmbientClip;
+        src.loop = true;
+        src.playOnAwake = false;
+        src.spatialBlend = 1f;                           // tamamen 3D
+        src.volume = _priestAmbientVolume;
+        src.minDistance = _priestAmbientMinDistance;
+        src.maxDistance = _priestAmbientMaxDistance;
+        src.rolloffMode = AudioRolloffMode.Linear;       // Linear: tahmin edilebilir azalim
+        src.dopplerLevel = 0f;                            // priest hareketi pitch'i bozmasin
+        src.Play();
     }
 
     private void Start()
@@ -124,7 +285,10 @@ public class EnemyController : MonoBehaviour, IDamageable
         }
 
         _baseAgentSpeed = Agent != null ? Agent.speed : 3.5f;
-        _currentHealth = _maxHealth;
+        // Type B (priest) "boss" tier: cok daha tank — Type A robotun ufak
+        // _maxHealth'i kullanmasi yerine kendi _priestMaxHealth alanini alir.
+        _effectiveMaxHealth = IsPriest ? _priestMaxHealth : _maxHealth;
+        _currentHealth = _effectiveMaxHealth;
         SwitchBehavior(CreateDefaultBehavior());
     }
 
@@ -139,38 +303,59 @@ public class EnemyController : MonoBehaviour, IDamageable
     }
 
     /// <summary>
-    /// Saldiri davranisi fabrikasi. Type A (robot) uzaktan kursun atar
-    /// (RangedAttackBehavior), Type B (priest) yakin dovus yapar (AttackBehavior).
-    /// ChaseBehavior yakinlasinca bunu cagirir.
+    /// Saldiri davranisi fabrikasi. Type A (robot) once kirmizi lazerle nisan alir
+    /// (RangedAimBehavior), telegraph dolunca RangedAttackBehavior'a devreder.
+    /// Type B (priest) yakin dovus yapar (AttackBehavior). ChaseBehavior her yeni
+    /// engagement'ta bunu cagirir; yani lazer her temasta bastan oynar.
     /// </summary>
     public IEnemyBehavior CreateAttackBehavior()
     {
-        return _useRangedAttack ? new RangedAttackBehavior() : new AttackBehavior();
+        return _useRangedAttack ? new RangedAimBehavior() : new AttackBehavior();
     }
+
+    // Oyuncunun ayak (PlayerTransform.position) hizasindan yukari dogru ornekleme
+    // noktalari. Kisa engellerin (ornk masa, alcak duvar) arkasinda sadece basi
+    // cikan oyuncuyu yakalamak ve come durumunda raycast'in basinin uzerinden
+    // gecip "goruldu" sanmasini engellemek icin birden fazla nokta deneriz; biri
+    // bile engelsiz gorus saglarsa oyuncu goruldu sayilir.
+    private static readonly float[] s_visibilitySampleHeights = { 1.7f, 1.0f, 0.3f };
 
     public bool CanSeePlayer()
     {
         if (PlayerTransform == null) return false;
 
         Vector3 eyePos = transform.position + Vector3.up * 1.5f;
-        Vector3 targetPos = PlayerTransform.position + Vector3.up;
-        Vector3 direction = targetPos - eyePos;
-        float distance = direction.magnitude;
+        Vector3 playerBase = PlayerTransform.position;
 
-        if (distance > _sightRange) return false;
+        // Birden fazla ornekleme noktasi: bas / govde / ayak hizasi. Her nokta icin
+        // mesafe + FOV koni + LOS raycast tek tek denenir; engelsiz bir yol bulunan
+        // ilk noktada "goruldu" doneriz. Boylece tek bir nokta (eski sampling) icin
+        // olusan kor noktalar (kisa duvarin uzerinden sadece bas gorunmesi, come
+        // durumunda raycast'in basin ustunden gecmesi) kapanir.
+        for (int i = 0; i < s_visibilitySampleHeights.Length; i++)
+        {
+            Vector3 targetPos = playerBase + Vector3.up * s_visibilitySampleHeights[i];
+            Vector3 direction = targetPos - eyePos;
+            float distance = direction.magnitude;
+            if (distance > _sightRange) continue;
+            if (distance < 0.0001f) continue;
 
-        // Gorus konisi: TUM dusmanlar (hem Type A hem Type B) sadece yuzunun baktigi
-        // koni icini gorur. Arkadan/yandan yaklasilirsa fark etmezler.
-        Vector3 flatDir = direction;
-        flatDir.y = 0f;
-        if (flatDir.sqrMagnitude > 0.0001f &&
-            Vector3.Angle(transform.forward, flatDir) > _fieldOfViewAngle * 0.5f)
-            return false;
+            // Gorus konisi: TUM dusmanlar (hem Type A hem Type B) sadece yuzunun
+            // baktigi koni icini gorur. Arkadan/yandan yaklasilirsa fark etmezler.
+            Vector3 flatDir = direction;
+            flatDir.y = 0f;
+            if (flatDir.sqrMagnitude > 0.0001f &&
+                Vector3.Angle(transform.forward, flatDir) > _fieldOfViewAngle * 0.5f)
+                continue;
 
-        if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
-            return hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform);
+            if (!Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
+                return true; // hicbir engele degmedi; bos havadan direkt goruldu
 
-        return true;
+            if (hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform))
+                return true; // engele degil player'in kendi collider'ina vurdu
+        }
+
+        return false;
     }
 
     private void Update()
@@ -206,11 +391,13 @@ public class EnemyController : MonoBehaviour, IDamageable
     private void OnEnable()
     {
         GameEventBus.Subscribe<NoiseEmittedEvent>(OnNoiseEvent);
+        GameEventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);
     }
 
     private void OnDisable()
     {
         GameEventBus.Unsubscribe<NoiseEmittedEvent>(OnNoiseEvent);
+        GameEventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);
     }
 
     private void OnDestroy()
@@ -227,6 +414,31 @@ public class EnemyController : MonoBehaviour, IDamageable
     private void OnNoiseEvent(NoiseEmittedEvent evt)
     {
         OnNoiseHeard(evt.Position, evt.Range);
+    }
+
+    /// <summary>
+    /// GameEventBus uzerinden grab olaylarini dinler. Type A (robot) sagirdir;
+    /// Type B (priest) ise grab'i haritanin neresinde olursa olsun "sezer" ve
+    /// LureBehavior'a gecerek tasiyiciyi kovalar (priest dogaustu sezgi —
+    /// mesafe sinirsiz). Halihazirda oyuncuyu net goruyorsa veya zaten Lure
+    /// davranisindaysa olay yutulur — Lure HeldItems registry'sinden tum
+    /// tasiyicilari zaten goruyor ve en yakini secebiliyor.
+    /// </summary>
+    private void OnItemPickedUp(ItemPickedUpEvent evt)
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+        if (_useRangedAttack) return;                       // Type A grab sezmez
+        if (evt.Item == null) return;                        // konum/ref bilgisi olmayan eski yayinlar
+        if (!IsAlive) return;
+
+        // Halihazirda oyuncuyu net goruyorsa daha guclu sinyal var; lure bunu bozmasin.
+        if (CanSeePlayer()) return;
+
+        // Zaten Lure'daysa yeni LureBehavior insa etmiyoruz — mevcut Lure
+        // registry'den yeni tasiyiciyi de gorur, gerekirse hedef switch eder.
+        if (_current is LureBehavior) return;
+
+        SwitchBehavior(new LureBehavior());
     }
 
     /// <summary>
@@ -321,7 +533,11 @@ public class EnemyController : MonoBehaviour, IDamageable
         if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return;
 
         _currentHealth = Mathf.Max(0f, _currentHealth - amount);
-        Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_maxHealth:F0})");
+        Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_effectiveMaxHealth:F0})");
+
+        // Hasar veren oyuncuyu 4sn icin oncelikli hedef yap — "beni vurdun, ben sana donerim"
+        // multiplayer'da arkadan vur-kac taktigini kirar, AI tepkisel hisset.
+        SetDamageTargetPriority(attackerClientId);
 
         if (_currentHealth <= 0f)
         {
