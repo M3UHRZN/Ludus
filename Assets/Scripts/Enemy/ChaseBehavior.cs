@@ -14,6 +14,16 @@ public class ChaseBehavior : IEnemyBehavior
     private const float GiveUpDelay    = 4f;    // ize varip etrafa baktiktan sonra vazgecme suresi
     private const float ReachThreshold = 1.5f;  // ipucuna "varildi" sayilan mesafe
 
+    // Yolu temizleme (kovalama sirasinda onumuze cikan fizikli objeleri it)
+    // — NavMeshObstacle carving yuzunden agent her ufak objenin etrafindan
+    // dolasmaya calisip duraklamak yerine kucuk objeleri (varil vb.) yolundan
+    // iter; daha akici ve "kararli" bir kovalama gorunusu olusur.
+    private const float PushScanRange   = 1.45f; // onumuzde ne kadar uzaga bakariz
+    private const float PushScanRadius  = 0.45f; // SphereCast yaricapi (agent capsuluna yaklasik)
+    private const float PushForce       = 110f;  // sustained force (anlik degil)
+    private const float MaxPushableMass = 30f;   // bunun ustundeki cisimleri itmeyiz (buyuk objeyi sallamak yapay durur)
+    private const float MinAgentSpeedToPush = 0.2f; // agent neredeyse duruyorsa itmeyi gerek yok
+
     private readonly Vector3? _noisePosition;
     private float _lostSightTimer;
     private Vector3 _searchPoint;
@@ -56,6 +66,13 @@ public class ChaseBehavior : IEnemyBehavior
     {
         if (enemy.PlayerTransform == null) return;
         if (!enemy.Agent.isOnNavMesh) return;
+
+        // Hareket halindeyken onumuze cikan kucuk fizikli objeleri it ki path
+        // recompute donmalari ya da "etrafindan dolasmaya calisirken duraklama"
+        // hissi olusmasin. Sadece hafif rigidbody'ler (varil, kasa) itilir;
+        // oyuncu ve diger dusmanlar dokunulmaz.
+        if (enemy.Agent.velocity.sqrMagnitude > MinAgentSpeedToPush * MinAgentSpeedToPush)
+            PushObstaclesAhead(enemy);
 
         // --- Oyuncuyu goruyor: dogrudan kovala, son konumu hatirla, sayaci sifirla ---
         if (enemy.CanSeePlayer())
@@ -102,5 +119,38 @@ public class ChaseBehavior : IEnemyBehavior
     {
         if (enemy.Agent.isOnNavMesh)
             enemy.Agent.ResetPath();
+    }
+
+    /// <summary>
+    /// Agent'in mevcut hareket yonunde kucuk fizikli engelleri bulup hafif
+    /// surekli kuvvet uygular. NavMeshObstacle.carving yuzunden ufak bir
+    /// varilin etrafindan dolasmaya calisilmasi yerine, dusman objeyi
+    /// yolundan ittirir; bu hem path recompute donmasini engeller hem de
+    /// gorsel olarak daha kararli bir kovalama hissi verir.
+    /// </summary>
+    private static void PushObstaclesAhead(EnemyController enemy)
+    {
+        Vector3 fwd = enemy.Agent.velocity;
+        fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.0001f) return;
+        fwd.Normalize();
+
+        Vector3 origin = enemy.transform.position + Vector3.up * 0.9f;
+
+        if (!Physics.SphereCast(origin, PushScanRadius, fwd, out RaycastHit hit,
+                PushScanRange, ~0, QueryTriggerInteraction.Ignore))
+            return;
+
+        var rb = hit.rigidbody;
+        if (rb == null) return;
+        if (rb.isKinematic) return;
+        if (rb.mass > MaxPushableMass) return;
+
+        // Oyuncuyu ya da baska dusmani itme — sadece "serbest" sahne objeleri
+        if (hit.transform.GetComponentInParent<PlayerStateMachine>() != null) return;
+        if (hit.transform.GetComponentInParent<EnemyController>() != null) return;
+
+        // Surekli kuvvet (ForceMode.Force her frame deltaTime ile carpilir)
+        rb.AddForce(fwd * PushForce, ForceMode.Force);
     }
 }
