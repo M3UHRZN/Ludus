@@ -834,11 +834,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72b2708ef572772478b4d97731bcc64e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAudioController
-  footstepSource: {fileID: 0}
-  combatSource: {fileID: 0}
   footstepClip: {fileID: 8300000, guid: ae89872e4620cd546a041497b5a2865d, type: 3}
   fallClip: {fileID: 8300000, guid: 5b55f88f63cd69744ac6b08174429952, type: 3}
   deathClip: {fileID: 8300000, guid: b359fa91f19320b418d71953b10468aa, type: 3}
+  bloodyClip: {fileID: 8300000, guid: 79bb775ff9fd2ce45a74ef4a205655d8, type: 3}
+  punchClip: {fileID: 8300000, guid: fd30874dd7d7f9748abc79c089d48199, type: 3}
+  shotClip: {fileID: 8300000, guid: 73e5eb7a76d07f948b01a4ca49c108bf, type: 3}
 --- !u!4 &8327874366705625876 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 994451515667412775, guid: 33b6b3aa0156c6146b8db27ca2dff66b, type: 3}

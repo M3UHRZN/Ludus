@@ -288,6 +288,9 @@ MonoBehaviour:
   footstepClip: {fileID: 8300000, guid: ae89872e4620cd546a041497b5a2865d, type: 3}
   fallClip: {fileID: 8300000, guid: 5b55f88f63cd69744ac6b08174429952, type: 3}
   deathClip: {fileID: 8300000, guid: b359fa91f19320b418d71953b10468aa, type: 3}
+  bloodyClip: {fileID: 8300000, guid: 79bb775ff9fd2ce45a74ef4a205655d8, type: 3}
+  punchClip: {fileID: 8300000, guid: fd30874dd7d7f9748abc79c089d48199, type: 3}
+  shotClip: {fileID: 8300000, guid: 73e5eb7a76d07f948b01a4ca49c108bf, type: 3}
 --- !u!4 &1028237385370330574 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 800668680855996239, guid: c31501b18d95d82419dad970a9527842, type: 3}
