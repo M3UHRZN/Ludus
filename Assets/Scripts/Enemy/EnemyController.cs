@@ -482,6 +482,23 @@ public class EnemyController : MonoBehaviour, IDamageable
         CurrentWaypointIndex = 0;
     }
 
+    /// <summary>
+    /// Loot odası bekçisi olarak yapılandır: wander mode kapali (oda disina cikmaz),
+    /// gorus mesafesi kisaltilmis (oyuncu sneak edebilsin), ranged saldiri tetik
+    /// mesafesi kucultulmus, waypoint'ler odaya ait noktalar. EnemySpawner loot
+    /// odalarini bulduktan sonra bu fabrikatik metodu cagirir; davranis kendisi
+    /// (Strategy) degismez, sadece konfigurasyon parametreleri farklilar.
+    /// </summary>
+    public void SetupAsLootGuardian(float sightRange, float rangedAttackRange, Transform[] roomWaypoints)
+    {
+        _useWanderMode = false;
+        if (sightRange > 0f) _sightRange = sightRange;
+        if (rangedAttackRange > 0f) _rangedAttackRange = rangedAttackRange;
+        if (roomWaypoints != null && roomWaypoints.Length > 0)
+            SetWaypoints(roomWaypoints);
+        Debug.Log($"[EnemyController] Loot guardian olarak yapilandirildi (sight={_sightRange}, attack={_rangedAttackRange}, waypoints={(_patrolWaypoints != null ? _patrolWaypoints.Length : 0)}).");
+    }
+
     public void SetBlinded(bool blinded, float duration)
     {
         if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;

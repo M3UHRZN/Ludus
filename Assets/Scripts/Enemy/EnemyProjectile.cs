@@ -25,6 +25,13 @@ public class EnemyProjectile : NetworkBehaviour
     [Tooltip("Carpma aninda spawn olan efekt prefab'i (opsiyonel — kivilcim/patlama)")]
     [SerializeField] private GameObject _impactEffectPrefab;
 
+    [Header("Slow Effect")]
+    [Tooltip("Mermi vurunca oyuncuya uygulanan hiz carpani (0.55 = %55 hizla yurur)")]
+    [Range(0.1f, 1f)]
+    [SerializeField] private float _slowMultiplier = 0.55f;
+    [Tooltip("Slow ne kadar surer (saniye)")]
+    [SerializeField] private float _slowDuration   = 1.5f;
+
     private Vector3 _direction;
     private float _damage;
     private float _age;
@@ -61,7 +68,15 @@ public class EnemyProjectile : NetworkBehaviour
         if (dmg != null && dmg.IsAlive)
         {
             dmg.TakeDamage(_damage, transform.position, 0UL);
-            Debug.Log($"[EnemyProjectile] Oyuncuya isabet: {_damage} hasar.");
+
+            // Robot mermisi hasarin yaninda gecici slow uygular — oyuncu vur-kac
+            // yapamaz, kovuga gecmek zorunda kalir. ISlowable interface'i
+            // PlayerStateMachine'de implement edilir; oradan RPC ile owner'in
+            // PlayerMovement scriptine slow forward edilir.
+            var slow = other.GetComponent<ISlowable>() ?? other.GetComponentInParent<ISlowable>();
+            slow?.ApplySlow(_slowMultiplier, _slowDuration);
+
+            Debug.Log($"[EnemyProjectile] Oyuncuya isabet: {_damage} hasar + slow ({_slowMultiplier:F2}x, {_slowDuration:F1}s).");
             Despawn();
             return;
         }

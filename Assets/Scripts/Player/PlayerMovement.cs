@@ -43,7 +43,13 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
     private bool _isGrounded;
     private bool _isCrouching;
     private bool _wantCrouch;
+    // FearSystem (lokal korku tabanli ceza) kanali
     private float _speedMultiplier = 1f;
+    // Dis kaynak (orn. dusman mermisi) tabanli gecici slow kanali — FearSystem'den
+    // bagimsiz; ikisi carpilarak final hiz uygulanir. ApplyTemporarySlow set eder,
+    // _externalSlowTimer her frame azalir, sifirlanip 1f'e doner.
+    private float _externalSlowMultiplier = 1f;
+    private float _externalSlowTimer;
 
     private InputAction _moveAction;
     private InputAction _jumpAction;
@@ -99,6 +105,7 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
     private void Update()
     {
         if (_moveAction == null) return;
+        TickExternalSlow();
         CheckGround();
         HandleCrouch();
         HandleMovement();
@@ -106,25 +113,53 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
         ApplyGravity();
     }
 
+    private void TickExternalSlow()
+    {
+        if (_externalSlowTimer <= 0f) return;
+        _externalSlowTimer -= Time.deltaTime;
+        if (_externalSlowTimer <= 0f)
+        {
+            _externalSlowMultiplier = 1f;
+            _externalSlowTimer = 0f;
+        }
+    }
+
     public bool IsGrounded => _isGrounded;
     public float RunSpeed   => runSpeed;
 
-    // Aktif yatay hız (m/s) — animatör blend tree direkt bunu okur
+    // Aktif yatay hız (m/s) — animatör blend tree direkt bunu okur.
+    // Mermi slow'u da dahil edilmis efektif hizdir.
     public float CurrentSpeed
     {
         get
         {
             if (_moveAction == null) return 0f;
             if (_moveAction.ReadValue<Vector2>().magnitude < 0.1f) return 0f;
-            if (_isCrouching)  return crouchSpeed;
-            if (_sprintAction != null && _sprintAction.IsPressed()) return runSpeed;
-            return walkSpeed;
+            float baseSpeed = _isCrouching
+                ? crouchSpeed
+                : (_sprintAction != null && _sprintAction.IsPressed() ? runSpeed : walkSpeed);
+            return baseSpeed * _externalSlowMultiplier;
         }
     }
 
     public void SetSpeedMultiplier(float multiplier)
     {
         _speedMultiplier = multiplier;
+    }
+
+    /// <summary>
+    /// Dis kaynak (orn. dusman mermisi) tabanli gecici yavaslama. FearSystem'in
+    /// _speedMultiplier'iyla CARPILIR (compose), birbirini ezmez. Yeni cagri:
+    ///   - daha agir multiplier (daha kucuk) ise onceliklenir,
+    ///   - duration max-extend edilir (daha uzun olan tutulur).
+    /// Bu sayede arka arkaya iki mermi vurursa daha sert/uzun slow uygulanir.
+    /// </summary>
+    public void ApplyTemporarySlow(float multiplier, float duration)
+    {
+        if (duration <= 0f) return;
+        multiplier = Mathf.Clamp(multiplier, 0.05f, 1f);
+        if (multiplier < _externalSlowMultiplier) _externalSlowMultiplier = multiplier;
+        if (duration > _externalSlowTimer) _externalSlowTimer = duration;
     }
 
     /// <summary>
@@ -193,7 +228,10 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
         else
             speed = walkSpeed;
 
-        _controller.Move(move * (speed * _speedMultiplier * Time.deltaTime));
+        // Final hiz: FearSystem (_speedMultiplier) ile dis kaynak (_externalSlowMultiplier)
+        // CARPILIR — biri digerini ezmez, ikisi de etkili. Ornek: korku 0.7x + mermi slow 0.55x
+        // -> efektif 0.385x. (Ihtimaliyat icin bir taban sinir koyabiliriz; simdilik dogal birakildi.)
+        _controller.Move(move * (speed * _speedMultiplier * _externalSlowMultiplier * Time.deltaTime));
     }
 
     private void HandleJump()
