@@ -3,39 +3,32 @@ using UnityEngine.AI;
 
 /// <summary>
 /// Priest (Type B) dusmanin "esya alindi" sinyalini duyup tasiyici oyuncuyu
-/// kovalamaya basladigi davranis. EnemyController, GameEventBus uzerinden
-/// ItemPickedUpEvent'i dinler ve haritanin neresinde olursa olsun priest'i
-/// bu davranisa gecirir; mesafe kontrolu yoktur (priest dogaustu sezgi).
+/// kovalamaya basladigi davranis. Multiplayer'a tam adapte:
+/// - Tum aktif tasiyicilari (PhysicsObject.HeldItems registry'sinden) bilir.
+/// - Her tick en yakin tasiyiciyi hedef alir; 3m hysteresis ile flap olmaz.
+/// - Hedef carrier'i EnemyController'a hint olarak yazar boylece Chase'e
+///   gecince (oyuncu gorus'e girince) hedef kaybolmaz.
+/// - 4 oyuncu ayni anda grab etse priest en yakin olani secer; tasiyici
+///   kaciyor ve uzaklasiyorsa kalan tasiyicilar arasinda yeniden degerlendirir.
+/// - Tum tasiyicilar birakirsa default davranisa doner (Patrol/Wander).
 ///
-/// Davranis donguсu:
-/// - Enter'da NavMeshAgent'a kucuk bir hiz boost'u uygulanir (sustained baski).
-/// - Her Tick'te tasiyicinin guncel transform pozisyonu okunup, en yakin
-///   gecerli NavMesh noktasina snap edilip SetDestination yazilir.
-/// - Stuck tespiti POZISYONEL: 2 saniyelik pencerede priest 60cm'den az yer
-///   degistirdiyse "stuck". Velocity tabanli check, repath spam'i nedeniyle
-///   guvenilmez oldugu icin transform delta'ya bakiyoruz.
-/// - 1.5sn stuck oldumu: tasiyiciya yakin (7-14m), oncelikli olarak tasiyici
-///   LOS'unda OLMAYAN bir NavMesh noktasi aranir; bulamazsa LOS umursamadan
-///   yakin bir gecerli nokta secilir. Bulunan noktaya Agent.Warp ile isinlanir
-///   ("priest sezgisi" / horror shortcut). Toplam 8sn'de tek warp denenir;
-///   hala stuck'sa default davranisa donulur.
-/// - Tasiyici objeyi BIRAKIRSA (PhysicsObject.IsHeld false) lure aninda biter
-///   ve default davranisa (Patrol/Wander) donulur.
-/// - Tasiyici hat-of-sight'a girerse hemen ChaseBehavior'a devredilir.
+/// Davranis Enter'da NavMeshAgent'a hiz boost'u uygular, Tick'te tasiyiciyi
+/// kovalar, path tikanik kalirsa "supernatural warp" yapar (tasiyiciya yakin
+/// LOS-blocked NavMesh noktasi). Stuck detection pozisyonel (transform delta).
 ///
-/// Strategy pattern'in 9. concrete davranisi. Type A (robot) sagir oldugu icin
-/// bu davranisa hic gecmez (subscribe tarafi _useRangedAttack kontrolu yapar).
+/// Strategy pattern'in 9. concrete davranisi. Type A sagir oldugu icin bu
+/// davranisa hic gecmez.
 /// </summary>
 public class LureBehavior : IEnemyBehavior
 {
     private const float SpeedBoostMult        = 1.4f;
-    private const float RepathInterval        = 0.25f; // hareket halinde repath cadence
-    private const float StuckRepathInterval   = 1f;    // stuck'ken yavasla
+    private const float RepathInterval        = 0.25f;
+    private const float StuckRepathInterval   = 1f;
     private const float NavSampleRadius       = 4f;
 
     // Stuck tespiti (movement-window based)
     private const float MoveWindowSec         = 2f;
-    private const float MoveStuckThresholdSqr = 0.6f * 0.6f; // 60cm pencere altinda stuck
+    private const float MoveStuckThresholdSqr = 0.6f * 0.6f;
     private const float StuckSecondsToWarp    = 1.5f;
     private const float StuckSecondsToGiveUp  = 8f;
 
@@ -44,11 +37,17 @@ public class LureBehavior : IEnemyBehavior
     private const float WarpMaxRadius         = 14f;
     private const int   WarpSampleAttempts    = 16;
 
-    private readonly PhysicsObject _trackedItem;
-    private readonly ulong _grabberClientId;
-    private readonly Vector3 _fallbackPosition;
+    // Multi-carrier degerlendirme
+    private const float CarrierReevalInterval     = 0.5f;
+    private const float CarrierSwitchAdvantage    = 3f;  // yeni tasiyici 3m+ yakinsa switch et
+    private const float CarrierHintRefreshSeconds = 1.5f; // EnemyController hint duration (her reeval'de yenilenir)
+
+    private PhysicsObject _currentItem;
+    private ulong _currentCarrierClientId;
+    private Vector3 _lastCarrierPos;
 
     private float _repathTimer;
+    private float _reevalTimer;
     private float _moveWindowTimer;
     private Vector3 _lastSamplePos;
     private float _stuckSeconds;
@@ -56,53 +55,79 @@ public class LureBehavior : IEnemyBehavior
     private bool  _speedBoosted;
     private bool  _warpedOnce;
 
-    public LureBehavior(PhysicsObject trackedItem, ulong grabberClientId, Vector3 fallbackPosition)
-    {
-        _trackedItem = trackedItem;
-        _grabberClientId = grabberClientId;
-        _fallbackPosition = fallbackPosition;
-    }
+    public LureBehavior() { }
 
     public void Enter(EnemyController enemy)
     {
         _repathTimer = 0f;
+        _reevalTimer = 0f;
         _moveWindowTimer = 0f;
         _stuckSeconds = 0f;
         _warpedOnce = false;
+
+        if (!TryPickBestCarrier(enemy, out _currentItem, out _currentCarrierClientId, out _lastCarrierPos))
+        {
+            // Pickup event geldi ama registry zaten bos — fallback default
+            enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
+            return;
+        }
 
         if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
         {
             _baseSpeed = enemy.Agent.speed;
             enemy.Agent.speed = _baseSpeed * SpeedBoostMult;
             _speedBoosted = true;
-
-            SetDestinationSnapped(enemy, ResolveCarrierPosition());
+            SetDestinationSnapped(enemy, _lastCarrierPos);
         }
+
+        enemy.SetCarrierTargetHint(_currentCarrierClientId, CarrierHintRefreshSeconds);
         _lastSamplePos = enemy.transform.position;
-        Debug.Log($"[LureBehavior] Pickup sinyali alindi, tasiyici takip basliyor (clientId={_grabberClientId}).");
+
+        Debug.Log($"[LureBehavior] Pickup sinyali alindi, en yakin tasiyici takip basliyor (clientId={_currentCarrierClientId}).");
     }
 
     public void Tick(EnemyController enemy)
     {
         if (enemy.Agent == null || !enemy.Agent.isOnNavMesh) return;
 
-        // Obje birakildi (ya da despawn oldu) -> izi kaybet, devriyeye don.
-        if (_trackedItem == null || !_trackedItem.IsHeld)
+        // Tum tasiyicilar birakti -> patrol'a don
+        if (PhysicsObject.HeldItems.Count == 0)
         {
             enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
             return;
         }
 
-        // Tasiyici hat-of-sight'ta -> Chase'e devret.
+        // Tasiyici degerlendirmesi: her CarrierReevalInterval'de bir yeniden bak.
+        _reevalTimer -= Time.deltaTime;
+        if (_reevalTimer <= 0f)
+        {
+            _reevalTimer = CarrierReevalInterval;
+            ReevaluateBestCarrier(enemy);
+
+            // Hint'i refresh et — duration kisa ki Lure'dan cikilirsa carrier
+            // gerekirse Chase devralana kadar dogal sonlanir.
+            enemy.SetCarrierTargetHint(_currentCarrierClientId, CarrierHintRefreshSeconds);
+        }
+
+        // Eldeki item null oldu (despawn) veya artik tutulmuyor -> degerlendir
+        if (_currentItem == null || !_currentItem.IsHeld)
+        {
+            if (!TryPickBestCarrier(enemy, out _currentItem, out _currentCarrierClientId, out _lastCarrierPos))
+            {
+                enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
+                return;
+            }
+            enemy.SetCarrierTargetHint(_currentCarrierClientId, CarrierHintRefreshSeconds);
+        }
+
+        // Hat-of-sight'ta birini gordu mu? -> Chase'e carrier hint ile devret
         if (enemy.PlayerTransform != null && enemy.CanSeePlayer())
         {
-            enemy.SwitchBehavior(new ChaseBehavior());
+            enemy.SwitchBehavior(new ChaseBehavior(_currentCarrierClientId));
             return;
         }
 
-        // POZISYONEL stuck olcumu (her MoveWindowSec'te bir):
-        // velocity tabanli check repath spam ile birlikte guvenilmezdi —
-        // transform'un fiziksel olarak ne kadar yer degistirdigine bakiyoruz.
+        // Pozisyonel stuck olcumu (her MoveWindowSec'te)
         _moveWindowTimer += Time.deltaTime;
         if (_moveWindowTimer >= MoveWindowSec)
         {
@@ -141,12 +166,12 @@ public class LureBehavior : IEnemyBehavior
             _moveWindowTimer = 0f;
         }
 
-        // Destination'i kucuk araliklarla yenile. Stuck'ken yavas yenile
-        // (faydasi yok, sadece dirty flag spam'i olur).
+        // Destination yenile
         _repathTimer -= Time.deltaTime;
         if (_repathTimer <= 0f)
         {
-            SetDestinationSnapped(enemy, ResolveCarrierPosition());
+            _lastCarrierPos = ResolveCarrierPosition(_currentCarrierClientId, _currentItem);
+            SetDestinationSnapped(enemy, _lastCarrierPos);
             _repathTimer = _stuckSeconds > 0f ? StuckRepathInterval : RepathInterval;
         }
     }
@@ -158,37 +183,99 @@ public class LureBehavior : IEnemyBehavior
             enemy.Agent.speed = _baseSpeed;
             _speedBoosted = false;
         }
+        // Carrier hint'i ATMIYORUZ: Chase'e devredildiyse onun da kullanmasi
+        // gerekebilir; hint zaten kendi expiry'siyle dogal soner.
     }
 
     /// <summary>
-    /// Tasiyici oyuncunun guncel dunya konumunu bulur. ServerPlayers icindeki
-    /// GrabberClientId esleseni canli ise onu doner; bulamazsa son tasarruf
-    /// olarak objenin kendi pozisyonunu (elde / yere dustugu yer), o da yoksa
-    /// olay anindaki fallback'i kullanir.
+    /// HeldItems registry'sinden tum aktif tasiyicilar arasinda priest'e en yakin
+    /// olani secer. Yeni secim mevcut secimden CarrierSwitchAdvantage'tan daha yakin
+    /// degilse mevcut korunur (flap onleme).
     /// </summary>
-    private Vector3 ResolveCarrierPosition()
+    private void ReevaluateBestCarrier(EnemyController enemy)
     {
-        var players = PlayerStateMachine.ServerPlayers;
-        if (players != null)
+        if (!TryPickBestCarrier(enemy, out var bestItem, out var bestClientId, out var bestPos))
+            return;
+
+        if (bestItem == _currentItem)
         {
-            for (int i = 0; i < players.Count; i++)
+            _lastCarrierPos = bestPos;
+            return;
+        }
+
+        // Mevcut tasiyici hala gecerli mi? (despawn olmus / birakmis olabilir)
+        bool currentValid = _currentItem != null && _currentItem.IsHeld;
+        if (!currentValid)
+        {
+            _currentItem = bestItem;
+            _currentCarrierClientId = bestClientId;
+            _lastCarrierPos = bestPos;
+            Debug.Log($"[LureBehavior] Mevcut tasiyici dustu, yeni en yakini secildi (clientId={bestClientId}).");
+            return;
+        }
+
+        // Hysteresis: yeni daha yakin mi yeterince?
+        float currentSqr = (enemy.transform.position
+                           - ResolveCarrierPosition(_currentCarrierClientId, _currentItem)).sqrMagnitude;
+        float bestSqr = (enemy.transform.position - bestPos).sqrMagnitude;
+        float advantageSqr = CarrierSwitchAdvantage * CarrierSwitchAdvantage;
+
+        if (currentSqr - bestSqr > advantageSqr)
+        {
+            _currentItem = bestItem;
+            _currentCarrierClientId = bestClientId;
+            _lastCarrierPos = bestPos;
+            Debug.Log($"[LureBehavior] Daha yakin yeni tasiyici secildi (clientId={bestClientId}).");
+        }
+    }
+
+    /// <summary>
+    /// HeldItems icindeki tum aktif tasiyicilardan priest'e en yakini bulur.
+    /// Tasiyici clientId server-side ServerPlayers'ta yoksa o item atlanir.
+    /// </summary>
+    private static bool TryPickBestCarrier(EnemyController enemy, out PhysicsObject bestItem,
+                                            out ulong bestClientId, out Vector3 bestPos)
+    {
+        bestItem = null;
+        bestClientId = 0UL;
+        bestPos = Vector3.zero;
+        float bestSqr = float.PositiveInfinity;
+        Vector3 here = enemy.transform.position;
+
+        var items = PhysicsObject.HeldItems;
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            if (item == null || !item.IsHeld) continue;
+
+            ulong carrierId = item.NetGrabberClientId.Value;
+            Vector3 carrierPos = ResolveCarrierPosition(carrierId, item);
+
+            float sqr = (carrierPos - here).sqrMagnitude;
+            if (sqr < bestSqr)
             {
-                var p = players[i];
-                if (p == null) continue;
-                if (!p.IsAlive) continue;
-                if (p.OwnerClientId != _grabberClientId) continue;
-                return p.transform.position;
+                bestSqr = sqr;
+                bestItem = item;
+                bestClientId = carrierId;
+                bestPos = carrierPos;
             }
         }
 
-        if (_trackedItem != null)
-            return _trackedItem.transform.position;
-        return _fallbackPosition;
+        return bestItem != null;
     }
 
     /// <summary>
-    /// SetDestination'i ham pozisyonla degil, en yakin gecerli NavMesh noktasiyla yapar.
+    /// clientId'den canli oyuncu transform'unu bulur; bulamazsa item'in oldugu
+    /// yere (elinde ya da dustugu) dusurur. Item da yoksa Vector3.zero.
     /// </summary>
+    private static Vector3 ResolveCarrierPosition(ulong clientId, PhysicsObject item)
+    {
+        var psm = PlayerStateMachine.GetServerPlayer(clientId);
+        if (psm != null) return psm.transform.position;
+        if (item != null) return item.transform.position;
+        return Vector3.zero;
+    }
+
     private static void SetDestinationSnapped(EnemyController enemy, Vector3 raw)
     {
         if (NavMesh.SamplePosition(raw, out NavMeshHit hit, NavSampleRadius, NavMesh.AllAreas))
@@ -197,16 +284,9 @@ public class LureBehavior : IEnemyBehavior
             enemy.Agent.SetDestination(raw);
     }
 
-    /// <summary>
-    /// Tasiyici etrafinda WarpMinRadius..WarpMaxRadius'te yakin bir NavMesh
-    /// noktasi bulup Agent.Warp ile priest'i isinlar. Once tasiyici LOS'unda
-    /// olmayan ("saklanik warp") nokta aranir; bulunamazsa LOS umursamadan
-    /// yakin bir gecerli noktaya isinlanir. Server-only kosulur,
-    /// NetworkTransform pozisyon degisikligini tum client'lara replikator.
-    /// </summary>
     private bool TryWarpNearCarrier(EnemyController enemy)
     {
-        Vector3 carrierPos = ResolveCarrierPosition();
+        Vector3 carrierPos = ResolveCarrierPosition(_currentCarrierClientId, _currentItem);
         Vector3 carrierEye = carrierPos + Vector3.up * 1.5f;
 
         if (TryFindNavPointNearCarrier(carrierPos, carrierEye, requireBlockedLos: true,  out Vector3 hidden))
@@ -214,16 +294,11 @@ public class LureBehavior : IEnemyBehavior
             enemy.Agent.Warp(hidden);
             return true;
         }
-
-        // Fallback: LOS umursamadan herhangi bir gecerli yakin nokta. Iyi degil ama
-        // sonsuz stuck'tan iyi; oyuncu warp'in olusunu gorse de en azindan priest
-        // ulasabilir bir adada belirir.
         if (TryFindNavPointNearCarrier(carrierPos, carrierEye, requireBlockedLos: false, out Vector3 anyPoint))
         {
             enemy.Agent.Warp(anyPoint);
             return true;
         }
-
         return false;
     }
 
@@ -245,9 +320,8 @@ public class LureBehavior : IEnemyBehavior
                 Vector3 losVec = candidateEye - carrierEye;
                 float losDist = losVec.magnitude;
                 if (losDist < 0.01f) continue;
-
                 if (!Physics.Raycast(carrierEye, losVec.normalized, losDist))
-                    continue; // tasiyici buradan candidate'i gorur — LOS'lu turda elenir
+                    continue;
             }
 
             result = navHit.position;

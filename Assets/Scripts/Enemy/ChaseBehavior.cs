@@ -24,7 +24,10 @@ public class ChaseBehavior : IEnemyBehavior
     private const float MaxPushableMass = 30f;   // bunun ustundeki cisimleri itmeyiz (buyuk objeyi sallamak yapay durur)
     private const float MinAgentSpeedToPush = 0.2f; // agent neredeyse duruyorsa itmeyi gerek yok
 
+    private const float CarrierHintHoldDuration = 8f; // Lure'dan devralinan carrier ne kadar oncelikli kalir
+
     private readonly Vector3? _noisePosition;
+    private readonly ulong? _carrierHintClientId;
     private float _lostSightTimer;
     private Vector3 _searchPoint;
     private bool _hasSearchPoint;
@@ -38,9 +41,24 @@ public class ChaseBehavior : IEnemyBehavior
         _noisePosition = noisePosition;
     }
 
+    /// <summary>
+    /// LureBehavior'dan devredilirken kullanilir: takip edilen carrier'i Chase
+    /// boyunca da hedef tutmak icin EnemyController'a carrier hint olarak yazar.
+    /// Boylece priest tasiyiciyi gorur gormez baska bir oyuncuya kaymaz.
+    /// </summary>
+    public ChaseBehavior(ulong carrierHintClientId)
+    {
+        _carrierHintClientId = carrierHintClientId;
+    }
+
     public void Enter(EnemyController enemy)
     {
         _lostSightTimer = GiveUpDelay;
+
+        // Lure'dan devralindiysa, taşıyıcıyı carrier hint olarak isaretle —
+        // CanSeePlayer'da/PlayerTransform'da carrier oncelikli olur.
+        if (_carrierHintClientId.HasValue)
+            enemy.SetCarrierTargetHint(_carrierHintClientId.Value, CarrierHintHoldDuration);
 
         if (_noisePosition.HasValue && !enemy.CanSeePlayer() && enemy.Agent.isOnNavMesh)
         {

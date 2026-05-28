@@ -76,39 +76,150 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
+
+    // --- Hedef oncelik state'i (multiplayer adaptasyonu) ---
+    // 3 katmanli oncelik: damage source (en yuksek, kisa sure) -> carrier hint
+    // (orta, davranisin refresh ettigi sure boyunca) -> closest alive + hysteresis.
+    private const float TargetSwitchAdvantage = 3f;   // closest fallback'inda yeni hedefe gecmek icin gereken m avantaji
+    private const float DamageTargetDuration  = 4f;   // hasar veren oyuncu kac saniye oncelikli kalir
+
+    private ulong _damageTargetClientId;
+    private float _damageTargetExpiry;
+    private bool  _hasDamageTarget;
+
+    private ulong _carrierTargetClientId;
+    private float _carrierTargetExpiry;
+    private bool  _hasCarrierTarget;
+
+    private Transform _lastClosestTarget;   // hysteresis'te onceki secimi tut
+
     /// <summary>
-    /// Sunucu tarafindan canli en yakin oyuncuya isaret eder. Multiplayer'da bu
-    /// her erisimde yeniden hesaplanir; tek bir Start() snapshot'i degildir.
-    /// Hicbir canli oyuncu yoksa null doner — tum tuketicilerin null kontrolu
-    /// var (CanSeePlayer, AttackBehavior, ChaseBehavior, FleeBehavior).
+    /// Hedef oncelik zinciri: (1) son 4sn icinde hasar veren oyuncu varsa, (2) yoksa
+    /// taraflanmis carrier hint (LureBehavior tarafindan refreshlenir) varsa, (3) yoksa
+    /// en yakin canli oyuncu — 3m'lik hysteresis ile flap onlenir.
+    /// Multiplayer'da bu sayede:
+    /// - 2 oyuncu esit mesafede dururken kafa titremesi olmaz
+    /// - Oyuncu A robotu vurursa robot B'yi birakip A'ya doner (4sn)
+    /// - Priest lure'da carrier'i takip eder, Chase'e gecince hint korunur
+    /// Hicbir canli oyuncu yoksa null doner.
     /// </summary>
     public Transform PlayerTransform
     {
         get
         {
-            var players = PlayerStateMachine.ServerPlayers;
-            if (players == null || players.Count == 0) return null;
+            float now = Time.time;
 
-            Transform best = null;
-            float bestSqr = float.PositiveInfinity;
-            Vector3 here = transform.position;
-
-            for (int i = 0; i < players.Count; i++)
+            // 1) Damage source priority — hasar veren son 4sn oncelikli
+            if (_hasDamageTarget && now < _damageTargetExpiry)
             {
-                var p = players[i];
-                if (p == null) continue;          // despawn arasi null slot
-                if (!p.IsAlive) continue;          // olu oyuncuyu hedef alma
-
-                float sqr = (p.transform.position - here).sqrMagnitude;
-                if (sqr < bestSqr)
-                {
-                    bestSqr = sqr;
-                    best = p.transform;
-                }
+                var dmgPlayer = PlayerStateMachine.GetServerPlayer(_damageTargetClientId);
+                if (dmgPlayer != null) return dmgPlayer.transform;
+                _hasDamageTarget = false;
             }
-            return best;
+            else _hasDamageTarget = false;
+
+            // 2) Carrier hint — LureBehavior / ChaseBehavior tarafindan refresh edilir
+            if (_hasCarrierTarget && now < _carrierTargetExpiry)
+            {
+                var carrier = PlayerStateMachine.GetServerPlayer(_carrierTargetClientId);
+                if (carrier != null) return carrier.transform;
+                _hasCarrierTarget = false;
+            }
+            else _hasCarrierTarget = false;
+
+            // 3) Closest alive + hysteresis
+            return ResolveClosestWithHysteresis();
         }
     }
+
+    private Transform ResolveClosestWithHysteresis()
+    {
+        var players = PlayerStateMachine.ServerPlayers;
+        if (players == null || players.Count == 0)
+        {
+            _lastClosestTarget = null;
+            return null;
+        }
+
+        Transform best = null;
+        float bestSqr = float.PositiveInfinity;
+        Vector3 here = transform.position;
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null) continue;
+            if (!p.IsAlive) continue;
+
+            float sqr = (p.transform.position - here).sqrMagnitude;
+            if (sqr < bestSqr)
+            {
+                bestSqr = sqr;
+                best = p.transform;
+            }
+        }
+
+        if (best == null) { _lastClosestTarget = null; return null; }
+
+        // Hysteresis: onceki hedefi yeterince yakindaysa koru, flap onle
+        if (_lastClosestTarget == null || !IsTransformAliveTarget(_lastClosestTarget))
+        {
+            _lastClosestTarget = best;
+            return best;
+        }
+        if (best == _lastClosestTarget) return best;
+
+        float lastSqr = (_lastClosestTarget.position - here).sqrMagnitude;
+        float advantageSqr = TargetSwitchAdvantage * TargetSwitchAdvantage;
+        if (lastSqr - bestSqr > advantageSqr)
+        {
+            _lastClosestTarget = best;
+            return best;
+        }
+
+        return _lastClosestTarget;
+    }
+
+    private static bool IsTransformAliveTarget(Transform t)
+    {
+        if (t == null) return false;
+        var psm = t.GetComponent<PlayerStateMachine>()
+                  ?? t.GetComponentInParent<PlayerStateMachine>();
+        return psm != null && psm.IsAlive;
+    }
+
+    /// <summary>
+    /// Hasar kaynagini 4sn boyunca oncelikli hedef olarak isaretle. TakeDamage
+    /// otomatik cagirir; attacker server'da bilinen bir canli oyuncu degilse no-op.
+    /// </summary>
+    public void SetDamageTargetPriority(ulong attackerClientId)
+    {
+        var attacker = PlayerStateMachine.GetServerPlayer(attackerClientId);
+        if (attacker == null) return;
+        _damageTargetClientId = attackerClientId;
+        _damageTargetExpiry = Time.time + DamageTargetDuration;
+        _hasDamageTarget = true;
+    }
+
+    /// <summary>
+    /// Carrier hint: LureBehavior'in takip ettigi oyuncuyu, ChaseBehavior'a
+    /// devredildiginde de hedef olarak korumak icin kullanilir. Duration boyunca
+    /// PlayerTransform damage prio yoksa bu oyuncuyu doner.
+    /// </summary>
+    public void SetCarrierTargetHint(ulong carrierClientId, float duration)
+    {
+        if (duration <= 0f) { _hasCarrierTarget = false; return; }
+        var carrier = PlayerStateMachine.GetServerPlayer(carrierClientId);
+        if (carrier == null) return;
+        _carrierTargetClientId = carrierClientId;
+        _carrierTargetExpiry = Time.time + duration;
+        _hasCarrierTarget = true;
+    }
+
+    public void ClearCarrierTargetHint() => _hasCarrierTarget = false;
+
+    /// <summary>Aktif davranisi disardan sorgulamak icin (orn. OnItemPickedUp idempotency).</summary>
+    public IEnemyBehavior CurrentBehavior => _current;
     public Transform CurrentTarget { get; set; }
     public int CurrentWaypointIndex { get; set; }
     public bool HeardNoise { get; set; }
@@ -308,9 +419,10 @@ public class EnemyController : MonoBehaviour, IDamageable
     /// <summary>
     /// GameEventBus uzerinden grab olaylarini dinler. Type A (robot) sagirdir;
     /// Type B (priest) ise grab'i haritanin neresinde olursa olsun "sezer" ve
-    /// LureBehavior'a gecerek tasiyici oyuncuyu kovalar (priest dogaustu sezgi —
-    /// mesafe sinirsiz). Halihazirda oyuncuyu net goruyorsa chase'i bozmamak
-    /// icin lure tetiklenmez; zaten daha guclu bir sinyal var.
+    /// LureBehavior'a gecerek tasiyiciyi kovalar (priest dogaustu sezgi —
+    /// mesafe sinirsiz). Halihazirda oyuncuyu net goruyorsa veya zaten Lure
+    /// davranisindaysa olay yutulur — Lure HeldItems registry'sinden tum
+    /// tasiyicilari zaten goruyor ve en yakini secebiliyor.
     /// </summary>
     private void OnItemPickedUp(ItemPickedUpEvent evt)
     {
@@ -322,7 +434,11 @@ public class EnemyController : MonoBehaviour, IDamageable
         // Halihazirda oyuncuyu net goruyorsa daha guclu sinyal var; lure bunu bozmasin.
         if (CanSeePlayer()) return;
 
-        SwitchBehavior(new LureBehavior(evt.Item, evt.GrabberClientId, evt.Position));
+        // Zaten Lure'daysa yeni LureBehavior insa etmiyoruz — mevcut Lure
+        // registry'den yeni tasiyiciyi de gorur, gerekirse hedef switch eder.
+        if (_current is LureBehavior) return;
+
+        SwitchBehavior(new LureBehavior());
     }
 
     /// <summary>
@@ -418,6 +534,10 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         _currentHealth = Mathf.Max(0f, _currentHealth - amount);
         Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_effectiveMaxHealth:F0})");
+
+        // Hasar veren oyuncuyu 4sn icin oncelikli hedef yap — "beni vurdun, ben sana donerim"
+        // multiplayer'da arkadan vur-kac taktigini kirar, AI tepkisel hisset.
+        SetDamageTargetPriority(attackerClientId);
 
         if (_currentHealth <= 0f)
         {

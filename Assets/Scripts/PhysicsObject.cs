@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -6,6 +7,13 @@ using UnityEngine;
 public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 {
     private const ulong NoGrabberClientId = ulong.MaxValue;
+
+    // Server-side global kayit: su an oyuncularin elindeki TUM lure-trigger eden
+    // objeleri tutar. LureBehavior bu listeden tasiyici sayisini ve konumlarini
+    // okur, FindObjectsByType yapmaktan kacinir. Hold basladi -> add, drop/despawn
+    // -> remove. Sadece _triggersLure=true objeler kayitli (trash sessiz kalir).
+    private static readonly List<PhysicsObject> s_heldItems = new();
+    public static IReadOnlyList<PhysicsObject> HeldItems => s_heldItems;
 
     [Header("Grab Ayarlari")]
     public float grabDistance = 4f;
@@ -132,6 +140,8 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     public override void OnNetworkDespawn()
     {
         NetGrabberClientId.OnValueChanged -= OnGrabberChanged;
+        // Despawn anindaki "elde tutuluyordu" durumunda kaydi sizdirma — temizle.
+        s_heldItems.Remove(this);
     }
 
     private void OnGrabberChanged(ulong previous, ulong current)
@@ -216,6 +226,9 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         // ise sessiz grab (trash item) — duyusal AI etkilenmez.
         if (_triggersLure)
         {
+            // Aktif tasiyici kaydina ekle (LureBehavior buradan okur).
+            if (!s_heldItems.Contains(this)) s_heldItems.Add(this);
+
             int weightInt = Mathf.RoundToInt(weight);
             GameEventBus.Publish(new ItemPickedUpEvent(
                 name, weightInt, 0f, transform.position, grabberClientId, this));
@@ -235,6 +248,9 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
         // Tekrar carve etmeye basla (yere dustugunde dusmanlar etrafindan dolasir).
         if (_navObstacle != null) _navObstacle.enabled = true;
+
+        // Aktif tasiyici kaydindan cikar — LureBehavior bunu drop sinyali olarak okur.
+        s_heldItems.Remove(this);
     }
 
     public void ServerSetHoldTarget(Vector3 target)

@@ -14,6 +14,24 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     /// </summary>
     public static readonly List<PlayerStateMachine> ServerPlayers = new();
 
+    /// <summary>
+    /// Server-side: clientId -> PlayerStateMachine arama. Sadece CANLI eslesmeyi
+    /// doner; oyuncu olmus / despawn olmussa null. EnemyController bunu hasar
+    /// kaynagi ve carrier-id resolve etmek icin kullanir.
+    /// </summary>
+    public static PlayerStateMachine GetServerPlayer(ulong clientId)
+    {
+        for (int i = 0; i < ServerPlayers.Count; i++)
+        {
+            var p = ServerPlayers[i];
+            if (p == null) continue;
+            if (p.OwnerClientId != clientId) continue;
+            if (!p.IsAlive) continue;
+            return p;
+        }
+        return null;
+    }
+
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
