@@ -32,11 +32,17 @@ public class NetworkedItemSpawner : NetworkBehaviour
     [Tooltip("Random pozisyon, oda bounds'undan bu kadar icerden secilir (duvar bosluklari icin).")]
     [SerializeField] private float _boundsInset = 1f;
 
-    [Tooltip("Random pozisyon NavMesh'e snap edilirken bu mesafe icinde walkable nokta aranir.")]
-    [SerializeField] private float _navMeshSampleRadius = 2f;
+    [Tooltip("Random pozisyon NavMesh'e snap edilirken bu mesafe icinde walkable nokta aranir. " +
+             "Cok genis tutulursa snap koridordan veya komsu odadan nokta cekebilir; 1m guvenli aralik.")]
+    [SerializeField] private float _navMeshSampleRadius = 1f;
 
-    [Tooltip("NavMesh'e snap basarisiz olursa kac kez yeniden dene.")]
-    [SerializeField] private int _placementRetryCount = 4;
+    [Tooltip("NavMesh'e snap basarisiz olursa kac kez yeniden dene. Snap basarili olsa bile " +
+             "oda Bounds disinda kaldiysa yine retry'a girer (koridor/void spawn'i onlemek icin).")]
+    [SerializeField] private int _placementRetryCount = 8;
+
+    [Tooltip("True ise NavMesh.SamplePosition sonucunun hala oda Bounds'i icinde olmasi sart kosulur. " +
+             "Aksi halde snap koridorun ortasinda valid bir nokta bulup ESYA DISARIDA SPAWN OLABILIR.")]
+    [SerializeField] private bool _enforceSnapInsideRoom = true;
 
     [Header("Debug")]
     [SerializeField] private bool _verbose = false;
@@ -156,11 +162,21 @@ public class NetworkedItemSpawner : NetworkBehaviour
             float rz = Mathf.Lerp(min.z, max.z, (float)rng.NextDouble());
             Vector3 candidate = new Vector3(rx, room.center.y, rz);
 
-            if (NavMesh.SamplePosition(candidate, out var hit, _navMeshSampleRadius, NavMesh.AllAreas))
+            if (!NavMesh.SamplePosition(candidate, out var hit, _navMeshSampleRadius, NavMesh.AllAreas))
+                continue;
+
+            // Snap odanin disina dustuyse (koridor / void / komsu oda) bu denemeyi
+            // gec, baska bir random nokta dene. Aksi halde "esya disarida spawn"
+            // bug'i tetiklenir.
+            if (_enforceSnapInsideRoom && !room.Contains(hit.position))
             {
-                position = hit.position;
-                return true;
+                if (_verbose)
+                    Debug.Log($"[NetworkedItemSpawner] Snap oda disina dustu ({hit.position}), retry.");
+                continue;
             }
+
+            position = hit.position;
+            return true;
         }
         return false;
     }
