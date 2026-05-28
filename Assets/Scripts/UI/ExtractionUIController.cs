@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement; // Sahneler aras� ge�i� i�in �art!
 
+// Bu s�n�f, Extraction (G�rev Tamamlama) ekran�n� y�netir. G�rev tamamland���nda veya kota ba�ar�s�z oldu�unda bu ekran a��l�r ve ilgili bilgileri g�sterir.
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
@@ -30,6 +31,7 @@ public class ExtractionUIController : MonoBehaviour
 
     private void OnDisable()
     {
+        Time.timeScale = 1f;
         GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
     }
 
@@ -86,6 +88,5 @@ public class ExtractionUIController : MonoBehaviour
     {
         Time.timeScale = 1f;
         extractionPanel.SetActive(false);
-        Debug.Log("[ExtractionUIController] UI closed, scene transition handled by NetworkManager.");
     }
 }

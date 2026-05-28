@@ -55,7 +55,7 @@ public class DungeonGeneratorRunner : NetworkBehaviour
         var gen = new DungeonGenerator(_config);
         var data = gen.Generate();
         Debug.Log($"[DungeonGeneratorRunner] Seed: {gen.LastSeed}");
-        GetComponent<DungeonVisualizer>().Visualize(data);
+        GetComponent<DungeonVisualizer>().Visualize(data, gen.LastSeed);
     }
 
     public void GenerateAndVisualize(int seed)
@@ -76,6 +76,6 @@ public class DungeonGeneratorRunner : NetworkBehaviour
         var gen = new DungeonGenerator(overrideConfig);
         var data = gen.Generate();
         Debug.Log($"[DungeonGeneratorRunner] Seed (synced): {gen.LastSeed}");
-        GetComponent<DungeonVisualizer>().Visualize(data);
+        GetComponent<DungeonVisualizer>().Visualize(data, seed);
     }
 }

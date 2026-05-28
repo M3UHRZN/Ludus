@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0e916e2c41a45ba88a47b0a6089ac89, type: 3}
+  m_Name: PropPalette
+  m_EditorClassIdentifier: Map::PropPaletteSO
+  entries:
+  - prefab: {fileID: 104184, guid: e28acf57f55cba44fb043549e79783a5, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 114822, guid: 1610f7f852090b14db032ba706876325, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 150072, guid: 1599fe96ac50be54a884bbd40b0c2100, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 125854, guid: 4a93fac51166f634bab888f695f8c831, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 122194, guid: 8b4c3f5393e8fc14cbcb6b7d7030dcfc, type: 3}
+    categories: 00000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 0.5, y: 0.5}
+  - prefab: {fileID: 167278, guid: 8909eebb69e093445a7f13a7b7d8721b, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 113054, guid: a0775b8f0a4df084ba6e1ee04ad55a13, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 175586, guid: aa36899a7c912734f9c08658de8b1d48, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 172240, guid: edd7bb53fcff5a84cb4228b91cdd3165, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 142880, guid: e628c7da204999e40995bec6b60177b9, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 190274, guid: 8de24721e0816684687d5996f397a82d, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 197014, guid: b1850d2f9adae5f438b46afc21ae8a86, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 163640, guid: eab05062438a5094e856331a01421c2e, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 153368, guid: d5f27232461d8e5408d83bc39e5107ec, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 106276, guid: 59a8b8a8a3364564a90b7be85d23f966, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 149388, guid: 938b400dc12f3644d8a511e64b6014f5, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 130060, guid: 4a430d96f9b898d45882d1b2f7615640, type: 3}
+    categories: 04000000
+    weight: 0.1
+    randomYaw: 1
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 154188, guid: 08fbf63192859a8478ea10767d582048, type: 3}
+    categories: 01000000
+    weight: 0.65
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 105204, guid: a89aa0f7fb27db94790f2db204b64677, type: 3}
+    categories: 01000000
+    weight: 0.31
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 140538, guid: 93b7d0ada2e6c2849be407103254d1fe, type: 3}
+    categories: 01000000
+    weight: 0.37
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 146606, guid: 7f7e955452aa05047b5fda13dc3c5c0e, type: 3}
+    categories: 01000000
+    weight: 0.47
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 106310, guid: ffdc491f1ac37f24fa76d492743c2c42, type: 3}
+    categories: 01000000
+    weight: 0.31
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 170050, guid: 0b997373854a4d44b8ac8fe631cfd30e, type: 3}
+    categories: 01000000
+    weight: 0.4
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}
+  - prefab: {fileID: 137684, guid: aff140f02621ac24782b60cba0a08072, type: 3}
+    categories: 01000000
+    weight: 0.91
+    randomYaw: 0
+    scaleJitter: {x: 1, y: 1}

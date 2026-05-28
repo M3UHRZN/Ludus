@@ -73,6 +73,13 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (activeScene == SceneNames.Lobby || activeScene == SceneNames.MainMenu)
+        {
+            Debug.Log("[EnemySpawner] Lobi veya Ana Menü sahnesi algılandı, spawner devre dışı bırakıldı.");
+            return;
+        }
+
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
         GameEventBus.Subscribe<EnemyDiedEvent>(OnEnemyDied);
         Debug.Log("[EnemySpawner] OnNetworkSpawn: MapReadyEvent + EnemyDiedEvent dinlemeye basladi.");
@@ -182,7 +189,9 @@ public class EnemySpawner : NetworkBehaviour
             return false;
         }
 
-        netObj.Spawn();
+        // destroyWithScene: true — RNGmap unload olunca NGO bu enemy'yi otomatik despawn etsin.
+        // (NGO 2.11 Spawn() varsayilani false; false objeler sahne gecisinde lobiye/yeni run'a tasiniyor.)
+        netObj.Spawn(true);
 
         // Her enemy'ye farkli avoidance priority ver. Ayni priority'de iki agent
         // dar gecitte/kapida birbirine yol vermeyip kilitleniyor (deadlock).

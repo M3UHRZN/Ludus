@@ -19,6 +19,16 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     [Header("Gorsel Geribildirim")]
     public Material highlightMaterial;
 
+    [Header("Firlatma Hasari")]
+    [Tooltip("Bir firlatmanin 'hasarli' kabul edildigi pencere (sn). Bu sure icinde dusmana carparsa hasar verir.")]
+    [SerializeField] private float _throwDamageWindow = 2f;
+    [Tooltip("Hasar verebilmesi icin minimum carpma hizi (m/s). Yavasca dusurmek hasar vermez.")]
+    [SerializeField] private float _throwDamageMinSpeed = 3f;
+    [Tooltip("Temel hasar; carpma hiziyla artar.")]
+    [SerializeField] private float _throwBaseDamage = 25f;
+    [Tooltip("Vurus sonrasi dusmana uygulanan stun suresi (sn).")]
+    [SerializeField] private float _throwStunDuration = 1.5f;
+
     public readonly NetworkVariable<bool> NetIsHeld = new(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -38,6 +48,9 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
     private Vector3 _serverHoldTarget;
     private bool _serverHasHoldTarget;
+
+    private float _throwExpiry;         // server-side: bu zamana kadar 'firlatilmis' kabul edilir
+    private UnityEngine.AI.NavMeshObstacle _navObstacle;  // dusmanlar etrafindan dolasabilsin
 
     // --- Hold target RPC throttle (client-side only) ---
     private Vector3 _lastSentHoldTarget;
@@ -69,6 +82,19 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
         if (_rend != null)
             _originalMaterial = _rend.material;
+
+        // Dusmanlar bu objenin etrafindan dolasabilsin: NavMeshObstacle (carve modu).
+        // Yoksa runtime ekle; carving etkin ama yalniz yerlesince carve eder (hareket halinde
+        // sadece avoidance — performans icin). Elde tutarken obstacle kapatilir (asagida).
+        _navObstacle = GetComponent<UnityEngine.AI.NavMeshObstacle>();
+        if (_navObstacle == null)
+            _navObstacle = gameObject.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+        _navObstacle.carving = true;
+        _navObstacle.carveOnlyStationary = true;
+        // Daha az sik carve et: birden fazla item ayni anda yere oturursa NavMesh
+        // surekli yeniden bake olmasin (frame spike / donma onlenir).
+        _navObstacle.carvingTimeToStationary = 2f;
+        _navObstacle.carvingMoveThreshold = 0.5f;
     }
 
     public override void OnNetworkSpawn()
@@ -167,6 +193,11 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         // Throttle state reset — yeni grab'de ilk RPC hemen gitsin.
         _lastSentHoldTarget = Vector3.zero;
         _nextHoldTargetSendTime = 0f;
+
+        // Tasinirken NavMesh'i carve etme (oyuncu etrafinda surekli delik acmasin).
+        // Bekleyen "throw penceresi sonu" reenable cagrisini de iptal et.
+        CancelInvoke(nameof(ReenableNavObstacle));
+        if (_navObstacle != null) _navObstacle.enabled = false;
     }
 
     public void ServerStopHold()
@@ -179,6 +210,9 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         _rb.linearDamping = _originalDrag;
         _rb.angularDamping = _originalAngularDrag;
         _serverHasHoldTarget = false;
+
+        // Tekrar carve etmeye basla (yere dustugunde dusmanlar etrafindan dolasir).
+        if (_navObstacle != null) _navObstacle.enabled = true;
     }
 
     public void ServerSetHoldTarget(Vector3 target)
@@ -204,6 +238,16 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
         Vector3 randomTorque = Random.insideUnitSphere * force * 0.3f;
         _rb.AddTorque(randomTorque, ForceMode.Impulse);
+
+        // Firlatma hasari penceresi acildi: bu sure icinde dusmana carparsa hasar + stun verir.
+        _throwExpiry = Time.time + _throwDamageWindow;
+
+        // Pencere boyunca obstacle KAPALI tutulur: ucan obje NavMesh carve etmesin, yoksa
+        // dusman carve alanindan disari "ışınlanır" (dodge gibi gorunen bug). Pencere bitince
+        // ReenableNavObstacle acar (artik yere oturmus, dusman etrafindan dolanir).
+        CancelInvoke(nameof(ReenableNavObstacle));
+        if (_navObstacle != null) _navObstacle.enabled = false;
+        Invoke(nameof(ReenableNavObstacle), _throwDamageWindow);
     }
 
     private void FixedUpdate()
@@ -257,5 +301,58 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         if (rpcParams.Receive.SenderClientId != NetGrabberClientId.Value) return;
 
         ServerSetHoldTarget(target);
+    }
+
+    // ----- Firlatma hasari (server-only) -----
+    // Firlattiktan kisa sure sonra dusmana carparsa hasar verir + stun yapar, sonra yok olur.
+    // Duvar/oyuncu/baska items'a carpinca etkilenmez (sadece EnemyController hedef alinir),
+    // boylece kendine ya da arkadasa hasar vermez (friendly-fire yok).
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!IsServer) return;
+        if (Time.time > _throwExpiry) return;                                    // firlatma penceresi disi
+        if (collision.relativeVelocity.magnitude < _throwDamageMinSpeed) return;  // yavas carpma -> hasar yok
+
+        var enemy = collision.gameObject.GetComponent<EnemyController>()
+                    ?? collision.gameObject.GetComponentInParent<EnemyController>();
+        if (enemy == null) return;       // dusman degilse atla (duvar/oyuncu/kendi)
+        if (!enemy.IsAlive) return;
+
+        Vector3 hitPoint = collision.contacts.Length > 0
+            ? collision.contacts[0].point
+            : enemy.transform.position;
+
+        // Hasar = temel + hiz bonusu (siddetli vurus daha cok yapar). Hiz bonusu 30'da kapani.
+        float speed = collision.relativeVelocity.magnitude;
+        float damage = _throwBaseDamage + Mathf.Min(speed * 1.5f, 30f);
+
+        enemy.TakeDamage(damage, hitPoint, NetGrabberClientId.Value);
+        enemy.SetStunned(true, _throwStunDuration);
+
+        Debug.Log($"[PhysicsObject] Firlatma vurusu: {damage:F0} hasar (hiz={speed:F1} m/s), dusman stunlandi.");
+
+        // Tekrar tetiklenmesin (ertelenmis despawn surecinde baska collide patlatmasin).
+        _throwExpiry = 0f;
+
+        // Despawn'i bir sonraki frame'e ertele: OnCollisionEnter bir physics callback'idir;
+        // NetworkObject'i callback icinde yok etmek frame stall / donma yapar. Invoke(0f)
+        // physics step bitince guvenle calistirir.
+        Invoke(nameof(DespawnSelf), 0f);
+    }
+
+    private void DespawnSelf()
+    {
+        var netObj = GetComponent<NetworkObject>();
+        if (netObj != null && netObj.IsSpawned)
+            netObj.Despawn(true);
+        else
+            Destroy(gameObject);
+    }
+
+    /// <summary>Firlatma penceresi bittiginde NavMesh obstacle'i yeniden acar (eger held degilse).</summary>
+    private void ReenableNavObstacle()
+    {
+        if (_navObstacle != null && !NetIsHeld.Value)
+            _navObstacle.enabled = true;
     }
 }

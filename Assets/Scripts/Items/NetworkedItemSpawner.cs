@@ -46,6 +46,15 @@ public class NetworkedItemSpawner : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         if (!IsServer) return;
+
+        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (activeScene == SceneNames.Lobby || activeScene == SceneNames.MainMenu)
+        {
+            if (_verbose)
+                Debug.Log("[NetworkedItemSpawner] Lobi veya Ana Menü sahnesi algılandı, spawner devre dışı bırakıldı.");
+            return;
+        }
+
         GameEventBus.Subscribe<MapReadyEvent>(OnMapReady);
         if (_verbose)
             Debug.Log("[NetworkedItemSpawner] OnNetworkSpawn (server). MapReadyEvent dinleniyor.");
@@ -227,7 +236,9 @@ public class NetworkedItemSpawner : NetworkBehaviour
             return;
         }
 
-        netObj.Spawn();
+        // destroyWithScene: true — RNGmap unload olunca NGO bu item'i otomatik despawn etsin.
+        // (NGO 2.11 Spawn() varsayilani false; false objeler sahne gecisinde lobiye/yeni run'a tasiniyor.)
+        netObj.Spawn(true);
 
         if (_verbose)
             Debug.Log($"[NetworkedItemSpawner] Spawned '{prefab.name}' at {position}.");

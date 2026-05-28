@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
-public class EnemyController : MonoBehaviour
+public class EnemyController : MonoBehaviour, IDamageable
 {
     [Header("Patrol")]
     [SerializeField] private Transform[] _patrolWaypoints;
@@ -13,6 +13,10 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float _attackRange = 1.8f;
     [SerializeField] private float _noiseDetectionRadius = 18f;
     [SerializeField] private LayerMask _playerLayer;
+
+    [Header("Saglik")]
+    [Tooltip("Dusmanin maksimum cani. 0'a inerse Destroy + EnemyDiedEvent.")]
+    [SerializeField] private float _maxHealth = 60f;
 
     [Header("Gorus Konisi")]
     [Tooltip("TUM dusmanlar sadece bu acidaki koni icinde (yuzunun baktigi yer) gorur; " +
@@ -98,6 +102,11 @@ public class EnemyController : MonoBehaviour
     private float _slowTimer;
     private bool  _isSlowed;
 
+    // Saglik (IDamageable implementasyonu)
+    private float _currentHealth;
+    public bool IsAlive => _currentHealth > 0f;
+    public float CurrentHealth => _currentHealth;
+
     private void Awake()
     {
         Agent = GetComponent<NavMeshAgent>();
@@ -115,6 +124,7 @@ public class EnemyController : MonoBehaviour
         }
 
         _baseAgentSpeed = Agent != null ? Agent.speed : 3.5f;
+        _currentHealth = _maxHealth;
         SwitchBehavior(CreateDefaultBehavior());
     }
 
@@ -297,6 +307,35 @@ public class EnemyController : MonoBehaviour
 
         SwitchBehavior(CreateDefaultBehavior());
         Debug.Log("[EnemyController] Stun ended, returning to default behavior.");
+    }
+
+    /// <summary>
+    /// IDamageable — disaridan hasar al (oyuncunun firlattigi obje, mermi vb.).
+    /// Server-only kosulur. HP 0'a inerse dusman yok edilir; OnDestroy EnemyDiedEvent
+    /// yayinlar, EnemySpawner alive sayisini gunceller.
+    /// </summary>
+    public void TakeDamage(float amount, Vector3 hitPoint, ulong attackerClientId)
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+        if (!IsAlive) return;
+        if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return;
+
+        _currentHealth = Mathf.Max(0f, _currentHealth - amount);
+        Debug.Log($"[EnemyController] Hasar alindi: {amount:F0} (kalan: {_currentHealth:F0}/{_maxHealth:F0})");
+
+        if (_currentHealth <= 0f)
+        {
+            Debug.Log("[EnemyController] Dusman oldu.");
+            // Destroy'i bir sonraki frame'e ertele: TakeDamage'i tetikleyen kaynak
+            // bir physics callback'i olabilir (orn. PhysicsObject.OnCollisionEnter);
+            // o callback icinde gameObject Destroy etmek frame stall / donma yapar.
+            Invoke(nameof(DieDelayed), 0f);
+        }
+    }
+
+    private void DieDelayed()
+    {
+        Destroy(gameObject);
     }
 
 #if UNITY_EDITOR
