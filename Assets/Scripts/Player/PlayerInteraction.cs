@@ -62,6 +62,19 @@ public class PlayerInteraction : NetworkBehaviour
         _scrollAction = input.actions["Gameplay/Scroll"];
         _flashlightAction = input.actions["Gameplay/Flashlight"];
         _dropAction = input.actions["Gameplay/Drop"];
+
+        // === RADAR KODU ===
+        if (interactPromptUI == null)
+        {
+            // Sahnede "InteractionContainer" adındaki objeyi otomatik bulup kabloyu bağlar
+            GameObject uiObj = GameObject.Find("InteractionContainer");
+            if (uiObj != null)
+            {
+                interactPromptUI = uiObj;
+                interactPromptUI.SetActive(false); // Başlangıçta yazıyı gizle!
+            }
+        }
+        // ===========================================
     }
 
     private void Update()
@@ -171,6 +184,59 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (_throwAction.WasReleasedThisFrame() && _isChargingThrow && _heldObject != null)
             ThrowObject();
+
+        // YENİ AKILLI 'F' TUŞU: Çantaya At VEYA Çantadan Çıkar!
+        if (Keyboard.current.fKey.wasPressedThisFrame)
+        {
+            if (_heldObject != null)
+            {
+                TryStashObject(); // Elim doluysa çantaya at
+            }
+            else
+            {
+                TryEquipFromStash(); // Elim boşsa çantadan çıkarıp elime al!
+            }
+        }
+    }
+
+    // ÇANTAYA ATMA (STASH) OPERASYONU
+    private void TryStashObject()
+    {
+        // Tuttuğumuz obje bir BaseItem mi? (Yani çantaya atılabilir bir şey mi?)
+        if (_heldObject.TryGetComponent<BaseItem>(out var baseItem))
+        {
+            var inventory = GetComponent<PlayerInventory>();
+
+            // 1. Çantada yer varsa (TryAddItem true dönerse)
+            if (inventory.TryAddItem(baseItem.ItemId))
+            {
+                // HATA ÇÖZÜMÜ: Eşyanın ağ kimliğini, ağa bağlı olan _heldObject üzerinden alıyoruz!
+                var networkObj = _heldObject.NetworkObject;
+
+                // 2. Fiziksel tutma işlemini bitir (Eşya elimizden düşsün)
+                DropObject();
+
+                // 3. Eşyayı ağ (Network) üzerinden dünyadan tamamen sil/gizle!
+                if (networkObj != null)
+                {
+                    RequestDespawnServerRpc(new NetworkObjectReference(networkObj));
+                }
+            }
+            else
+            {
+                Debug.Log("Çanta dolu, eşya alınamadı!");
+            }
+        }
+    }
+
+    // AĞ ÜZERİNDEN EŞYAYI YOK ETME BİLDİRİSİ
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestDespawnServerRpc(NetworkObjectReference targetRef)
+    {
+        if (targetRef.TryGet(out var targetNob))
+        {
+            targetNob.Despawn(); // Eşyayı sahneden tamamen siler
+        }
     }
 
     private void UpdateHoldDistance()
@@ -383,5 +449,42 @@ public class PlayerInteraction : NetworkBehaviour
         }
 
         return null;
+    }
+
+    // ÇANTADAN ÇIKARIP ELİNE ALMA OPERASYONU
+    private void TryEquipFromStash()
+    {
+        var inventory = GetComponent<PlayerInventory>();
+
+        // Eğer çantadan eşyayı başarıyla çekebildiysek (TryTakeActiveItem true dönerse)
+        if (inventory.TryTakeActiveItem(out ushort itemId))
+        {
+            // ID'li eşyayı hemen önümde yarat ve direkt elime ver!"
+            Vector3 spawnPos = playerCamera.transform.position + playerCamera.transform.forward * holdDistance;
+            RequestSpawnAndGrabServerRpc(itemId, spawnPos);
+        }
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestSpawnAndGrabServerRpc(ushort itemId, Vector3 spawnPosition, RpcParams rpcParams = default)
+    {
+        // 1. Veritabanından gerçek Prefab'ı çek!
+        GameObject itemPrefab = ItemDatabase.Instance.GetPrefab(itemId);
+
+        if (itemPrefab != null)
+        {
+            // 2. Dünyada yarat
+            GameObject spawned = Instantiate(itemPrefab, spawnPosition, Quaternion.identity);
+
+            // 3. Ağ (Network) objesi olarak herkese duyur
+            var networkObj = spawned.GetComponent<NetworkObject>();
+            networkObj.Spawn();
+
+            // 4. Fiziksel olarak F'ye basan oyuncunun eline ver!
+            if (spawned.TryGetComponent<PhysicsObject>(out var physObj))
+            {
+                physObj.ServerStartHold(rpcParams.Receive.SenderClientId);
+            }
+        }
     }
 }

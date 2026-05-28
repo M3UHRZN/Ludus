@@ -307,3 +307,16 @@ public struct TimerEventTriggered
         IsUrgent = remainingSeconds <= 10f;
     }
 }
+
+/// <summary>Yerel oyuncunun envanteri değiştiğinde arayüzü güncellemek için fırlatılır.</summary>
+public struct LocalInventoryUpdatedEvent
+{
+    public ushort[] ItemIds;
+    public int ActiveSlotIndex;
+
+    public LocalInventoryUpdatedEvent(ushort[] itemIds, int activeSlotIndex)
+    {
+        ItemIds = itemIds;
+        ActiveSlotIndex = activeSlotIndex;
+    }
+}

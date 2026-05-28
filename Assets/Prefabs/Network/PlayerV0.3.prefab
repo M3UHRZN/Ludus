@@ -160,6 +160,7 @@ GameObject:
   - component: {fileID: 1510060086146854700}
   - component: {fileID: 6456867756280879980}
   - component: {fileID: 7043670501089851505}
+  - component: {fileID: 2283508357184726688}
   m_Layer: 6
   m_Name: PlayerV0.3
   m_TagString: Player
@@ -524,3 +525,21 @@ MonoBehaviour:
   heartbeatFollowSpeed: 2.5
   postProcessVolume: {fileID: 0}
   fearOverlay: {fileID: 0}
+--- !u!114 &2283508357184726688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1646a91d34be6e04ca5a36f5758122d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStamina
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxStamina: 100
+  currentStamina: 0
+  drainRate: 20
+  regenRate: 15
+  exhaustionDamage: 5

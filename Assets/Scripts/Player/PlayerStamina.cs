@@ -35,49 +35,47 @@ public class PlayerStamina : NetworkBehaviour
 
     private void CalculateStamina()
     {
-        // Oyuncunun þu an koþup koþmadýðýný "CurrentSpeed" üzerinden anlýyoruz. Hýz 0.1'den büyükse (durmuyorsa) ve RunSpeed'e eþitse koþuyordur.
-        bool isSprinting = _movement.CurrentSpeed >= _movement.RunSpeed && _movement.CurrentSpeed > 0.1f;
+        Debug.Log($"[Stamina Test] Karakter Hýzý: {_movement.CurrentSpeed} | Stamina: {currentStamina}");
 
-        if (isSprinting && !_isExhausted)
+        // 1. FLOAT HASSASÝYETÝ ÇÖZÜMÜ: Hýzýn %80'ine bile ulaþtýysa "Koþuyor" kabul ediyoruz.
+        bool isSprinting = _movement.CurrentSpeed >= (_movement.RunSpeed * 0.8f) && _movement.CurrentSpeed > 0.1f;
+
+        if (isSprinting)
         {
-            // Koþuyorsa staminayý azalt
-            currentStamina -= drainRate * Time.deltaTime;
-
-            if (currentStamina <= 0f)
+            if (currentStamina > 0f)
             {
+                // Staminasý var, normal koþuyor (Barý azalt)
+                currentStamina -= drainRate * Time.deltaTime;
+                _isExhausted = false;
+                _damageTimer = 0f; // Dinç olduðu için hasar sayacýný sýfýrla
+            }
+            else
+            {
+                // EYVAH! Stamina bitti ama oyuncu hala Shift'e basýp koþmaya zorluyor!
                 currentStamina = 0f;
                 _isExhausted = true;
+
+                // Zorladýðý için saniye saniye canýndan düþmeye baþla
+                _damageTimer += Time.deltaTime;
+                if (_damageTimer >= 1f)
+                {
+                    ApplyExhaustionDamage();
+                    _damageTimer = 0f;
+                }
             }
         }
         else
         {
-            // Koþmuyorsa staminayý doldur
-            currentStamina += regenRate * Time.deltaTime;
-
-            if (currentStamina >= maxStamina)
-            {
-                currentStamina = maxStamina;
-                _isExhausted = false; // Nefesi yerine geldi
-            }
-        }
-
-        // --- NEFESSÝZLÝK HASARI KONTROLÜ ---
-        if (_isExhausted)
-        {
-            // Kronometreyi çalýþtýr
-            _damageTimer += Time.deltaTime;
-
-            // Eðer 1 saniye dolduysa hasar ver ve kronometreyi sýfýrla
-            if (_damageTimer >= 1f)
-            {
-                ApplyExhaustionDamage();
-                _damageTimer = 0f;
-            }
-        }
-        else
-        {
-            // Karakter dinleniyorsa kronometreyi sýfýrla
+            // Oyuncu Shift'i býraktý, dinleniyor veya yürüyor
+            _isExhausted = false;
             _damageTimer = 0f;
+
+            if (currentStamina < maxStamina)
+            {
+                // Dinlenirken barý doldur
+                currentStamina += regenRate * Time.deltaTime;
+                if (currentStamina > maxStamina) currentStamina = maxStamina;
+            }
         }
     }
 
