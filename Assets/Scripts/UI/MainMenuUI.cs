@@ -68,6 +68,9 @@ public class MainMenuUI : MonoBehaviour
 
     private void Start()
     {
+        if (displayNameInput != null && string.IsNullOrWhiteSpace(displayNameInput.text))
+            displayNameInput.text = PlayerPrefs.GetString("DisplayName", string.Empty);
+
         if (_cm != null)
         {
             _cm.OnConnected     += HandleConnected;

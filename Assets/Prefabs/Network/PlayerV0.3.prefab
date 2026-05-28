@@ -160,6 +160,9 @@ GameObject:
   - component: {fileID: 1510060086146854700}
   - component: {fileID: 6456867756280879980}
   - component: {fileID: 7043670501089851505}
+  - component: {fileID: 880100100100100101}
+  - component: {fileID: 880100100100100102}
+  - component: {fileID: 880100100100100103}
   m_Layer: 6
   m_Name: PlayerV0.3
   m_TagString: Player
@@ -524,3 +527,64 @@ MonoBehaviour:
   heartbeatFollowSpeed: 2.5
   postProcessVolume: {fileID: 0}
   fearOverlay: {fileID: 0}
+--- !u!114 &880100100100100101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e956c339a18418cba39267bbaa808ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerDisplayName
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &880100100100100102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 619cb530214547ef8824791b9817dd2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraModeController
+  ShowTopMostFoldoutHeaderGroup: 1
+  playerLook: {fileID: 6484822293942998558}
+  cameraTarget: {fileID: 52379857874121451}
+  modelVisualRoot: {fileID: 3862787892327672213}
+  toggleKey: 17
+  thirdPersonLocalOffset: {x: 0, y: 2.5, z: -1}
+  positionSmoothTime: 0.08
+  obstructionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  cameraRadius: 0.22
+  minThirdPersonDistance: 0.45
+  wallPadding: 0.08
+--- !u!114 &880100100100100103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65c69ba0c6b749d98b42763a40b82c7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerWorldNameplate
+  ShowTopMostFoldoutHeaderGroup: 1
+  displayNameSource: {fileID: 880100100100100101}
+  cameraMode: {fileID: 880100100100100102}
+  label: {fileID: 0}
+  followTarget: {fileID: 1131148521228327618}
+  worldOffset: {x: 0, y: 2.15, z: 0}
+  fontSize: 1.25
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  outlineWidth: 0.22
+  hideOwnerInFirstPerson: 1
