@@ -19,6 +19,10 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     [Header("Gorsel Geribildirim")]
     public Material highlightMaterial;
 
+    [Header("Lure (Priest algilamasi)")]
+    [Tooltip("True ise oyuncu bu objeyi aldigi anda priest tipi dusmanlar olayi duyar (LureBehavior). False ise sessizce alinir — trash item icin kullan.")]
+    [SerializeField] private bool _triggersLure = true;
+
     [Header("Firlatma Hasari")]
     [Tooltip("Bir firlatmanin 'hasarli' kabul edildigi pencere (sn). Bu sure icinde dusmana carparsa hasar verir.")]
     [SerializeField] private float _throwDamageWindow = 2f;
@@ -205,6 +209,16 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         // Bekleyen "throw penceresi sonu" reenable cagrisini de iptal et.
         CancelInvoke(nameof(ReenableNavObstacle));
         if (_navObstacle != null) _navObstacle.enabled = false;
+
+        // Pickup'i konum bilgisiyle birlikte yayinla: priest LureBehavior bu olayi
+        // duyarak grab'in yapildigi noktaya yonelir (Observer pattern). _triggersLure
+        // false ise sessiz grab (trash item) — duyusal AI etkilenmez.
+        if (_triggersLure)
+        {
+            int weightInt = Mathf.RoundToInt(weight);
+            GameEventBus.Publish(new ItemPickedUpEvent(
+                name, weightInt, 0f, transform.position, grabberClientId));
+        }
     }
 
     public void ServerStopHold()
