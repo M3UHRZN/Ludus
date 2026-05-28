@@ -149,29 +149,49 @@ public class EnemyController : MonoBehaviour, IDamageable
         return _useRangedAttack ? new RangedAimBehavior() : new AttackBehavior();
     }
 
+    // Oyuncunun ayak (PlayerTransform.position) hizasindan yukari dogru ornekleme
+    // noktalari. Kisa engellerin (ornk masa, alcak duvar) arkasinda sadece basi
+    // cikan oyuncuyu yakalamak ve come durumunda raycast'in basinin uzerinden
+    // gecip "goruldu" sanmasini engellemek icin birden fazla nokta deneriz; biri
+    // bile engelsiz gorus saglarsa oyuncu goruldu sayilir.
+    private static readonly float[] s_visibilitySampleHeights = { 1.7f, 1.0f, 0.3f };
+
     public bool CanSeePlayer()
     {
         if (PlayerTransform == null) return false;
 
         Vector3 eyePos = transform.position + Vector3.up * 1.5f;
-        Vector3 targetPos = PlayerTransform.position + Vector3.up;
-        Vector3 direction = targetPos - eyePos;
-        float distance = direction.magnitude;
+        Vector3 playerBase = PlayerTransform.position;
 
-        if (distance > _sightRange) return false;
+        // Birden fazla ornekleme noktasi: bas / govde / ayak hizasi. Her nokta icin
+        // mesafe + FOV koni + LOS raycast tek tek denenir; engelsiz bir yol bulunan
+        // ilk noktada "goruldu" doneriz. Boylece tek bir nokta (eski sampling) icin
+        // olusan kor noktalar (kisa duvarin uzerinden sadece bas gorunmesi, come
+        // durumunda raycast'in basin ustunden gecmesi) kapanir.
+        for (int i = 0; i < s_visibilitySampleHeights.Length; i++)
+        {
+            Vector3 targetPos = playerBase + Vector3.up * s_visibilitySampleHeights[i];
+            Vector3 direction = targetPos - eyePos;
+            float distance = direction.magnitude;
+            if (distance > _sightRange) continue;
+            if (distance < 0.0001f) continue;
 
-        // Gorus konisi: TUM dusmanlar (hem Type A hem Type B) sadece yuzunun baktigi
-        // koni icini gorur. Arkadan/yandan yaklasilirsa fark etmezler.
-        Vector3 flatDir = direction;
-        flatDir.y = 0f;
-        if (flatDir.sqrMagnitude > 0.0001f &&
-            Vector3.Angle(transform.forward, flatDir) > _fieldOfViewAngle * 0.5f)
-            return false;
+            // Gorus konisi: TUM dusmanlar (hem Type A hem Type B) sadece yuzunun
+            // baktigi koni icini gorur. Arkadan/yandan yaklasilirsa fark etmezler.
+            Vector3 flatDir = direction;
+            flatDir.y = 0f;
+            if (flatDir.sqrMagnitude > 0.0001f &&
+                Vector3.Angle(transform.forward, flatDir) > _fieldOfViewAngle * 0.5f)
+                continue;
 
-        if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
-            return hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform);
+            if (!Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, distance))
+                return true; // hicbir engele degmedi; bos havadan direkt goruldu
 
-        return true;
+            if (hit.transform == PlayerTransform || hit.transform.IsChildOf(PlayerTransform))
+                return true; // engele degil player'in kendi collider'ina vurdu
+        }
+
+        return false;
     }
 
     private void Update()
