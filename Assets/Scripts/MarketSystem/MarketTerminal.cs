@@ -8,13 +8,27 @@ public class MarketTerminal : MonoBehaviour, IInteractable
 
     public string InteractPrompt => prompt;
 
+    private void Awake()
+    {
+        EnsureInteractableLayer();
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        EnsureInteractableLayer();
+    }
+#endif
+
     public bool CanInteract(PlayerStateMachine player)
     {
+        ResolveReferences();
         return player != null && marketUI != null && transactionService != null;
     }
 
     public void Interact(PlayerStateMachine player)
     {
+        ResolveReferences();
         if (!CanInteract(player))
             return;
 
@@ -25,5 +39,21 @@ public class MarketTerminal : MonoBehaviour, IInteractable
     {
         marketUI = ui;
         transactionService = service;
+    }
+
+    private void ResolveReferences()
+    {
+        if (marketUI == null)
+            marketUI = FindFirstObjectByType<MarketUIController>(FindObjectsInactive.Include);
+
+        if (transactionService == null)
+            transactionService = FindFirstObjectByType<MarketTransactionService>(FindObjectsInactive.Include);
+    }
+
+    private void EnsureInteractableLayer()
+    {
+        int layer = LayerMask.NameToLayer("Interactable");
+        if (layer >= 0)
+            gameObject.layer = layer;
     }
 }

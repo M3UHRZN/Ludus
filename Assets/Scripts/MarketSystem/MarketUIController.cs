@@ -100,14 +100,34 @@ public class MarketUIController : MonoBehaviour
 
     public void BuyFlashbang()
     {
+        if (_inventory == null)
+        {
+            SetStatus("Inventory is missing.");
+            return;
+        }
+
         if (_service == null)
         {
             SetStatus("Market service is missing.");
             return;
         }
 
-        bool success = _service.TryBuy(flashbangItemId, out string message);
-        SetStatus(message);
+        if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening)
+        {
+            _inventory.RequestMarketFlashbangPurchase(_service.DeliveryPosition, _service.DeliveryForward);
+            SetStatus("Purchase requested.");
+        }
+        else if (_service.IsSpawned && !_service.IsServer)
+        {
+            _service.RequestBuy(flashbangItemId, _inventory);
+            SetStatus("Purchase requested.");
+        }
+        else
+        {
+            _service.TryBuy(flashbangItemId, out string message);
+            SetStatus(message);
+        }
+
         Refresh();
     }
 
@@ -126,8 +146,17 @@ public class MarketUIController : MonoBehaviour
         }
 
         int slotIndex = ReadSlotIndex();
-        bool success = _service.TrySellOne(_inventory, slotIndex, out string message);
-        SetStatus(message);
+        if (_service.IsSpawned && !_service.IsServer)
+        {
+            _service.RequestSellOne(_inventory, slotIndex);
+            SetStatus("Sell requested.");
+        }
+        else
+        {
+            _service.TrySellOne(_inventory, slotIndex, out string message);
+            SetStatus(message);
+        }
+
         Refresh();
     }
 
@@ -145,10 +174,19 @@ public class MarketUIController : MonoBehaviour
             return;
         }
 
-        int soldCount = _service.SellAll(_inventory, out int totalCredits);
-        SetStatus(soldCount > 0
-            ? $"Sold {soldCount} item(s) for {totalCredits} credits."
-            : "No sellable items found.");
+        if (_service.IsSpawned && !_service.IsServer)
+        {
+            _service.RequestSellAll(_inventory);
+            SetStatus("Sell all requested.");
+        }
+        else
+        {
+            int soldCount = _service.SellAll(_inventory, out int totalCredits);
+            SetStatus(soldCount > 0
+                ? $"Sold {soldCount} item(s) for {totalCredits} credits."
+                : "No sellable items found.");
+        }
+
         Refresh();
     }
 
@@ -182,6 +220,12 @@ public class MarketUIController : MonoBehaviour
             statusText.text = message;
         else if (!string.IsNullOrEmpty(message))
             Debug.Log($"[Market] {message}");
+    }
+
+    public void SetExternalStatus(string message)
+    {
+        SetStatus(message);
+        Refresh();
     }
 
     public void Configure(

@@ -51,6 +51,16 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
+    public readonly NetworkVariable<bool> NetCanInventoryPickup = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<ushort> NetInventoryItemId = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
     private bool _isHighlighted;
     private Rigidbody _rb;
     private Material _originalMaterial;
@@ -73,6 +83,8 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     // --- IGrabbable ---
     public float Weight => weight;
     public bool IsHeld => NetIsHeld.Value;
+    public bool CanPickupToInventory => NetCanInventoryPickup.Value;
+    public ushort InventoryItemId => NetInventoryItemId.Value;
 
     /// <summary>
     /// Server-side flag: true iken bu obje firlatma penceresi icinde "ucan mermi"
@@ -251,6 +263,30 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
         // Aktif tasiyici kaydindan cikar — LureBehavior bunu drop sinyali olarak okur.
         s_heldItems.Remove(this);
+    }
+
+    public void ServerConfigureInventoryPickup(bool canPickup, ushort itemId)
+    {
+        if (!IsServer) return;
+
+        NetCanInventoryPickup.Value = canPickup;
+        NetInventoryItemId.Value = itemId;
+    }
+
+    public bool ServerTryPickupInto(PlayerInventory inventory)
+    {
+        if (!IsServer) return false;
+        if (inventory == null) return false;
+        if (NetIsHeld.Value) return false;
+        if (!NetCanInventoryPickup.Value) return false;
+
+        ushort itemId = NetInventoryItemId.Value;
+        if (!inventory.ServerTryAddItem(itemId))
+            return false;
+
+        NetCanInventoryPickup.Value = false;
+        Invoke(nameof(DespawnSelf), 0f);
+        return true;
     }
 
     public void ServerSetHoldTarget(Vector3 target)
