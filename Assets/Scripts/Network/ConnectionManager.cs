@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
+using Unity.Services.Lobbies;
 using Unity.Services.Multiplayer;
 using UnityEngine;
 
@@ -178,10 +180,9 @@ public class ConnectionManager : MonoBehaviour
     /// <summary>Leaves the current session and shuts down the network.</summary>
     public async Task LeaveAsync()
     {
-        if (_session == null) return;
-
-        await LeaveSessionInternalAsync();
-        await ResetNetworkManagerAfterFailedStartAsync();
+        await CleanupExistingMultiplayerStateAsync();
+        _state = ConnectionState.Disconnected;
+        OnDisconnected?.Invoke("Left session");
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -225,8 +226,14 @@ public class ConnectionManager : MonoBehaviour
 
     private async Task JoinBySessionIdInternalAsync(string displayName, string sessionId)
     {
+        var joinOptions = new JoinSessionOptions()
+            .WithNetworkOptions(new NetworkOptions
+            {
+                RelayProtocol = RelayProtocol.Default
+            });
+
         await ConnectInternalAsync(displayName,
-            () => MultiplayerService.Instance.JoinSessionByIdAsync(sessionId));
+            () => MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, joinOptions));
         // Clients do NOT call LoadScene — NGO SceneManager syncs them to the host's scene.
     }
 
@@ -239,14 +246,9 @@ public class ConnectionManager : MonoBehaviour
             Debug.Log($"[{nameof(ConnectionManager)}] ConnectInternalAsync start displayName={displayName}");
             await _initializeTask;
             await SignInWithProfileAsync(displayName);
+            await CleanupExistingMultiplayerStateAsync();
 
-            if (_session != null)
-            {
-                await LeaveSessionInternalAsync();
-                await ResetNetworkManagerAfterFailedStartAsync();
-            }
-
-            _session = await sessionFactory();
+            _session = await RunSessionFactoryWithCleanupRetryAsync(sessionFactory);
             _state = ConnectionState.Connected;
             Debug.Log($"[{nameof(ConnectionManager)}] Session established.");
 
@@ -257,7 +259,7 @@ public class ConnectionManager : MonoBehaviour
             _state = ConnectionState.Disconnected;
             Debug.LogException(e);
             Debug.LogWarning($"[{nameof(ConnectionManager)}] ConnectInternalAsync failed. disconnectReason='{_networkManager?.DisconnectReason}'");
-            await ResetNetworkManagerAfterFailedStartAsync();
+            await CleanupExistingMultiplayerStateAsync();
             throw;
         }
         finally
@@ -282,6 +284,103 @@ public class ConnectionManager : MonoBehaviour
 
         await auth.SignInAnonymouslyAsync();
         DisplayName = displayName;
+    }
+
+    private async Task<ISession> RunSessionFactoryWithCleanupRetryAsync(Func<Task<ISession>> sessionFactory)
+    {
+        try
+        {
+            return await sessionFactory();
+        }
+        catch (SessionException e) when (e.Message.Contains("Object reference"))
+        {
+            Debug.LogWarning($"[{nameof(ConnectionManager)}] Session join hit stale lobby state. Cleaning up and retrying once.");
+            await CleanupExistingMultiplayerStateAsync();
+            await Task.Delay(250);
+            return await sessionFactory();
+        }
+    }
+
+    private async Task CleanupExistingMultiplayerStateAsync()
+    {
+        var sessions = new List<ISession>();
+        if (_session != null)
+            sessions.Add(_session);
+
+        try
+        {
+            foreach (var session in MultiplayerService.Instance.Sessions.Values)
+            {
+                if (session != null && !sessions.Contains(session))
+                    sessions.Add(session);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[{nameof(ConnectionManager)}] Could not enumerate existing sessions: {e.Message}");
+        }
+
+        foreach (var session in sessions)
+            await TryLeaveSessionAsync(session);
+
+        _session = null;
+
+        await RemoveJoinedLobbiesForCurrentPlayerAsync();
+        await ResetNetworkManagerAfterFailedStartAsync();
+    }
+
+    private async Task TryLeaveSessionAsync(ISession session)
+    {
+        if (session == null) return;
+
+        try
+        {
+            await session.LeaveAsync();
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[{nameof(ConnectionManager)}] Existing session cleanup skipped: {e.Message}");
+        }
+    }
+
+    private async Task RemoveJoinedLobbiesForCurrentPlayerAsync()
+    {
+        var auth = AuthenticationService.Instance;
+        string playerId = auth.PlayerId;
+        if (string.IsNullOrWhiteSpace(playerId))
+            return;
+
+        List<string> joinedLobbyIds;
+        try
+        {
+            joinedLobbyIds = await LobbyService.Instance.GetJoinedLobbiesAsync();
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[{nameof(ConnectionManager)}] Could not query joined lobbies: {e.Message}");
+            return;
+        }
+
+        foreach (string lobbyId in joinedLobbyIds)
+        {
+            if (string.IsNullOrWhiteSpace(lobbyId))
+                continue;
+
+            try
+            {
+                var lobby = await LobbyService.Instance.GetLobbyAsync(lobbyId);
+                if (lobby != null && lobby.HostId == playerId)
+                    await LobbyService.Instance.DeleteLobbyAsync(lobbyId);
+                else
+                    await LobbyService.Instance.RemovePlayerAsync(lobbyId, playerId);
+
+                Debug.Log($"[{nameof(ConnectionManager)}] Cleaned stale joined lobby {lobbyId}.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[{nameof(ConnectionManager)}] Joined lobby cleanup skipped for {lobbyId}: {e.Message}");
+            }
+        }
     }
 
     private async Task ResetNetworkManagerAfterFailedStartAsync()

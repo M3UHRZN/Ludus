@@ -47,5 +47,10 @@ public class MarketCatalogItem
         canSell = newCanSell;
         maxStock = newMaxStock;
     }
+
+    public void EditorSetDeliveryPrefab(GameObject prefab)
+    {
+        deliveryPrefab = prefab;
+    }
 #endif
 }

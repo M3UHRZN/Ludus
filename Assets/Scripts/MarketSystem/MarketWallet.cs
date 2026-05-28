@@ -1,23 +1,45 @@
 using System;
+using Unity.Netcode;
 using UnityEngine;
 
-public class MarketWallet : MonoBehaviour
+[RequireComponent(typeof(NetworkObject))]
+public class MarketWallet : NetworkBehaviour
 {
     [SerializeField] private int startingCredits = 100;
     [SerializeField] private int currentCredits;
 
-    public int CurrentCredits => currentCredits;
+    public readonly NetworkVariable<int> NetCredits = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    public int CurrentCredits => IsSpawned ? NetCredits.Value : currentCredits;
     public event Action<int> CreditsChanged;
 
     private void Awake()
     {
-        if (currentCredits <= 0 && startingCredits > 0)
+        if (!IsSpawned && currentCredits <= 0 && startingCredits > 0)
             SetCredits(startingCredits);
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        NetCredits.OnValueChanged += OnNetCreditsChanged;
+
+        if (IsServer && NetCredits.Value <= 0 && startingCredits > 0)
+            SetCredits(startingCredits);
+
+        CreditsChanged?.Invoke(CurrentCredits);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        NetCredits.OnValueChanged -= OnNetCreditsChanged;
     }
 
     public bool CanAfford(int amount)
     {
-        return amount >= 0 && currentCredits >= amount;
+        return amount >= 0 && CurrentCredits >= amount;
     }
 
     public bool TrySpend(int amount)
@@ -39,12 +61,30 @@ public class MarketWallet : MonoBehaviour
 
     public void SetCredits(int amount)
     {
-        currentCredits = Mathf.Max(0, amount);
-        CreditsChanged?.Invoke(currentCredits);
+        int safeAmount = Mathf.Max(0, amount);
+
+        if (IsSpawned)
+        {
+            if (!IsServer)
+                return;
+
+            NetCredits.Value = safeAmount;
+        }
+        else
+        {
+            currentCredits = safeAmount;
+            CreditsChanged?.Invoke(currentCredits);
+        }
     }
 
     public void ResetToStartingCredits()
     {
         SetCredits(startingCredits);
+    }
+
+    private void OnNetCreditsChanged(int previous, int current)
+    {
+        currentCredits = current;
+        CreditsChanged?.Invoke(current);
     }
 }

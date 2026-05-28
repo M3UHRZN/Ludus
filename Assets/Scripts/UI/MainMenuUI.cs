@@ -282,6 +282,8 @@ public class MainMenuUI : MonoBehaviour
         SaveDisplayName(displayName);
 
         SetStatus("Connecting...");
+        _queryResult?.StopPolling();
+        StopPollingCoroutine();
         try
         {
             await _cm.JoinBySessionIdAsync(displayName, sessionId);

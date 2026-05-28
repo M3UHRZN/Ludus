@@ -426,6 +426,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
+  flashbangItemId: 100
+  flashbangWorldPrefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
+  flashbangThrowSpeed: 16
+  flashbangUpwardBoost: 1.5
+  flashbangFuseTime: 1.6
+  flashbangBlastRadius: 5
+  flashbangBlindDuration: 2.5
+  flashbangPeakAlpha: 1
+  flashbangEnemyStunDuration: 3
+  blindedMoveMultiplier: 0.35
+  blindedLookMultiplier: 0.25
+  flashbangMarketPrice: 40
+  flashbangExplosionClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
+  flashbangExplosionVolume: 1
+  flashbangExplosionAudibleRange: 18
+  flashbangRingingClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
+  flashbangRingingVolume: 0.7
+  flashbangAudioExtraFadeTime: 1
 --- !u!114 &3464923751118398266
 MonoBehaviour:
   m_ObjectHideFlags: 0
