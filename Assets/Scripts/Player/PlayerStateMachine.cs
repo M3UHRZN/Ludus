@@ -23,6 +23,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     public PlayerInventory Inventory { get; private set; }
     public SpectatorController Spectator { get; private set; }
     public PlayerInput PlayerInput { get; private set; }
+    public PlayerDisplayName DisplayNameSource { get; private set; }
 
     public readonly NetworkVariable<byte> NetState = new(
         (byte)PlayerStateEnum.Alive,
@@ -42,7 +43,10 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     // NetState server'dan roundtrip ile gelir; owner local state ise aninda guncellenir.
     public PlayerStateEnum LocalState => _currentState != null ? StateToEnum(_currentState) : (PlayerStateEnum)NetState.Value;
 
-    public Transform SpectateTarget => transform;    public string DisplayName => $"Player-{OwnerClientId}";
+    public Transform SpectateTarget => transform;
+    public string DisplayName => DisplayNameSource != null && !string.IsNullOrWhiteSpace(DisplayNameSource.DisplayName)
+        ? DisplayNameSource.DisplayName
+        : $"Player-{OwnerClientId}";
     public bool CanBeSpectated => IsAlive;
 
     private void Awake()
@@ -53,6 +57,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         Inventory = GetComponent<PlayerInventory>();
         Spectator = GetComponent<SpectatorController>();
         PlayerInput = GetComponent<PlayerInput>();
+        DisplayNameSource = GetComponent<PlayerDisplayName>();
     }
 
     public override void OnNetworkSpawn()

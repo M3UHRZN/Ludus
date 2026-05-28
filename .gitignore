@@ -73,39 +73,11 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
-.DS_Store
-.obsidian/app.json
-.obsidian/appearance.json
-.obsidian/core-plugins.json
-.obsidian/workspace.json
-ObsidianKasa/Vault/.obsidian/app.json
-ObsidianKasa/Vault/.obsidian/appearance.json
-ObsidianKasa/Vault/.obsidian/core-plugins.json
-ObsidianKasa/Vault/.obsidian/graph.json
-ObsidianKasa/Vault/.obsidian/workspace.json
-ObsidianKasa/Vault/Hoş geldiniz.md
-ObsidianKasa/Vault/Audio Sistemi.md
-ObsidianKasa/Vault/Bagimlilik Zinciri.md
-ObsidianKasa/Vault/Ceset Mekanigi.md
-ObsidianKasa/Vault/Decorator Pattern.md
-ObsidianKasa/Vault/Degerlendirme Kriterleri.md
-ObsidianKasa/Vault/Ekip.md
-ObsidianKasa/Vault/Enemy AI.md
-ObsidianKasa/Vault/Event Sistemi.md
-ObsidianKasa/Vault/Harita Sistemi.md
-ObsidianKasa/Vault/index.md
-ObsidianKasa/Vault/Item Sistemi.md
-ObsidianKasa/Vault/log.md
-ObsidianKasa/Vault/Market Sistemi.md
-ObsidianKasa/Vault/Object Pool Pattern.md
-ObsidianKasa/Vault/Observer Pattern.md
-ObsidianKasa/Vault/Proje Ozeti.md
-ObsidianKasa/Vault/Rapor Rehberi.md
-ObsidianKasa/Vault/Risk Tablosu.md
-ObsidianKasa/Vault/Singleton Pattern.md
-ObsidianKasa/Vault/Sprint Plani.md
-ObsidianKasa/Vault/Strategy Pattern.md
-ObsidianKasa/Vault/Lobby Sistemi.md
+
+# Obsidian local notes and workspace state
+/.obsidian/
+**/.obsidian/
+/ObsidianKasa/
 
 # OS and tool generated files
 .DS_Store
@@ -116,4 +88,3 @@ Thumbs.db
 # Unity crash recovery klasoru (gecici, commit edilmemeli)
 /Assets/_Recovery/
 /Assets/_Recovery.meta
-/ObsidianKasa

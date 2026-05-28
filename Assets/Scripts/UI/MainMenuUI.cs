@@ -68,6 +68,9 @@ public class MainMenuUI : MonoBehaviour
 
     private void Start()
     {
+        if (displayNameInput != null && string.IsNullOrWhiteSpace(displayNameInput.text))
+            displayNameInput.text = PlayerPrefs.GetString("DisplayName", string.Empty);
+
         if (_cm != null)
         {
             _cm.OnConnected     += HandleConnected;
@@ -124,6 +127,7 @@ public class MainMenuUI : MonoBehaviour
         string sessionName = SessionName;
 
         if (!ValidateInputs(displayName, sessionName)) return;
+        SaveDisplayName(displayName);
 
         SetStatus("Connecting...");
         try
@@ -144,6 +148,7 @@ public class MainMenuUI : MonoBehaviour
         string sessionName = SessionName;
 
         if (!ValidateInputs(displayName, sessionName)) return;
+        SaveDisplayName(displayName);
 
         SetStatus("Connecting...");
         try
@@ -164,6 +169,7 @@ public class MainMenuUI : MonoBehaviour
             SetStatus("Callsign required before browsing.", isError: true);
             return;
         }
+        SaveDisplayName(DisplayName);
         try
         {
             await OpenBrowserAsync();
@@ -273,8 +279,11 @@ public class MainMenuUI : MonoBehaviour
             SetStatus("Display name cannot be empty.", isError: true);
             return;
         }
+        SaveDisplayName(displayName);
 
         SetStatus("Connecting...");
+        _queryResult?.StopPolling();
+        StopPollingCoroutine();
         try
         {
             await _cm.JoinBySessionIdAsync(displayName, sessionId);
@@ -333,6 +342,14 @@ public class MainMenuUI : MonoBehaviour
 
     private string DisplayName => displayNameInput.text.Trim();
     private string SessionName => sessionNameInput.text.Trim();
+
+    private static void SaveDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName)) return;
+
+        PlayerPrefs.SetString("DisplayName", displayName.Trim());
+        PlayerPrefs.Save();
+    }
 
     private bool ValidateInputs(string displayName, string sessionName)
     {

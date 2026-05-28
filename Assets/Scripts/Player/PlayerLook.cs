@@ -19,6 +19,7 @@ public class PlayerLook : NetworkBehaviour
     public Transform CameraTarget => cameraTarget;
 
     private float _xRotation;
+    private float _lookMultiplier = 1f;
     private InputAction _lookAction;
     private CinemachineCamera _vcam;
 
@@ -55,10 +56,15 @@ public class PlayerLook : NetworkBehaviour
         if (_lookAction == null) return;
         Vector2 delta = _lookAction.ReadValue<Vector2>();
 
-        _xRotation -= delta.y * mouseSensitivity;
+        _xRotation -= delta.y * mouseSensitivity * _lookMultiplier;
         _xRotation = Mathf.Clamp(_xRotation, minPitch, maxPitch);
 
         cameraTarget.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
-        playerBody.Rotate(Vector3.up * (delta.x * mouseSensitivity));
+        playerBody.Rotate(Vector3.up * (delta.x * mouseSensitivity * _lookMultiplier));
+    }
+
+    public void SetLookMultiplier(float multiplier)
+    {
+        _lookMultiplier = Mathf.Clamp01(multiplier);
     }
 }

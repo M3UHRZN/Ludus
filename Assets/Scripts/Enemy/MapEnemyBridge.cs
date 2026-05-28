@@ -44,6 +44,9 @@ public class MapEnemyBridge : MonoBehaviour
     [Tooltip("NavMesh bake'i kac frame sonra calistir (dungeon spawn'a vakit tani)")]
     [SerializeField] private int _bakeDelayFrames = 1;
 
+    [Tooltip("Runtime bake icin collider kullan. Render mesh kullanmak Read/Write kapali meshlerde build uyarisi verir.")]
+    [SerializeField] private bool _usePhysicsCollidersForRuntimeBake = true;
+
     [Header("Map Ready Event")]
     [Tooltip("DungeonLayout hazirlaninca MapReadyEvent yayinla")]
     [SerializeField] private bool _publishMapReadyEvent = true;
@@ -213,8 +216,12 @@ public class MapEnemyBridge : MonoBehaviour
         {
             _navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
             _navMeshSurface.collectObjects = CollectObjects.All;
-            _navMeshSurface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.RenderMeshes;
         }
+
+        _navMeshSurface.collectObjects = CollectObjects.All;
+        _navMeshSurface.useGeometry = _usePhysicsCollidersForRuntimeBake
+            ? UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders
+            : UnityEngine.AI.NavMeshCollectGeometry.RenderMeshes;
 
         _navMeshSurface.BuildNavMesh();
 

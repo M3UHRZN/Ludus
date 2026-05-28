@@ -1,5 +1,6 @@
 using UnityEditor;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -16,6 +17,7 @@ public static class MarketSystemEditorTools
 
         MarketWallet wallet = EnsureComponent<MarketWallet>(root);
         MarketCatalog catalog = EnsureComponent<MarketCatalog>(root);
+        EnsureComponent<NetworkObject>(root);
         MarketTransactionService service = EnsureComponent<MarketTransactionService>(root);
         MarketDebugTools debugTools = EnsureComponent<MarketDebugTools>(root);
         MarketUIController ui = EnsureMarketCanvas();
@@ -26,6 +28,8 @@ public static class MarketSystemEditorTools
 
         Transform deliveryPoint = FindOrCreateDeliveryPoint(root.transform);
         service.SetDeliveryPoint(deliveryPoint);
+        GameObject baseItemPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/BaseItem.prefab");
+        service.SetFallbackDeliveryPrefab(baseItemPrefab);
         MarketTerminal terminal = EnsureMarketTerminal(root.transform, service, ui);
 
         MarketCatalogItem flashbang = new MarketCatalogItem();
@@ -38,6 +42,7 @@ public static class MarketSystemEditorTools
             true,
             false,
             -1);
+        flashbang.EditorSetDeliveryPrefab(baseItemPrefab);
         catalog.EditorAddOrReplace(flashbang);
 
         EditorUtility.SetDirty(root);
@@ -140,6 +145,10 @@ public static class MarketSystemEditorTools
             if (renderer != null)
                 renderer.sharedMaterial = CreateTerminalMaterial();
         }
+
+        int interactableLayer = LayerMask.NameToLayer("Interactable");
+        if (interactableLayer >= 0)
+            terminalObj.layer = interactableLayer;
 
         BoxCollider collider = terminalObj.GetComponent<BoxCollider>();
         if (collider != null)
