@@ -139,13 +139,14 @@ public class EnemyController : MonoBehaviour, IDamageable
     }
 
     /// <summary>
-    /// Saldiri davranisi fabrikasi. Type A (robot) uzaktan kursun atar
-    /// (RangedAttackBehavior), Type B (priest) yakin dovus yapar (AttackBehavior).
-    /// ChaseBehavior yakinlasinca bunu cagirir.
+    /// Saldiri davranisi fabrikasi. Type A (robot) once kirmizi lazerle nisan alir
+    /// (RangedAimBehavior), telegraph dolunca RangedAttackBehavior'a devreder.
+    /// Type B (priest) yakin dovus yapar (AttackBehavior). ChaseBehavior her yeni
+    /// engagement'ta bunu cagirir; yani lazer her temasta bastan oynar.
     /// </summary>
     public IEnemyBehavior CreateAttackBehavior()
     {
-        return _useRangedAttack ? new RangedAttackBehavior() : new AttackBehavior();
+        return _useRangedAttack ? new RangedAimBehavior() : new AttackBehavior();
     }
 
     public bool CanSeePlayer()
