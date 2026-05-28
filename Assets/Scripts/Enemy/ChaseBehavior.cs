@@ -62,17 +62,30 @@ public class ChaseBehavior : IEnemyBehavior
         }
     }
 
+    private const float DeadPlayerDisengageGrace = 1.5f; // tum oyuncular oldukten sonra kalan azami sure
+
     public void Tick(EnemyController enemy)
     {
-        if (enemy.PlayerTransform == null) return;
         if (!enemy.Agent.isOnNavMesh) return;
 
         // Hareket halindeyken onumuze cikan kucuk fizikli objeleri it ki path
         // recompute donmalari ya da "etrafindan dolasmaya calisirken duraklama"
         // hissi olusmasin. Sadece hafif rigidbody'ler (varil, kasa) itilir;
-        // oyuncu ve diger dusmanlar dokunulmaz.
+        // oyuncu, diger dusmanlar ve UCAN firlatilmis objeler (hasar veriyor olabilir)
+        // dokunulmaz.
         if (enemy.Agent.velocity.sqrMagnitude > MinAgentSpeedToPush * MinAgentSpeedToPush)
             PushObstaclesAhead(enemy);
+
+        // Canli hicbir oyuncu kalmadi (hepsi oldu): mevcut izi tuketmeye devam et
+        // ama vazgecme sayacini kucuk bir grace'e siktir ki dusman cesedin etrafinda
+        // takilip kalmasin, hemen default davranisina donsun.
+        if (enemy.PlayerTransform == null)
+        {
+            if (_lostSightTimer > DeadPlayerDisengageGrace)
+                _lostSightTimer = DeadPlayerDisengageGrace;
+            TickSearchOrGiveUp(enemy);
+            return;
+        }
 
         // --- Oyuncuyu goruyor: dogrudan kovala, son konumu hatirla, sayaci sifirla ---
         if (enemy.CanSeePlayer())
@@ -93,7 +106,12 @@ public class ChaseBehavior : IEnemyBehavior
             return;
         }
 
-        // --- Goremiyor: once son ize (ses / son gorulen yer) dogru git ---
+        // --- Goremiyor: once son ize (ses / son gorulen yer) dogru git, yoksa vazgec ---
+        TickSearchOrGiveUp(enemy);
+    }
+
+    private void TickSearchOrGiveUp(EnemyController enemy)
+    {
         if (_hasSearchPoint)
         {
             enemy.Agent.SetDestination(_searchPoint);
@@ -149,6 +167,13 @@ public class ChaseBehavior : IEnemyBehavior
         // Oyuncuyu ya da baska dusmani itme — sadece "serbest" sahne objeleri
         if (hit.transform.GetComponentInParent<PlayerStateMachine>() != null) return;
         if (hit.transform.GetComponentInParent<EnemyController>() != null) return;
+
+        // Oyuncunun firlattigi (hasar verecek olan) objeyi itme: yoksa hasar
+        // tetiklenmeden once saptiririz. PhysicsObject firlatma penceresinde
+        // IsActiveThrow true doner; pencere bittiginde yere oturmus sayilir
+        // ve normal "yolundan it" davranisina dahil olur.
+        var po = hit.transform.GetComponentInParent<PhysicsObject>();
+        if (po != null && po.IsActiveThrow) return;
 
         // Surekli kuvvet (ForceMode.Force her frame deltaTime ile carpilir)
         rb.AddForce(fwd * PushForce, ForceMode.Force);

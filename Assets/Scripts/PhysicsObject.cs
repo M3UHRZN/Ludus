@@ -62,6 +62,13 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     public float Weight => weight;
     public bool IsHeld => NetIsHeld.Value;
 
+    /// <summary>
+    /// Server-side flag: true iken bu obje firlatma penceresi icinde "ucan mermi"
+    /// gibi davranir (carptiginda hasar verir). Dusman AI'nin yolundan it kosesi
+    /// bu durumdaki objeleri itmemeli — yoksa hasari yetistirmeden saptirir.
+    /// </summary>
+    public bool IsActiveThrow => Time.time <= _throwExpiry && !NetIsHeld.Value;
+
     // --- IInteractable ---
     public string InteractPrompt => "E — Pick up";
     public bool CanInteract(PlayerStateMachine player) => !NetIsHeld.Value;
