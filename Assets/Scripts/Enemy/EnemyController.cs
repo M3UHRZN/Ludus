@@ -47,9 +47,29 @@ public class EnemyController : MonoBehaviour, IDamageable
     [Tooltip("Atis aninda namluda kisa sure gorunen efekt prefab'i (opsiyonel)")]
     [SerializeField] private GameObject _muzzleFlashPrefab;
 
+    [Header("Priest Ambient (sadece Type B icin)")]
+    [Tooltip("Priest etrafinda loop'lu calan ambient klip (zil/diapaz). Bos birakilirsa sessiz kalir. " +
+             "3D spatial audio kullanilir: yaklasinca yukselir, uzaklasinca solar.")]
+    [SerializeField] private AudioClip _priestAmbientClip;
+    [Tooltip("Ambient klibin temel ses seviyesi.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float _priestAmbientVolume = 0.55f;
+    [Tooltip("Ses tam ses seviyesinde duyulmaya basladigi en yakin mesafe.")]
+    [SerializeField] private float _priestAmbientMinDistance = 2f;
+    [Tooltip("Sesin tamamen kayboldugu en uzak mesafe.")]
+    [SerializeField] private float _priestAmbientMaxDistance = 18f;
+
     public GameObject ProjectilePrefab => _projectilePrefab;
     public Transform FirePoint => _firePoint;
     public GameObject MuzzleFlashPrefab => _muzzleFlashPrefab;
+
+    /// <summary>
+    /// True ise bu enemy yakin dovus / "priest" tipi (Type B): sesi duyar, esya
+    /// alimini sezer, ambient klip calar. False ise uzaktan saldiri (Type A robot):
+    /// sagir + sezgi yok + ambient ses yok. FearSystem priest yakinligini bu
+    /// flag uzerinden filtreler.
+    /// </summary>
+    public bool IsPriest => !_useRangedAttack;
 
     public NavMeshAgent Agent { get; private set; }
     public Transform[] PatrolWaypoints => _patrolWaypoints;
@@ -110,6 +130,31 @@ public class EnemyController : MonoBehaviour, IDamageable
     private void Awake()
     {
         Agent = GetComponent<NavMeshAgent>();
+        ConfigurePriestAmbientAudio();
+    }
+
+    /// <summary>
+    /// Type B (priest) icin runtime 3D AudioSource olusturup loop'lu calar. Awake'te
+    /// kosulur boylece hem host hem tum client'lar kendi taraflarinda sesi duyar
+    /// (network sync gerekmez — pozisyon zaten NetworkTransform ile sync). Klip
+    /// atanmamissa veya enemy robot ise no-op.
+    /// </summary>
+    private void ConfigurePriestAmbientAudio()
+    {
+        if (!IsPriest) return;
+        if (_priestAmbientClip == null) return;
+
+        var src = gameObject.AddComponent<AudioSource>();
+        src.clip = _priestAmbientClip;
+        src.loop = true;
+        src.playOnAwake = false;
+        src.spatialBlend = 1f;                           // tamamen 3D
+        src.volume = _priestAmbientVolume;
+        src.minDistance = _priestAmbientMinDistance;
+        src.maxDistance = _priestAmbientMaxDistance;
+        src.rolloffMode = AudioRolloffMode.Linear;       // Linear: tahmin edilebilir azalim
+        src.dopplerLevel = 0f;                            // priest hareketi pitch'i bozmasin
+        src.Play();
     }
 
     private void Start()
