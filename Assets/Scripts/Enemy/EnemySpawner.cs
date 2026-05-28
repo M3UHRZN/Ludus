@@ -63,6 +63,20 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("Fallback durumda Start'tan sonra ne kadar bekle")]
     [SerializeField] private float _fallbackStartDelay = 2f;
 
+    [Header("Loot Room Guardian (Feature 2)")]
+    [Tooltip("Loot odalarinda dedicated robot bekciler spawn edilsin mi (oyuncuya zorluk + 'oh dusunmusler' hissi).")]
+    [SerializeField] private bool _spawnLootGuardians = true;
+    [Tooltip("MapReadyEvent'ten sonra item'larin spawn olmasini beklemek icin gecikme.")]
+    [SerializeField] private float _lootGuardianDelay = 3f;
+    [Tooltip("Toplam max kac loot guardian doganlir (cok olmasin, oyuncu nefes alsin).")]
+    [SerializeField] private int _lootGuardianCap = 3;
+    [Tooltip("Bir odaya guardian uretebilmek icin oda icindeki minimum item sayisi.")]
+    [SerializeField] private int _minItemsPerLootRoom = 2;
+    [Tooltip("Guardian'in gorus mesafesi (varsayilan 15m'den dusuk; sneak'e izin verir).")]
+    [SerializeField] private float _guardianSightRange = 11f;
+    [Tooltip("Guardian'in ranged saldiri tetik mesafesi (varsayilan 12m'den dusuk).")]
+    [SerializeField] private float _guardianAttackRange = 9f;
+
     private int _targetEnemyCount;
     private int _aliveCount;
     private bool _waveLoopActive;
@@ -115,6 +129,133 @@ public class EnemySpawner : NetworkBehaviour
         _targetEnemyCount = CalculateTarget(evt.RoomCount);
         Debug.Log($"[EnemySpawner] MapReadyEvent alindi (rooms={evt.RoomCount}). Target enemy count: {_targetEnemyCount}.");
         StartWaveLoop();
+
+        // Item'lar genelde MapReadyEvent ile yakin zamanda spawn olur ama
+        // exact siralama garanti degil — kucuk bir gecikmeyle loot odalarini
+        // tariyoruz. Wave loop'undan AYRI (extra) guardian'lar uretilir.
+        if (_spawnLootGuardians && evt.RoomBounds != null && evt.RoomBounds.Length > 0)
+            StartCoroutine(SpawnLootGuardiansDelayed(evt.RoomBounds));
+    }
+
+    /// <summary>
+    /// Item'lar spawn olduktan sonra hangi odalarda item oldugunu tespit eder
+    /// ve top-N odanin merkezine 1 robot guardian doğurur. Bu robotlar
+    /// SetupAsLootGuardian ile yapilandirilir: oda disina cikmazlar, gorus
+    /// kisa, oyuncu sneak edebilir; ama gorurse lazer + ates yapar.
+    /// </summary>
+    private IEnumerator SpawnLootGuardiansDelayed(Bounds[] roomBounds)
+    {
+        yield return new WaitForSeconds(_lootGuardianDelay);
+
+        var items = FindObjectsByType<BaseItem>(FindObjectsSortMode.None);
+        if (items == null || items.Length == 0)
+        {
+            Debug.Log("[EnemySpawner] Loot guardian icin item bulunamadi — atlandi.");
+            yield break;
+        }
+
+        // Her oda icin item sayisini topla
+        int[] itemsInRoom = new int[roomBounds.Length];
+        for (int r = 0; r < roomBounds.Length; r++)
+        {
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i] == null) continue;
+                if (roomBounds[r].Contains(items[i].transform.position))
+                    itemsInRoom[r]++;
+            }
+        }
+
+        // Min eşigin altinda olmayan odalari sayilarina gore sirala (desc)
+        var ranked = new List<(int idx, int count)>();
+        for (int r = 0; r < itemsInRoom.Length; r++)
+        {
+            if (itemsInRoom[r] >= _minItemsPerLootRoom)
+                ranked.Add((r, itemsInRoom[r]));
+        }
+        ranked.Sort((a, b) => b.count.CompareTo(a.count));
+
+        int spawnCount = Mathf.Min(_lootGuardianCap, ranked.Count);
+        Debug.Log($"[EnemySpawner] Loot guardian taramasi: {ranked.Count} aday oda, {spawnCount} guardian uretilecek.");
+
+        for (int i = 0; i < spawnCount; i++)
+            SpawnLootGuardianInRoom(roomBounds[ranked[i].idx]);
+    }
+
+    /// <summary>
+    /// Oda merkezi yakininda NavMesh'e snap'lenmis bir noktada robot (Type A)
+    /// instantiate eder, NetworkObject.Spawn ile replicate eder, sonra
+    /// SetupAsLootGuardian ile guardian moduna gecirir. Bu robotlar EnemyDied
+    /// event'ini de tetikler (alive count azalir) ama wave loop'una sayilmaz
+    /// (counter ayri); wave bagimsiz devam eder.
+    /// </summary>
+    private void SpawnLootGuardianInRoom(Bounds roomBounds)
+    {
+        if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return;
+        GameObject prefab = _enemyPrefabs[0]; // Type A (robot) garantili
+        if (prefab == null) return;
+
+        Vector3 raw = roomBounds.center;
+        Vector3 spawnPos = raw;
+        if (NavMesh.SamplePosition(raw, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+            spawnPos = hit.position;
+
+        Quaternion rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        var enemyGo = Instantiate(prefab, spawnPos, rot);
+        var netObj = enemyGo.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogError($"[EnemySpawner] Guardian prefab'inda NetworkObject yok: {prefab.name}");
+            Destroy(enemyGo);
+            return;
+        }
+        netObj.Spawn(true);
+
+        var agent = enemyGo.GetComponent<NavMeshAgent>();
+        if (agent != null) agent.avoidancePriority = Random.Range(20, 80);
+
+        var ctrl = enemyGo.GetComponent<EnemyController>();
+        if (ctrl != null)
+        {
+            Transform[] roomCorners = BuildRoomCornerWaypoints(roomBounds, enemyGo.transform);
+            ctrl.SetupAsLootGuardian(_guardianSightRange, _guardianAttackRange, roomCorners);
+        }
+
+        _aliveCount++;
+        Debug.Log($"[EnemySpawner] Loot guardian spawn edildi (oda merkezi={roomBounds.center}). Alive: {_aliveCount}.");
+    }
+
+    /// <summary>
+    /// Oda Bounds'inin 4 kose noktasinda runtime Transform'lar uretip patrol
+    /// waypoint'leri olarak doner. Y'yi spawn pos'undan alir (multi-level
+    /// olabilir). Robot bu kose listesi arasinda turlayarak odayi "korur".
+    /// </summary>
+    private Transform[] BuildRoomCornerWaypoints(Bounds roomBounds, Transform parent)
+    {
+        Vector3 c = roomBounds.center;
+        Vector3 e = roomBounds.extents * 0.6f; // tam kose yerine biraz ic
+        float y = parent.position.y;
+
+        Vector3[] corners = {
+            new Vector3(c.x - e.x, y, c.z - e.z),
+            new Vector3(c.x + e.x, y, c.z - e.z),
+            new Vector3(c.x + e.x, y, c.z + e.z),
+            new Vector3(c.x - e.x, y, c.z + e.z),
+        };
+
+        var list = new List<Transform>(4);
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 wp = corners[i];
+            if (NavMesh.SamplePosition(wp, out NavMeshHit h, 3f, NavMesh.AllAreas))
+                wp = h.position;
+
+            var go = new GameObject($"GuardianWP_{i}");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            go.transform.position = wp;
+            list.Add(go.transform);
+        }
+        return list.ToArray();
     }
 
     private void FallbackStart()
