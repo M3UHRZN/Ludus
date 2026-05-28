@@ -42,8 +42,23 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("MapReadyEvent'ten sonra ilk enemy ne kadar sure sonra cikar")]
     [SerializeField] private float _firstSpawnDelay = 5f;
 
-    [Tooltip("Iki ardisik spawn arasi sure (saniye)")]
-    [SerializeField] private float _spawnInterval = 15f;
+    [Tooltip("INITIAL FILL fazinda iki ardisik spawn arasi sure (saniye). Bu sirada " +
+             "harita hizli doldurulur (oyuncu daha sahneyi tanirken).")]
+    [SerializeField] private float _spawnInterval = 8f;
+
+    [Tooltip("RESPAWN fazinda (initial fill tamamlandiktan sonra) bir Type A oldukten " +
+             "sonra yenisinin gelmesi icin bekleme suresi. Priest (Type B) yine respawn " +
+             "etmez - cap-1 (_rareEnemyMaxCount).")]
+    [SerializeField] private float _respawnDelay = 35f;
+
+    [Tooltip("True ise canli oyuncunun GORUS HATTINDA olan spawn point'ler tercih " +
+             "edilmez (dusman oyuncunun gozunun onunde belirmesin). LOS-blocked nokta " +
+             "yoksa fallback olarak normal mesafe filtresi kullanilir.")]
+    [SerializeField] private bool _avoidLineOfSight = true;
+
+    [Tooltip("LOS kontrolu icin maksimum kontrol mesafesi. Bu mesafenin uzaginda olan " +
+             "spawn point'ler 'oyuncu gormez' kabul edilir (raycast atilmaz).")]
+    [SerializeField] private float _losCheckRange = 35f;
 
     [Header("Patrol Bagi")]
     [Tooltip("Spawn'da yakin patrol grubu aramak icin maks. mesafe")]
@@ -82,6 +97,7 @@ public class EnemySpawner : NetworkBehaviour
     private bool _waveLoopActive;
     private Coroutine _waveLoop;
     private int _rareSpawned;
+    private bool _initialFillComplete;  // false -> _spawnInterval, true -> _respawnDelay
 
     public override void OnNetworkSpawn()
     {
@@ -288,7 +304,10 @@ public class EnemySpawner : NetworkBehaviour
             if (_aliveCount < _targetEnemyCount)
                 TrySpawnOne();
 
-            yield return new WaitForSeconds(_spawnInterval);
+            // Initial fill devam ediyorsa hizli interval; tamamlandiysa yavas respawn.
+            // Faz gecisi TrySpawnOne icinde aliveCount ilk kez target'a ulasinca yapilir.
+            float interval = _initialFillComplete ? _respawnDelay : _spawnInterval;
+            yield return new WaitForSeconds(interval);
         }
     }
 
@@ -350,7 +369,17 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         _aliveCount++;
-        Debug.Log($"[EnemySpawner] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
+
+        // Initial fill bittiyse faz gecisi yap — bundan sonra wave loop respawn delay'e
+        // baglanir (35sn default). Bir kez true, hep true (ölum gelse de respawn modu).
+        string phase = _initialFillComplete ? "RESPAWN" : "INITIAL_FILL";
+        if (!_initialFillComplete && _aliveCount >= _targetEnemyCount)
+        {
+            _initialFillComplete = true;
+            Debug.Log($"[EnemySpawner] Initial fill tamamlandi. Respawn fazina geciliyor (delay={_respawnDelay}s).");
+        }
+
+        Debug.Log($"[EnemySpawner] [{phase}] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
         return true;
     }
 
@@ -374,39 +403,88 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     /// <summary>
-    /// Player'dan min mesafede ve (varsa) max mesafenin altinda olan spawn point'leri filtreleyip
-    /// rastgele birini doner. Player bulunamazsa veya filtre bos donerse fallback olarak
-    /// havuzdan rastgele dondurur.
+    /// Spawn point secim zinciri:
+    ///   1. Mesafe filtresi (TUM canli oyunculardan min-max araliginda olanlar)
+    ///   2. LOS filtresi (hicbir oyuncunun gormedigi noktalar tercih edilir)
+    ///   3. Filtre bos donerse soft fallback (mesafe-only, sonra rastgele)
+    /// Multiplayer'da TUM oyunculara karsi check yapilir — bir oyuncu gorse bile elenir.
     /// </summary>
     private EnemySpawnPoint PickSpawnPoint(EnemySpawnPoint[] candidates)
     {
-        var playerObj = GameObject.FindWithTag("Player");
-        if (playerObj == null)
+        var players = PlayerStateMachine.ServerPlayers;
+        if (players == null || players.Count == 0)
             return candidates[Random.Range(0, candidates.Length)];
 
-        Vector3 playerPos = playerObj.transform.position;
         float minSqr = _minDistanceFromPlayer * _minDistanceFromPlayer;
         float maxSqr = _maxDistanceFromPlayer > 0f
             ? _maxDistanceFromPlayer * _maxDistanceFromPlayer
             : float.MaxValue;
 
-        var filtered = new List<EnemySpawnPoint>(candidates.Length);
+        // 1) Mesafe filtresi (tum canli oyunculara karsi min/max kontrol)
+        var distanceOk = new List<EnemySpawnPoint>(candidates.Length);
         foreach (var sp in candidates)
         {
             if (sp == null) continue;
-            float sqr = (sp.transform.position - playerPos).sqrMagnitude;
-            if (sqr < minSqr) continue;
-            if (sqr > maxSqr) continue;
-            filtered.Add(sp);
+            if (IsWithinAcceptableDistance(sp.transform.position, players, minSqr, maxSqr))
+                distanceOk.Add(sp);
         }
 
-        if (filtered.Count == 0)
+        if (distanceOk.Count == 0)
         {
-            Debug.LogWarning("[EnemySpawner] Player mesafe filtresi sonucu bos. Rastgele spawn'a fallback.");
+            Debug.LogWarning("[EnemySpawner] Mesafe filtresi sonucu bos. Rastgele spawn fallback.");
             return candidates[Random.Range(0, candidates.Length)];
         }
 
-        return filtered[Random.Range(0, filtered.Count)];
+        // 2) LOS filtresi (oyuncularin gormedigi noktalar tercih)
+        if (!_avoidLineOfSight) return distanceOk[Random.Range(0, distanceOk.Count)];
+
+        var losBlocked = new List<EnemySpawnPoint>(distanceOk.Count);
+        foreach (var sp in distanceOk)
+        {
+            if (!IsVisibleToAnyAlivePlayer(sp.transform.position, players))
+                losBlocked.Add(sp);
+        }
+
+        if (losBlocked.Count > 0) return losBlocked[Random.Range(0, losBlocked.Count)];
+
+        // 3) Hicbir LOS-blocked nokta yok — distance-only fallback
+        Debug.LogWarning("[EnemySpawner] Tum mesafe-OK spawn noktalari LOS'ta. Distance-only fallback.");
+        return distanceOk[Random.Range(0, distanceOk.Count)];
+    }
+
+    private bool IsWithinAcceptableDistance(Vector3 pos, List<PlayerStateMachine> players, float minSqr, float maxSqr)
+    {
+        // Spawn point HER canli oyuncudan min mesafenin disinda olmali
+        // (bir oyuncudan uzak bile olsa baska bir oyuncunun burnunde olmamali)
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null || !p.IsAlive) continue;
+            float sqr = (pos - p.transform.position).sqrMagnitude;
+            if (sqr < minSqr) return false;
+            if (sqr > maxSqr) return false; // max var ise (0 = limit yok)
+        }
+        return true;
+    }
+
+    private bool IsVisibleToAnyAlivePlayer(Vector3 pos, List<PlayerStateMachine> players)
+    {
+        Vector3 spawnEye = pos + Vector3.up * 1.5f;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null || !p.IsAlive) continue;
+            Vector3 playerEye = p.transform.position + Vector3.up * 1.5f;
+            Vector3 dir = spawnEye - playerEye;
+            float dist = dir.magnitude;
+            if (dist > _losCheckRange) continue;
+            if (dist < 0.01f) return true;
+
+            // Engelsiz yol varsa oyuncu gorur — kotu nokta
+            if (!Physics.Raycast(playerEye, dir.normalized, dist))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
