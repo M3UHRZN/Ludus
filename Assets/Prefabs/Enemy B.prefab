@@ -88,7 +88,7 @@ MonoBehaviour:
   _projectilePrefab: {fileID: 0}
   _firePoint: {fileID: 0}
   _muzzleFlashPrefab: {fileID: 0}
-  _priestAmbientClip: {fileID: 8300000, guid: a5ea5ea59f9f64c389fd2e5c91d3c7da, type: 3}
+  _priestAmbientClip: {fileID: 8300000, guid: 09f2b3963b02dc942b1988ba4948255b, type: 3}
   _priestAmbientVolume: 0.55
   _priestAmbientMinDistance: 2
   _priestAmbientMaxDistance: 18
