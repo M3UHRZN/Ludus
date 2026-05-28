@@ -12,9 +12,6 @@ public class EnemyController : MonoBehaviour, IDamageable
     [SerializeField] private float _sightRange = 15f;
     [SerializeField] private float _attackRange = 1.8f;
     [SerializeField] private float _noiseDetectionRadius = 18f;
-    [Tooltip("Priest tipi dusmanin bir grab'i 'sezdigi' azami mesafe. Sesten genis " +
-             "tutulur (priest dogaustu sezgi); Type A bu siniri kullanmaz.")]
-    [SerializeField] private float _itemSenseRange = 35f;
     [SerializeField] private LayerMask _playerLayer;
 
     [Header("Saglik")]
@@ -257,24 +254,22 @@ public class EnemyController : MonoBehaviour, IDamageable
 
     /// <summary>
     /// GameEventBus uzerinden grab olaylarini dinler. Type A (robot) sagirdir;
-    /// Type B (priest) ise grab konumunu "sezer" ve LureBehavior'a gecerek
-    /// kaynaga yonelir. Halihazirda oyuncuyu goruyorsa chase'i bozmamak icin
-    /// lure tetiklenmez (zaten daha guclu bir sinyal var).
+    /// Type B (priest) ise grab'i haritanin neresinde olursa olsun "sezer" ve
+    /// LureBehavior'a gecerek tasiyici oyuncuyu kovalar (priest dogaustu sezgi —
+    /// mesafe sinirsiz). Halihazirda oyuncuyu net goruyorsa chase'i bozmamak
+    /// icin lure tetiklenmez; zaten daha guclu bir sinyal var.
     /// </summary>
     private void OnItemPickedUp(ItemPickedUpEvent evt)
     {
         if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
         if (_useRangedAttack) return;                       // Type A grab sezmez
-        if (evt.Position == Vector3.zero) return;            // konum bilgisi olmayan eski yayinlar
+        if (evt.Item == null) return;                        // konum/ref bilgisi olmayan eski yayinlar
         if (!IsAlive) return;
-
-        float dist = Vector3.Distance(transform.position, evt.Position);
-        if (dist > _itemSenseRange) return;                  // menzil disi pickup
 
         // Halihazirda oyuncuyu net goruyorsa daha guclu sinyal var; lure bunu bozmasin.
         if (CanSeePlayer()) return;
 
-        SwitchBehavior(new LureBehavior(evt.Position, evt.GrabberClientId));
+        SwitchBehavior(new LureBehavior(evt.Item, evt.GrabberClientId, evt.Position));
     }
 
     /// <summary>

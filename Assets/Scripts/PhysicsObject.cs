@@ -210,14 +210,15 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         CancelInvoke(nameof(ReenableNavObstacle));
         if (_navObstacle != null) _navObstacle.enabled = false;
 
-        // Pickup'i konum bilgisiyle birlikte yayinla: priest LureBehavior bu olayi
-        // duyarak grab'in yapildigi noktaya yonelir (Observer pattern). _triggersLure
-        // false ise sessiz grab (trash item) — duyusal AI etkilenmez.
+        // Pickup'i konum + tasinan objenin kendisi referansiyla yayinla: priest
+        // LureBehavior bu objeyi takip eder (taşıyıcıyı kovalar) ve NetIsHeld
+        // false olunca lure'u sonlandirir (drop -> patrol). _triggersLure false
+        // ise sessiz grab (trash item) — duyusal AI etkilenmez.
         if (_triggersLure)
         {
             int weightInt = Mathf.RoundToInt(weight);
             GameEventBus.Publish(new ItemPickedUpEvent(
-                name, weightInt, 0f, transform.position, grabberClientId));
+                name, weightInt, 0f, transform.position, grabberClientId, this));
         }
     }
 
