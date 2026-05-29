@@ -48,11 +48,18 @@ public class PlayerLook : NetworkBehaviour
         // Bu oyuncunun vcam'ini aktif et — CinemachineBrain otomatik devralir
         if (_vcam != null) _vcam.enabled = true;
         if (fear != null) fear.enabled = true;   // local oyuncuda korku efektleri aktif
+
+        // --- Oyun başladığında diske kaydedilmiş hassasiyeti çek ---
+        // (Eğer daha önce hiç ayar yapılmadıysa varsayılan olarak 0.15f kullanır)
+        mouseSensitivity = PlayerPrefs.GetFloat("MouseSensitivity", 0.15f);
     }
 
     private void Update()
     {
         if (_lookAction == null) return;
+
+        mouseSensitivity = PlayerPrefs.GetFloat("MouseSensitivity", 0.15f);
+
         Vector2 delta = _lookAction.ReadValue<Vector2>();
 
         _xRotation -= delta.y * mouseSensitivity;
