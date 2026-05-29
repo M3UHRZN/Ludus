@@ -1,4 +1,3 @@
-using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -20,34 +19,14 @@ public class InventoryUIController : MonoBehaviour
     public Color activeColor = Color.yellow;
     public Color inactiveColor = Color.white;
 
-    private void OnEnable()
+    private void Awake()
     {
         GameEventBus.Subscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
-
-        // Sahne degisiminde / late activation'da PlayerInventory zaten spawn
-        // olmus olabilir; subscribe sirasinda kacirmadigimizdan emin olmak icin
-        // local player inventory'i bul ve mevcut durumu yeniden ciz.
-        RefreshFromLocalInventory();
     }
 
-    private void OnDisable()
+    private void OnDestroy()
     {
         GameEventBus.Unsubscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
-    }
-
-    /// <summary>
-    /// Local oyuncunun PlayerInventory'sini bulup TriggerUIUpdate cagirir.
-    /// UI ile inventory subscribe sirasi yanlistan yana olsa bile bu sayede
-    /// HUD her zaman dogru state'i yansitir (lobby -> map gecisinde bos slot
-    /// problemini cozer).
-    /// </summary>
-    private void RefreshFromLocalInventory()
-    {
-        var nm = NetworkManager.Singleton;
-        if (nm == null || nm.LocalClient == null || nm.LocalClient.PlayerObject == null) return;
-
-        var inv = nm.LocalClient.PlayerObject.GetComponent<PlayerInventory>();
-        if (inv != null) inv.TriggerUIUpdate();
     }
 
     private void OnInventoryUpdated(LocalInventoryUpdatedEvent evt)
@@ -60,12 +39,10 @@ public class InventoryUIController : MonoBehaviour
         {
             if (i < evt.ItemIds.Length)
             {
-                ushort itemId = evt.ItemIds[i];
+                ushort itemId = evt.ItemIds[i]; // Cantadaki esyanin numarasi
 
-                // Resmi merkez veritabanindan al
-                Sprite itemIcon = ItemDatabase.Instance != null
-                    ? ItemDatabase.Instance.GetIcon(itemId)
-                    : null;
+                // Resmi merkez veritabanindan istiyoruz
+                Sprite itemIcon = ItemDatabase.Instance.GetIcon(itemId);
 
                 if (itemIcon != null)
                 {
@@ -74,16 +51,16 @@ public class InventoryUIController : MonoBehaviour
                 }
                 else
                 {
-                    slots[i].icon.color = new Color(1, 1, 1, 0);
+                    slots[i].icon.color = new Color(1, 1, 1, 0); // Resim yoksa gizle
                 }
             }
             else
             {
                 slots[i].icon.sprite = null;
-                slots[i].icon.color = new Color(1, 1, 1, 0);
+                slots[i].icon.color = new Color(1, 1, 1, 0); // Bos slotu gizle
             }
 
-            // Aktif slotu vurgula (scroll yapildikca sari cerceve kayar)
+            // Aktif slotu vurgula (Scroll yapildikca sari cerceve kayar)
             if (i == evt.ActiveSlotIndex)
             {
                 slots[i].background.color = activeColor;
