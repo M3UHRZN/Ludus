@@ -301,75 +301,28 @@ public class PlayerInventory : NetworkBehaviour
 
     private void UseActiveItem()
     {
-        if (Slots.Count == 0) return;
-        if (ActiveSlot.Value >= Slots.Count) return;
-
-        Transform aimTransform = ResolveAimTransform();
-        Vector3 direction = aimTransform != null ? aimTransform.forward : transform.forward;
-        if (direction.sqrMagnitude < 0.0001f)
-            direction = transform.forward;
-
-        Vector3 origin = transform.position + Vector3.up * 1.45f + direction.normalized * 0.45f;
-        UseActiveItemServerRpc(ActiveSlot.Value, origin, direction.normalized);
+        // Yeni akış: kullanım ELDEKİ usable item'ı "arm" eder (cooking). Spawn yok.
+        // Flashbang'i önce F ile ele al, sonra Use ile arm et, sonra sağtık ile fırlat.
+        var interaction = GetComponent<PlayerInteraction>();
+        PhysicsObject held = interaction != null ? interaction.HeldObject : null;
+        if (held == null) return;
+        if (held.GetComponent<UsableItem>() == null) return;
+        if (held.NetworkObject == null) return;
+        UseHeldItemServerRpc(new NetworkObjectReference(held.NetworkObject));
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void UseActiveItemServerRpc(int slotIndex, Vector3 origin, Vector3 direction, RpcParams rpcParams = default)
+    private void UseHeldItemServerRpc(NetworkObjectReference heldRef, RpcParams rpcParams = default)
     {
         if (!IsServer) return;
-        if (slotIndex < 0 || slotIndex >= Slots.Count) return;
-        if (direction.sqrMagnitude < 0.0001f) return;
-        if (!Ludus.UsableItems.Core.FlashbangMath.IsThrowOriginValid(transform.position, origin, 4f))
-        {
-            SendInventoryMarketMessageRpc("Use request rejected.");
-            return;
-        }
+        if (!heldRef.TryGet(out NetworkObject heldObj)) return;
+        if (!heldObj.TryGetComponent(out PhysicsObject physObj)) return;
+        if (!heldObj.TryGetComponent(out UsableItem usable)) return;
+        // Yalnız item'ı tutan oyuncu arm edebilir (anti-cheat).
+        if (physObj.NetGrabberClientId.Value != rpcParams.Receive.SenderClientId) return;
 
-        ushort itemId = Slots[slotIndex];
-        ItemCatalog catalog = ItemCatalog.Instance;
-        GameObject prefab = catalog != null ? catalog.GetPrefab(itemId) : null;
-        if (prefab == null)
-        {
-            Debug.Log($"[Inventory] Item {itemId} is not a registered usable.");
-            return;
-        }
-
-        // Defensive: a catalogued prefab must actually carry a UsableItem.
-        if (prefab.GetComponent<UsableItem>() == null)
-        {
-            Debug.LogWarning($"[Inventory] Usable prefab for {itemId} has no UsableItem.");
-            return;
-        }
-
-        // Consume the slot, spawn the item's world object, then hand off to it.
-        ServerTryRemoveAtSlot(slotIndex, out _);
-
-        GameObject instance = Instantiate(prefab, origin, Quaternion.LookRotation(direction));
-        NetworkObject netObject = instance.GetComponent<NetworkObject>();
-        if (netObject == null)
-        {
-            Debug.LogWarning($"[Inventory] Usable prefab for {itemId} has no NetworkObject.");
-            Destroy(instance);
-            return;
-        }
-        netObject.Spawn(true);
-
-        var usable = instance.GetComponent<UsableItem>();
-        var context = new UsableActivationContext(OwnerClientId, NetworkObject, origin, direction);
+        var context = new UsableActivationContext(OwnerClientId, NetworkObject, transform.position, transform.forward);
         usable.ServerActivate(context);
-    }
-
-    private Transform ResolveAimTransform()
-    {
-        var look = GetComponent<PlayerLook>();
-        if (look != null && look.CameraTarget != null)
-            return look.CameraTarget;
-
-        Camera localCamera = GetComponentInChildren<Camera>();
-        if (localCamera != null)
-            return localCamera.transform;
-
-        return transform;
     }
 
     private void ServerSpawnFlashbangPickup(Vector3 position, Vector3 forward)

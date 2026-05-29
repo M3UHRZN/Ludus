@@ -3,41 +3,29 @@ using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// Aktivasyonda fırlatılan usable: impuls uygular, çarpışma linecast'li bir fünye
-/// çalıştırır, çarpma noktasında OnDetonate'i çağırıp despawn olur. Alt sınıflar
-/// (Flashbang, ...) sadece OnDetonate'i uygular.
+/// Elde tutulup "use" ile arm edilen (pini çekilen), sonra normal fizik fırlatmayla
+/// (sağtık) atılan usable. Arm anında fünye HEMEN başlar (cooking): vaktinde atmazsan
+/// elinde patlar. Atıldıktan sonra yüzeye çarpınca da patlar. Alt sınıf OnDetonate yazar.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(PhysicsObject))]
 public abstract class ThrowableItem : UsableItem
 {
-    [Header("Throw")]
-    [SerializeField] protected float throwSpeed = 16f;
-    [SerializeField] protected float upwardBoost = 1.5f;
-    [SerializeField] protected float fuseTime = 1.6f;
-    [Tooltip("Yüzey temasında patlayabilmesi için geçmesi gereken süre — atan kişiyi geçsin diye.")]
+    [Header("Fuse")]
+    [SerializeField] protected float fuseTime = 2.5f;
+    [Tooltip("Fırlatıldıktan sonra yüzey temasıyla patlayabilmesi için geçen kısa süre (anında patlamayı önler).")]
     [SerializeField] protected float armTime = 0.2f;
 
     private Transform _throwerRoot;
+    private PhysicsObject _physObj;
 
+    // "use" = arm (pin çek). Base ServerActivate idempotent olduğu için bir kez çalışır.
     protected override void OnServerActivate(in UsableActivationContext context)
     {
-        Vector3 direction = context.Direction.sqrMagnitude > 0.0001f
-            ? context.Direction.normalized
-            : transform.forward;
-
+        _physObj = GetComponent<PhysicsObject>();
         if (context.UserObject.TryGet(out NetworkObject userObject))
             _throwerRoot = userObject.transform;
         IgnoreThrowerCollisions();
-
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.AddForce((direction * throwSpeed) + (Vector3.up * upwardBoost), ForceMode.Impulse);
-            rb.AddTorque(Random.insideUnitSphere * 4f, ForceMode.Impulse);
-        }
-
         StartCoroutine(ServerFuseRoutine());
     }
 
@@ -53,28 +41,38 @@ public abstract class ThrowableItem : UsableItem
     private IEnumerator ServerFuseRoutine()
     {
         Vector3 lastPosition = transform.position;
-        Vector3 explosionPoint = lastPosition;
+        Vector3 point = lastPosition;
         float timer = 0f;
+        float timeSinceThrow = -1f;   // <0 iken hâlâ elde
 
         while (timer < fuseTime)
         {
             timer += Time.deltaTime;
-            Vector3 currentPosition = transform.position;
+            Vector3 current = transform.position;
 
-            if (timer >= armTime &&
-                Physics.Linecast(lastPosition, currentPosition, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore) &&
-                !IsSelfOrThrower(hit.collider))
+            bool held = _physObj != null && _physObj.NetIsHeld.Value;
+            if (!held)
             {
-                explosionPoint = hit.point;
-                break;
+                timeSinceThrow = timeSinceThrow < 0f ? 0f : timeSinceThrow + Time.deltaTime;
+                if (timeSinceThrow >= armTime &&
+                    Physics.Linecast(lastPosition, current, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore) &&
+                    !IsSelfOrThrower(hit.collider))
+                {
+                    point = hit.point;
+                    break;
+                }
             }
 
-            explosionPoint = currentPosition;
-            lastPosition = currentPosition;
+            point = current;
+            lastPosition = current;
             yield return null;
         }
 
-        OnDetonate(explosionPoint);
+        // Elde patlıyorsa tutan oyuncuyu temiz bırak.
+        if (_physObj != null && _physObj.NetIsHeld.Value)
+            _physObj.ServerStopHold();
+
+        OnDetonate(point);
         ServerDespawnSelf();
     }
 
@@ -86,6 +84,5 @@ public abstract class ThrowableItem : UsableItem
         return false;
     }
 
-    /// <summary>Server-only. Çarpma noktasında bir kez çağrılır. Etkini burada uygula.</summary>
     protected abstract void OnDetonate(Vector3 point);
 }

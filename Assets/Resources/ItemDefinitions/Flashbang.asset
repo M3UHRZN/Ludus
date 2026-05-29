@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Flashbang
   size: 0
   creditValue: 10
-  icon: {fileID: 0}
+  icon: {fileID: -1542460328, guid: a01ae78f7d833fe43958ef496c205019, type: 3}
   worldPrefab: {fileID: 7869045618340365188, guid: e6eb6c6b56e23994b9fd24f69eaa7077, type: 3}
   isBuyable: 1
   marketPrice: 40
