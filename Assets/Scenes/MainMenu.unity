@@ -748,6 +748,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: lobbyPlayerPrefab
+      value: 
+      objectReference: {fileID: 8460012054609115418, guid: 0bcce1a2baf0688498c21468b155ab3f, type: 3}
+    - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: spawnHeightOffset
       value: 1
       objectReference: {fileID: 0}
@@ -755,6 +759,10 @@ PrefabInstance:
       propertyPath: gameplaySpawnDelay
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 591438287401263591, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
+      propertyPath: gameplayPlayerPrefab
+      value: 
+      objectReference: {fileID: 8460012054609115418, guid: 0bcce1a2baf0688498c21468b155ab3f, type: 3}
     - target: {fileID: 2807430061452851677, guid: 65a3a1ec453727b45bde1d751bb9749e, type: 3}
       propertyPath: m_Enabled
       value: 1

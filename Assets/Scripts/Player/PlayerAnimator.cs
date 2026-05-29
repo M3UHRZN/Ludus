@@ -21,6 +21,18 @@ public class PlayerAnimator : NetworkBehaviour
         _movement.NetCrouching.OnValueChanged += OnCrouchChanged;
     }
 
+    private void Start()
+    {
+        if (_animator == null)
+        {
+            Animator childAnimator = GetComponentInChildren<Animator>();
+            if (childAnimator != null)
+            {
+                SetAnimator(childAnimator);
+            }
+        }
+    }
+
     public override void OnNetworkDespawn()
     {
         _movement.NetCrouching.OnValueChanged -= OnCrouchChanged;

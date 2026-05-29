@@ -28,6 +28,14 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
     [Header("Crouch Visual")]
     [SerializeField] private Transform visualMesh;
 
+    [Header("Crouch Camera")]
+    [Tooltip("Cömelince kameranin inecegi pivot — PlayerLook'taki cameraTarget ile ayni transform")]
+    [SerializeField] private Transform cameraTarget;
+    [Tooltip("Cömelince kameranin ayakta hizasindan ne kadar asagi inecegi (metre)")]
+    [SerializeField] private float crouchCamDrop = 1f;
+
+    private float _baseCamY;
+
     public readonly NetworkVariable<bool> NetCrouching = new(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -83,6 +91,9 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
         _onCrouchCanceled = _ => _wantCrouch = false;
         _crouchAction.started  += _onCrouchStarted;
         _crouchAction.canceled += _onCrouchCanceled;
+
+        if (cameraTarget != null)
+            _baseCamY = cameraTarget.localPosition.y;
     }
 
     public override void OnNetworkDespawn()
@@ -205,6 +216,13 @@ public class PlayerMovement : NetworkBehaviour, ISpeedModifiable
         center.y = _controller.height / 2f;
         _controller.center = center;
 
+        if (cameraTarget != null)
+        {
+            float targetCamY = _isCrouching ? _baseCamY - crouchCamDrop : _baseCamY;
+            Vector3 camPos = cameraTarget.localPosition;
+            camPos.y = Mathf.Lerp(camPos.y, targetCamY, Time.deltaTime * crouchTransitionSpeed);
+            cameraTarget.localPosition = camPos;
+        }
     }
 
     private bool CanStandUp()
