@@ -83,7 +83,6 @@ crashlytics-build.properties
 .DS_Store
 .claude/
 Thumbs.db
-/docs
 
 # Unity crash recovery klasoru (gecici, commit edilmemeli)
 /Assets/_Recovery/
