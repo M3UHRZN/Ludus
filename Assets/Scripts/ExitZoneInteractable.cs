@@ -170,17 +170,35 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
                 Debug.Log($"[ExitZone] Canli oyuncu tahliye oldu: {machine.gameObject.name}");
                 rescuedAlive++;
 
+                // Oyuncunun elinde tasidigi esyayi kontrol et ve kurtar
                 var interaction = client.PlayerObject.GetComponent<PlayerInteraction>();
                 if (interaction != null && interaction.HeldObject != null)
                 {
                     var heldItem = interaction.HeldObject;
-                    int credits = 10;
-                    var item = heldItem.GetComponent<IItem>();
-                    if (item != null)
-                        credits = Mathf.RoundToInt(item.CreditValue);
+                    
+                    // --- YENİ ZIRHLI SİSTEM ---
+                    int credits = 0;
+                    ushort heldItemId = 0;
+
+                    if (heldItem.TryGetComponent<BaseItem>(out var bItem))
+                    {
+                        heldItemId = bItem.ItemId;
+                        if (ItemDatabase.Instance != null)
+                        {
+                            var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == heldItemId);
+                            if (data != null) credits = (int)data.ItemPrice;
+                        }
+                    }
+                    else
+                    {
+                        var item = heldItem.GetComponent<IItem>();
+                        if (item != null) credits = Mathf.RoundToInt(item.CreditValue);
+                    }
+                    // --------------------------
 
                     Debug.Log($"[ExitZone] Elindeki esya kurtarildi: {heldItem.name} | Kredi: {credits}");
-                    ExtractionManager.Instance?.RegisterExtractedItem(0, credits);
+                    // Sahte 0 yerine gercek ItemId yolluyoruz (kayit dogru olsun)
+                    ExtractionManager.Instance?.RegisterExtractedItem(heldItemId, credits);
                     Destroy(heldItem.gameObject);
                 }
             }

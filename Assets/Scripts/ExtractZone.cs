@@ -33,24 +33,66 @@ public class ExtractZone : MonoBehaviour
         }
     }
 
+    //private void ExtractItem(PhysicsObject physicsObject)
+    //{
+    //    int credits = fallbackCreditValue;
+
+    //    var item = physicsObject.GetComponent<IItem>();
+    //    if (item != null)
+    //        credits = Mathf.RoundToInt(item.CreditValue);
+
+    //    if (extractParticle != null)
+    //    {
+    //        extractParticle.transform.position = physicsObject.transform.position;
+    //        extractParticle.Play();
+    //    }
+
+    //    // extractSound?.Play(); // ses atanmadıysa skip
+    //    if (extractSound != null) extractSound.Play();
+
+    //    ExtractionManager.Instance?.RegisterExtractedItem(0, credits);
+
+    //    Debug.Log($"[ExtractZone] Extracted: {physicsObject.name} | Credits: {credits}");
+
+    //    if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+    //    {
+    //        Destroy(physicsObject.gameObject);
+    //    }
+    //}
+
     private void ExtractItem(PhysicsObject physicsObject)
     {
-        int credits = fallbackCreditValue;
+        // YENİ: Başlangıçta 0 diyoruz, gerçek fiyatı Database'den alacağız!
+        int credits = 0;
+        ushort extractedItemId = 0; // Hangi eşyanın çıkarıldığını bilmek için
 
-        var item = physicsObject.GetComponent<IItem>();
-        if (item != null)
-            credits = Mathf.RoundToInt(item.CreditValue);
+        // Eşya Database'e kayıtlı bir BaseItem mi?
+        if (physicsObject.TryGetComponent<BaseItem>(out var bItem))
+        {
+            extractedItemId = bItem.ItemId;
+            if (ItemDatabase.Instance != null)
+            {
+                var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == extractedItemId);
+                if (data != null) credits = (int)data.ItemPrice; // Parayı çekti!
+            }
+        }
+        else
+        {
+            // Eski IItem sistemi kullanılıyorsa ona da baksın (Güvenlik)
+            var item = physicsObject.GetComponent<IItem>();
+            if (item != null) credits = Mathf.RoundToInt(item.CreditValue);
+        }
 
         if (extractParticle != null)
         {
             extractParticle.transform.position = physicsObject.transform.position;
             extractParticle.Play();
         }
-        
-        // extractSound?.Play(); // ses atanmadıysa skip
+
         if (extractSound != null) extractSound.Play();
 
-        ExtractionManager.Instance?.RegisterExtractedItem(0, credits);
+        // YENİ: Gerçek ID ve Gerçek Fiyatı Kasaya Yolla!
+        ExtractionManager.Instance?.RegisterExtractedItem(extractedItemId, credits);
 
         Debug.Log($"[ExtractZone] Extracted: {physicsObject.name} | Credits: {credits}");
 
