@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c5053c37b7e49b41bce511b4a1e959d, type: 3}
+  m_Name: TestItem
+  m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
+  id: 0
+  displayName: Test Item
+  size: 0
+  creditValue: 10
+  icon: {fileID: 0}
+  worldPrefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
+  isBuyable: 0
+  marketPrice: 0
