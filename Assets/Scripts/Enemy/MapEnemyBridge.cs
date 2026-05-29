@@ -193,8 +193,17 @@ public class MapEnemyBridge : MonoBehaviour
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Oda parent'i altindaki tum Renderer'larin birlesik bounds'ini doner.
-    /// Floor / Wall / Door mesh'lerini iceren toplam alan.
+    /// Oda parent'i altindaki SADECE Floor renderer'larinin birlesik bounds'ini doner.
+    ///
+    /// Onceden tum renderer'lari (Floor + Wall + Door) topluyordu — Wall ve ozellikle
+    /// Door mesh'leri oda outline'inin disina tasip bounds'i sisiriyordu, bu yuzden
+    /// NetworkedItemSpawner'in X/Z guard'i "bounds icinde ama gercekte koridorda" gibi
+    /// kotu noktalari kabul ediyordu (item disarida spawn bug'i).
+    ///
+    /// Floor prefab konvansiyonu: GameObject adlarinda "Floor" gecer (Floor / Floor1x3 /
+    /// Floor2x2 / Floor3x1). Case-insensitive eslestiriyoruz. Hicbir Floor bulunamazsa
+    /// eski davranisa (tum renderer'lar) fallback yapiyoruz ki test sahnelerinde sessizce
+    /// patlamasin.
     /// </summary>
     private static Bounds EstimateRoomBounds(Transform room)
     {
@@ -202,6 +211,29 @@ public class MapEnemyBridge : MonoBehaviour
         if (renderers == null || renderers.Length == 0)
             return new Bounds(room.position, new Vector3(6f, 1f, 6f));
 
+        bool foundFloor = false;
+        Bounds floorBounds = default;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var r = renderers[i];
+            if (r == null) continue;
+            string n = r.gameObject.name;
+            if (n.IndexOf("Floor", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+            if (!foundFloor)
+            {
+                floorBounds = r.bounds;
+                foundFloor = true;
+            }
+            else
+            {
+                floorBounds.Encapsulate(r.bounds);
+            }
+        }
+
+        if (foundFloor) return floorBounds;
+
+        // Fallback (test sahneleri, custom prefab vs.)
         Bounds bounds = renderers[0].bounds;
         for (int i = 1; i < renderers.Length; i++)
             bounds.Encapsulate(renderers[i].bounds);

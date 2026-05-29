@@ -32,11 +32,36 @@ public class NetworkedItemSpawner : NetworkBehaviour
     [Tooltip("Random pozisyon, oda bounds'undan bu kadar icerden secilir (duvar bosluklari icin).")]
     [SerializeField] private float _boundsInset = 1f;
 
-    [Tooltip("Random pozisyon NavMesh'e snap edilirken bu mesafe icinde walkable nokta aranir.")]
-    [SerializeField] private float _navMeshSampleRadius = 2f;
+    [Tooltip("Random pozisyon NavMesh'e snap edilirken bu mesafe icinde walkable nokta aranir. " +
+             "Cok genis tutulursa snap koridordan veya komsu odadan nokta cekebilir; 1m guvenli aralik.")]
+    [SerializeField] private float _navMeshSampleRadius = 1f;
 
-    [Tooltip("NavMesh'e snap basarisiz olursa kac kez yeniden dene.")]
-    [SerializeField] private int _placementRetryCount = 4;
+    [Tooltip("NavMesh'e snap basarisiz olursa kac kez yeniden dene. Snap basarili olsa bile " +
+             "oda Bounds disinda kaldiysa yine retry'a girer (koridor/void spawn'i onlemek icin).")]
+    [SerializeField] private int _placementRetryCount = 8;
+
+    [Tooltip("True ise NavMesh.SamplePosition sonucunun hala oda Bounds'i icinde olmasi sart kosulur. " +
+             "Aksi halde snap koridorun ortasinda valid bir nokta bulup ESYA DISARIDA SPAWN OLABILIR.")]
+    [SerializeField] private bool _enforceSnapInsideRoom = true;
+
+    [Tooltip("Snap noktasinin Y'sinin candidate Y'sinden bu kadar uzaga sapmasi kabul edilmez. " +
+             "Duvar ustune snap olusursa Y cok yukarida olur, bu kontrol elenir. 1.5m tipik tek-kat oda.")]
+    [SerializeField] private float _maxYDeviationFromFloor = 1.5f;
+
+    [Tooltip("Candidate Y'sini room.min.y + bu offset yapariz — bounds tabani floor sayilir. " +
+             "Boylece SamplePosition mid-air'dan baslayip yukari duvarlara snap'lemez.")]
+    [SerializeField] private float _floorYOffset = 0.1f;
+
+    [Tooltip("Snap noktasinin ALTINDA raycast ile gercek Floor mesh oldugu dogrulanir. " +
+             "Yuzey normalinin yukari bakmasi (floor=horizontal) + collider adinda 'Wall' veya " +
+             "'Door' OLMAMASI gerekir. Bu kontrol Anil'in MapEnemyBridge.EstimateRoomBounds " +
+             "wall/door renderer'lari da kapsadigi icin sisirilmis bounds'i gerceklestirir.")]
+    [SerializeField] private bool _requireFloorBelowSnap = true;
+
+    [Tooltip("Floor sayilmasi icin yuzey normal Y'sinin minimum degeri. 1.0 = tam yatay, " +
+             "0.85 = hafif egim. 0.7 altinda duvarlar gibi davranir.")]
+    [Range(0.5f, 1f)]
+    [SerializeField] private float _minFloorNormalY = 0.85f;
 
     [Header("Debug")]
     [SerializeField] private bool _verbose = false;
@@ -132,9 +157,15 @@ public class NetworkedItemSpawner : NetworkBehaviour
     }
 
     /// <summary>
-    /// Verilen bounds icinde rastgele bir nokta secer, NavMesh'e snap eder.
-    /// Snap basarili olursa pozisyonu yazip true doner. Aksi halde
-    /// _placementRetryCount kadar tekrar dener; hala basarisizsa false doner.
+    /// Random XZ + dusuk Y candidate ile NavMesh'e snap eder. Y'yi mid-air'dan
+    /// degil bounds.min.y + offset'ten basliyoruz — boylece SamplePosition'in
+    /// duvar ustundeki yuksek NavMesh patch'lerine snap yapip "esya havada"
+    /// bug'i olusmasi imkansiz hale geliyor. 3 katmanli filtre:
+    ///   (a) Snap basarili olmali
+    ///   (b) Snap X/Z hala oda bounds icinde olmali (koridor/void engeli)
+    ///   (c) Snap Y candidate Y'sinden _maxYDeviationFromFloor kadar uzak olmamali
+    ///       (duvar ustune snap'i son kapali kapi olarak eliyoruz)
+    /// _placementRetryCount kadar deneme; hicbir snap gecerli olmazsa false.
     /// </summary>
     private bool TryPickPositionInRoom(System.Random rng, Bounds room, out Vector3 position)
     {
@@ -150,19 +181,86 @@ public class NetworkedItemSpawner : NetworkBehaviour
             max = room.max;
         }
 
+        // Floor Y olarak bounds tabani + kucuk offset. MapGenerator bounds'i
+        // oda zemini + duvar yuksekligi seklinde olusturuyor (min.y = floor).
+        float floorY = room.min.y + _floorYOffset;
+
         for (int attempt = 0; attempt < _placementRetryCount; attempt++)
         {
             float rx = Mathf.Lerp(min.x, max.x, (float)rng.NextDouble());
             float rz = Mathf.Lerp(min.z, max.z, (float)rng.NextDouble());
-            Vector3 candidate = new Vector3(rx, room.center.y, rz);
 
-            if (NavMesh.SamplePosition(candidate, out var hit, _navMeshSampleRadius, NavMesh.AllAreas))
+            // Candidate dusuk Y'de — SamplePosition radius'unun (1m) icinde
+            // sadece floor seviyesindeki NavMesh olur, duvar ustundeki uzak patch'ler
+            // 3D mesafe olarak ulasilmazsa snap orada yapilmaz.
+            Vector3 candidate = new Vector3(rx, floorY, rz);
+
+            if (!NavMesh.SamplePosition(candidate, out var navHit, _navMeshSampleRadius, NavMesh.AllAreas))
+                continue;
+
+            // (b) X/Z bounds icinde mi?
+            if (_enforceSnapInsideRoom)
             {
-                position = hit.position;
-                return true;
+                bool xzInside =
+                    navHit.position.x >= room.min.x && navHit.position.x <= room.max.x &&
+                    navHit.position.z >= room.min.z && navHit.position.z <= room.max.z;
+                if (!xzInside)
+                {
+                    if (_verbose)
+                        Debug.Log($"[NetworkedItemSpawner] Snap X/Z disinda ({navHit.position}), retry.");
+                    continue;
+                }
             }
+
+            // (c) Y candidate'tan cok uzaklasti mi? Duvar ustune snap = Y cok yukarida.
+            float yDelta = Mathf.Abs(navHit.position.y - candidate.y);
+            if (yDelta > _maxYDeviationFromFloor)
+            {
+                if (_verbose)
+                    Debug.Log($"[NetworkedItemSpawner] Snap Y deltasi cok ({yDelta:F2}m, snap={navHit.position.y:F2}), retry.");
+                continue;
+            }
+
+            // (d) Snap noktasinin ALTINDA gercek floor mesh var mi? Anil'in
+            // EstimateRoomBounds wall+door+floor renderer'larini topladigi icin
+            // sisirilmis bounds icinde olmak yetmiyor — fiziksel kontrol sart.
+            if (_requireFloorBelowSnap && !IsOverFloor(navHit.position))
+            {
+                if (_verbose)
+                    Debug.Log($"[NetworkedItemSpawner] Snap altinda Floor degil ({navHit.position}), retry.");
+                continue;
+            }
+
+            position = navHit.position;
+            return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Snap noktasindan asagi raycast atip yuzeyin GERCEKTEN floor olup olmadigini
+    /// fiziksel olarak dogrular. 3 kriter:
+    ///   1. Raycast bir collider'a degmeli (havada degil)
+    ///   2. Yuzey normalinin Y'si _minFloorNormalY'den buyuk olmali (yatay yuzey)
+    ///   3. Collider'in gameobject adi "Wall" veya "Door" icermemeli
+    /// </summary>
+    private bool IsOverFloor(Vector3 snapPos)
+    {
+        Vector3 rayStart = snapPos + Vector3.up * 0.5f;
+        // 1.5m max — floor hemen alt olmali; daha uzaktaysa "havada" kabul ediyoruz
+        if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 1.5f))
+            return false;
+
+        // Normal yatay olmali (floor); duvar üstüne snap'lerse normal saga/sola bakar
+        if (hit.normal.y < _minFloorNormalY)
+            return false;
+
+        // Collider sahibi GameObject adinda Wall/Door olmamali (Anil'in adlandirma konvansiyonu)
+        string colliderName = hit.collider.gameObject.name;
+        if (colliderName.IndexOf("Wall", System.StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        if (colliderName.IndexOf("Door", System.StringComparison.OrdinalIgnoreCase) >= 0) return false;
+
+        return true;
     }
 
     /// <summary>
