@@ -43,13 +43,28 @@ public class PlayerInventory : NetworkBehaviour
         // Server-only: bu clientId icin onceki sahnede snapshot alindiysa
         // restore et. IsOwner kontrolunden ONCE yapilmali cunku non-host
         // ortamlarinda server farkli client olabilir.
-        if (IsServer && s_ServerInventorySnapshot.TryGetValue(OwnerClientId, out var saved))
+        if (IsServer)
         {
-            Slots.Clear();
-            for (int i = 0; i < saved.slots.Length && i < MaxSlots; i++)
-                Slots.Add(saved.slots[i]);
-            ActiveSlot.Value = (byte)Mathf.Min(saved.active, (byte)(Mathf.Max(0, Slots.Count - 1)));
-            s_ServerInventorySnapshot.Remove(OwnerClientId);
+            if (s_ServerInventorySnapshot.TryGetValue(OwnerClientId, out var saved))
+            {
+                Slots.Clear();
+                for (int i = 0; i < MaxSlots; i++)
+                {
+                    if (i < saved.slots.Length)
+                        Slots.Add(saved.slots[i]);
+                    else
+                        Slots.Add(0);
+                }
+                ActiveSlot.Value = (byte)Mathf.Min(saved.active, (byte)(MaxSlots - 1));
+                s_ServerInventorySnapshot.Remove(OwnerClientId);
+            }
+            else
+            {
+                Slots.Clear();
+                for (int i = 0; i < MaxSlots; i++)
+                    Slots.Add(0);
+                ActiveSlot.Value = 0;
+            }
         }
 
         if (!IsOwner)
@@ -95,7 +110,7 @@ public class PlayerInventory : NetworkBehaviour
     private void OnActiveSlotChanged(byte prev, byte current) => TriggerUIUpdate();
 
     /// <summary>UI'a "cantam degisti, kendini yeniden ciz" sinyali fırlatır.</summary>
-    private void TriggerUIUpdate()
+    public void TriggerUIUpdate()
     {
         ushort[] currentItems = new ushort[Slots.Count];
         for (int i = 0; i < Slots.Count; i++)
@@ -125,13 +140,22 @@ public class PlayerInventory : NetworkBehaviour
     // ÇANTADAN YERE ATMA OPERASYONU
     private void DropActiveItemFromInventory()
     {
-        // Çanta boşsa hiçbir şey yapma
-        if (Slots.Count == 0) return;
+        // Elimizde fiziksel bir eşya tutuyorsak, çantadan eşya atmayalım!
+        var interaction = GetComponent<PlayerInteraction>();
+        if (interaction != null && interaction.HeldObject != null)
+        {
+            return;
+        }
+
+        if (ActiveSlot.Value >= Slots.Count) return;
+
+        // Çantanın seçili slotu boşsa hiçbir şey yapma
+        if (Slots[ActiveSlot.Value] == 0) return;
 
         // 1. Atılacak eşyanın ID'sini al
         ushort itemIdToDrop = Slots[ActiveSlot.Value];
 
-        // 2. Eşyayı çantadan (Listeden) sil
+        // 2. Eşyayı çantadan sil (0 yap)
         RemoveAtSlot(ActiveSlot.Value);
 
         // 3. Sunucuya "Bu eşyayı önüme fiziksel olarak geri yarat" de
@@ -167,8 +191,7 @@ public class PlayerInventory : NetworkBehaviour
 
     public bool TryAddItem(ushort itemId)
     {
-        if (Slots.Count >= MaxSlots)  return false;
-        if (IsCarryingCorpse.Value)   return false; // ceset taşırken item alınamaz
+        if (IsFull()) return false;
         AddItemServerRpc(itemId);
         return true;
     }
@@ -176,11 +199,17 @@ public class PlayerInventory : NetworkBehaviour
     public bool ServerTryAddItem(ushort itemId)
     {
         if (!IsServer) return false;
-        if (Slots.Count >= MaxSlots) return false;
-        if (IsCarryingCorpse.Value) return false;
+        if (IsFull()) return false;
 
-        Slots.Add(itemId);
-        return true;
+        for (int i = 0; i < Slots.Count; i++)
+        {
+            if (Slots[i] == 0)
+            {
+                Slots[i] = itemId;
+                return true;
+            }
+        }
+        return false;
     }
 
     public void RemoveAtSlot(int index)
@@ -194,14 +223,10 @@ public class PlayerInventory : NetworkBehaviour
         itemId = 0;
         if (!IsServer) return false;
         if (index < 0 || index >= Slots.Count) return false;
+        if (Slots[index] == 0) return false;
 
         itemId = Slots[index];
-        Slots.RemoveAt(index);
-        if (ActiveSlot.Value >= Slots.Count && Slots.Count > 0)
-            ActiveSlot.Value = (byte)(Slots.Count - 1);
-        else if (Slots.Count == 0)
-            ActiveSlot.Value = 0;
-
+        Slots[index] = 0;
         return true;
     }
 
@@ -251,7 +276,12 @@ public class PlayerInventory : NetworkBehaviour
     /// </summary>
     public bool IsFull()
     {
-        return Slots.Count >= MaxSlots || IsCarryingCorpse.Value;
+        if (IsCarryingCorpse.Value) return true;
+        for (int i = 0; i < Slots.Count; i++)
+        {
+            if (Slots[i] == 0) return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -275,17 +305,21 @@ public class PlayerInventory : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void AddItemServerRpc(ushort itemId)
     {
-        if (Slots.Count >= MaxSlots) return;
-        Slots.Add(itemId);
+        for (int i = 0; i < Slots.Count; i++)
+        {
+            if (Slots[i] == 0)
+            {
+                Slots[i] = itemId;
+                break;
+            }
+        }
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void RemoveAtSlotServerRpc(int index)
     {
         if (index < 0 || index >= Slots.Count) return;
-        Slots.RemoveAt(index);
-        if (ActiveSlot.Value >= Slots.Count && Slots.Count > 0)
-            ActiveSlot.Value = (byte)(Slots.Count - 1);
+        Slots[index] = 0;
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
@@ -364,10 +398,22 @@ public class PlayerInventory : NetworkBehaviour
     public bool TryTakeActiveItem(out ushort itemId)
     {
         itemId = 0;
-        if (Slots.Count == 0) return false;
+        if (ActiveSlot.Value >= Slots.Count) return false;
+        if (Slots[ActiveSlot.Value] == 0) return false;
 
         itemId = Slots[ActiveSlot.Value];
         RemoveAtSlot(ActiveSlot.Value);
         return true;
+    }
+
+    public void ClearInventory()
+    {
+        if (IsServer)
+        {
+            for (int i = 0; i < Slots.Count; i++)
+            {
+                Slots[i] = 0;
+            }
+        }
     }
 }

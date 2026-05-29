@@ -417,6 +417,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         for (int i = 0; i < Inventory.Slots.Count; i++)
         {
             ushort itemId = Inventory.Slots[i];
+            if (itemId == 0) continue;
             var prefab = db.GetPrefab(itemId);
             if (prefab == null) continue;
 
@@ -437,7 +438,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         }
 
         // Envanteri temizle (server-side NetworkList yazma)
-        Inventory.Slots.Clear();
+        Inventory.ClearInventory();
 
         if (dropped > 0)
             Debug.Log($"[PlayerStateMachine] Olum sirasinda {dropped} esya yere dokuldu.");
