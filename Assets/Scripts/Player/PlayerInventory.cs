@@ -10,6 +10,14 @@ public class PlayerInventory : NetworkBehaviour
     private const int DefaultMarketStartingCredits = 100;
     private static int s_ServerMarketCredits = DefaultMarketStartingCredits;
 
+    // PlayerSpawnCoordinator sahne gecisinde player'i despawn+respawn ediyor
+    // (lobby prefab != gameplay prefab). Bu yuzden NetworkList<ushort> Slots
+    // her geciste sifirlaniyor; lobbyde alinan flashbang map'e gitmiyordu.
+    // Server-side static cache: OnNetworkDespawn'da snapshot, OnNetworkSpawn'da
+    // ayni clientId icin restore yap. Boylece envanter sahne degisimine direnir.
+    private static readonly System.Collections.Generic.Dictionary<ulong, (ushort[] slots, byte active)>
+        s_ServerInventorySnapshot = new();
+
     public readonly NetworkList<ushort> Slots = new();
 
     public readonly NetworkVariable<byte> ActiveSlot = new(
@@ -57,6 +65,18 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // Server-only: bu clientId icin onceki sahnede snapshot alindiysa
+        // restore et. IsOwner kontrolunden ONCE yapilmali cunku non-host
+        // ortamlarinda server farkli client olabilir.
+        if (IsServer && s_ServerInventorySnapshot.TryGetValue(OwnerClientId, out var saved))
+        {
+            Slots.Clear();
+            for (int i = 0; i < saved.slots.Length && i < MaxSlots; i++)
+                Slots.Add(saved.slots[i]);
+            ActiveSlot.Value = (byte)Mathf.Min(saved.active, (byte)(Mathf.Max(0, Slots.Count - 1)));
+            s_ServerInventorySnapshot.Remove(OwnerClientId);
+        }
+
         if (!IsOwner)
         {
             enabled = false;
@@ -86,6 +106,16 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        // Server-only: yok edilmeden once mevcut envanteri snapshot al ki
+        // PlayerSpawnCoordinator sahne gecisinde yeni prefab spawn ettiginde
+        // OnNetworkSpawn restore edebilsin (lobby -> map flashbang persist).
+        if (IsServer && Slots != null && Slots.Count > 0)
+        {
+            var snap = new ushort[Slots.Count];
+            for (int i = 0; i < Slots.Count; i++) snap[i] = Slots[i];
+            s_ServerInventorySnapshot[OwnerClientId] = (snap, ActiveSlot.Value);
+        }
+
         if (!IsOwner) return;
 
         Slots.OnListChanged -= OnSlotsChanged;
