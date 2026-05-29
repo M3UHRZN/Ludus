@@ -27,8 +27,8 @@ public class MarketCatalog : MonoBehaviour
         if (TryGetItem(itemId, out MarketCatalogItem catalogItem) && catalogItem.CanSell)
             return catalogItem.SellValue;
 
-        BaseItem prefab = ItemRegistry.Instance != null ? ItemRegistry.Instance.GetPrefab(itemId) : null;
-        return prefab != null ? Mathf.RoundToInt(prefab.CreditValue) : 0;
+        ItemDefinition def = ItemCatalog.Instance != null ? ItemCatalog.Instance.GetById(itemId) : null;
+        return def != null ? Mathf.RoundToInt(def.CreditValue) : 0;
     }
 
     public bool CanSell(ushort itemId)
@@ -36,7 +36,7 @@ public class MarketCatalog : MonoBehaviour
         if (TryGetItem(itemId, out MarketCatalogItem catalogItem))
             return catalogItem.CanSell;
 
-        return ItemRegistry.Instance != null && ItemRegistry.Instance.GetPrefab(itemId) != null;
+        return ItemCatalog.Instance != null && ItemCatalog.Instance.Contains(itemId);
     }
 
 #if UNITY_EDITOR

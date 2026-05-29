@@ -182,9 +182,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba39582103e0c44e484c62663831443a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseItem
-  _itemName: Test Item
-  _size: 0
-  _creditValue: 10
+  ShowTopMostFoldoutHeaderGroup: 1
+  definition: {fileID: 11400000, guid: f99e39bf7c079524eba977b78c20519d, type: 2}
 --- !u!114 &3525574963461281875
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -204,6 +203,11 @@ MonoBehaviour:
   throwForceMultiplier: 12
   weight: 1
   highlightMaterial: {fileID: 0}
+  _triggersLure: 1
+  _throwDamageWindow: 2
+  _throwDamageMinSpeed: 3
+  _throwBaseDamage: 25
+  _throwStunDuration: 1.5
 --- !u!114 &4490869206252759160
 MonoBehaviour:
   m_ObjectHideFlags: 0

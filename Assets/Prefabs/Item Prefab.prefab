@@ -154,9 +154,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba39582103e0c44e484c62663831443a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseItem
-  _itemName: Test Item
-  _size: 0
-  _creditValue: 10
+  ShowTopMostFoldoutHeaderGroup: 1
+  definition: {fileID: 11400000, guid: f99e39bf7c079524eba977b78c20519d, type: 2}
 --- !u!114 &8715200229749511329
 MonoBehaviour:
   m_ObjectHideFlags: 0

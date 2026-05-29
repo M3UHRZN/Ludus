@@ -26,7 +26,7 @@ public class WeightSystem : MonoBehaviour
     {
         int total = 0;
         foreach (ushort id in inventory.Slots)
-            total += ItemRegistry.Instance != null ? ItemRegistry.Instance.GetWeight(id) : 0;
+            total += ItemCatalog.Instance != null ? ItemCatalog.Instance.GetWeight(id) : 0;
         return total;
     }
     

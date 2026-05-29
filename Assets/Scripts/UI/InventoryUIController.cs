@@ -52,8 +52,10 @@ public class InventoryUIController : MonoBehaviour
 
     private void OnInventoryUpdated(LocalInventoryUpdatedEvent evt)
     {
-        // Gecici agirlik hesabi (her esya 2 KG; ileride ItemDatabase'den okunur)
-        float totalWeight = evt.ItemIds.Length * 2f;
+        // Agirlik artik tek ItemCatalog'dan.
+        float totalWeight = 0f;
+        if (ItemCatalog.Instance != null)
+            foreach (ushort id in evt.ItemIds) totalWeight += ItemCatalog.Instance.GetWeight(id);
         if (weightText != null) weightText.text = $"{totalWeight:F1} KG";
 
         for (int i = 0; i < slots.Length; i++)
@@ -63,8 +65,8 @@ public class InventoryUIController : MonoBehaviour
                 ushort itemId = evt.ItemIds[i];
 
                 // Resmi merkez veritabanindan al
-                Sprite itemIcon = ItemDatabase.Instance != null
-                    ? ItemDatabase.Instance.GetIcon(itemId)
+                Sprite itemIcon = ItemCatalog.Instance != null
+                    ? ItemCatalog.Instance.GetIcon(itemId)
                     : null;
 
                 if (itemIcon != null)

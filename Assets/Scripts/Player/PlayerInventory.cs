@@ -31,12 +31,8 @@ public class PlayerInventory : NetworkBehaviour
     // ─────────────────────────────────────────────────────────────────────────
 
     [Header("Usable Items")]
-    [Tooltip("Scene-independent id->prefab lookup for usable items. Resolves in lobby AND gameplay (unlike the scene-bound ItemDatabase).")]
-    [SerializeField] private UsableItemCatalog usableCatalog;
-
-    // Market still hardcodes flashbang as the single buyable usable; generalised in a later pass.
-    [SerializeField] private ushort flashbangItemId = 100;
-    [SerializeField] private int flashbangMarketPrice = 40;
+    [Tooltip("Pazardan alinan flashbang'in ItemCatalog id'si. Fiyat ItemDefinition.MarketPrice'tan okunur.")]
+    [SerializeField] private ushort flashbangItemId = 1;
 
     private InputAction _scrollAction;
     private InputAction _useAction;
@@ -150,11 +146,8 @@ public class PlayerInventory : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void SpawnItemServerRpc(ushort itemId, Vector3 spawnPosition)
     {
-        // Usable'lar (flashbang vb.) ItemDatabase'de olmayabilir + lobby'de ItemDatabase yok.
-        // Once sahne-bagimsiz catalog'a bak, sonra ItemDatabase'e dus.
-        GameObject itemPrefab = usableCatalog != null ? usableCatalog.GetPrefab(itemId) : null;
-        if (itemPrefab == null && ItemDatabase.Instance != null)
-            itemPrefab = ItemDatabase.Instance.GetPrefab(itemId);
+        ItemCatalog catalog = ItemCatalog.Instance;
+        GameObject itemPrefab = catalog != null ? catalog.GetPrefab(itemId) : null;
 
         if (itemPrefab != null)
         {
@@ -235,13 +228,21 @@ public class PlayerInventory : NetworkBehaviour
             return;
         }
 
-        if (s_ServerMarketCredits < flashbangMarketPrice)
+        ItemCatalog catalog = ItemCatalog.Instance;
+        ItemDefinition flashDef = catalog != null ? catalog.GetById(flashbangItemId) : null;
+        int price = flashDef != null ? flashDef.MarketPrice : 0;
+        if (flashDef == null)
+        {
+            SendInventoryMarketMessageRpc("Flashbang not in ItemCatalog.");
+            return;
+        }
+        if (s_ServerMarketCredits < price)
         {
             SendInventoryMarketMessageRpc("Not enough team credits.");
             return;
         }
 
-        s_ServerMarketCredits -= flashbangMarketPrice;
+        s_ServerMarketCredits -= price;
         ServerSpawnFlashbangPickup(deliveryPosition, deliveryForward);
         SendInventoryMarketMessageRpc($"Bought Flashbang. Team Credits: {s_ServerMarketCredits}");
     }
@@ -325,17 +326,18 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         ushort itemId = Slots[slotIndex];
-        GameObject prefab = usableCatalog != null ? usableCatalog.GetPrefab(itemId) : null;
+        ItemCatalog catalog = ItemCatalog.Instance;
+        GameObject prefab = catalog != null ? catalog.GetPrefab(itemId) : null;
         if (prefab == null)
         {
             Debug.Log($"[Inventory] Item {itemId} is not a registered usable.");
             return;
         }
 
-        // Defensive: a catalogued prefab must actually carry a NetworkUsableItem.
-        if (prefab.GetComponent<NetworkUsableItem>() == null)
+        // Defensive: a catalogued prefab must actually carry a UsableItem.
+        if (prefab.GetComponent<UsableItem>() == null)
         {
-            Debug.LogWarning($"[Inventory] Usable prefab for {itemId} has no NetworkUsableItem.");
+            Debug.LogWarning($"[Inventory] Usable prefab for {itemId} has no UsableItem.");
             return;
         }
 
@@ -352,7 +354,7 @@ public class PlayerInventory : NetworkBehaviour
         }
         netObject.Spawn(true);
 
-        var usable = instance.GetComponent<INetworkUsable>();
+        var usable = instance.GetComponent<UsableItem>();
         var context = new UsableActivationContext(OwnerClientId, NetworkObject, origin, direction);
         usable.ServerActivate(context);
     }
@@ -372,10 +374,11 @@ public class PlayerInventory : NetworkBehaviour
 
     private void ServerSpawnFlashbangPickup(Vector3 position, Vector3 forward)
     {
-        GameObject prefab = usableCatalog != null ? usableCatalog.GetPrefab(flashbangItemId) : null;
+        ItemCatalog catalog = ItemCatalog.Instance;
+        GameObject prefab = catalog != null ? catalog.GetPrefab(flashbangItemId) : null;
         if (prefab == null)
         {
-            SendInventoryMarketMessageRpc("Flashbang prefab missing from UsableItemCatalog.");
+            SendInventoryMarketMessageRpc("Flashbang prefab missing from ItemCatalog.");
             return;
         }
         if (forward.sqrMagnitude < 0.0001f) forward = transform.forward;

@@ -496,7 +496,7 @@ public class PlayerInteraction : NetworkBehaviour
     private void RequestSpawnAndGrabServerRpc(ushort itemId, Vector3 spawnPosition, RpcParams rpcParams = default)
     {
         // 1. Veritabanından gerçek Prefab'ı çek!
-        GameObject itemPrefab = ItemDatabase.Instance.GetPrefab(itemId);
+        GameObject itemPrefab = ItemCatalog.Instance != null ? ItemCatalog.Instance.GetPrefab(itemId) : null;
 
         if (itemPrefab != null)
         {
