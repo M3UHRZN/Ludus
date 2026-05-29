@@ -31,45 +31,65 @@ public class InventoryUIController : MonoBehaviour
 
     private void OnInventoryUpdated(LocalInventoryUpdatedEvent evt)
     {
+        // Null-safe: prefab tam wire edilmeden de bu script crash etmesin.
+        // Designer slot referanslarini henuz atamamis olabilir — sessizce skip.
+        if (slots == null) return;
+
+        ushort[] ids = evt.ItemIds ?? System.Array.Empty<ushort>();
+
         // Gecici agirlik hesabi (her esya 2 KG; ileride ItemDatabase'den okunur)
-        float totalWeight = evt.ItemIds.Length * 2f;
-        if (weightText != null) weightText.text = $"{totalWeight:F1} KG";
+        if (weightText != null)
+        {
+            float totalWeight = ids.Length * 2f;
+            weightText.text = $"{totalWeight:F1} KG";
+        }
 
         for (int i = 0; i < slots.Length; i++)
         {
-            if (i < evt.ItemIds.Length)
+            var slotUI = slots[i];
+            if (slotUI == null) continue;
+
+            if (i < ids.Length)
             {
-                ushort itemId = evt.ItemIds[i]; // Cantadaki esyanin numarasi
+                ushort itemId = ids[i];
 
-                // Resmi merkez veritabanindan istiyoruz
-                Sprite itemIcon = ItemDatabase.Instance.GetIcon(itemId);
+                // ItemDatabase.Instance henuz yoksa veya icon kayit yoksa gizle.
+                Sprite itemIcon = (ItemDatabase.Instance != null)
+                    ? ItemDatabase.Instance.GetIcon(itemId)
+                    : null;
 
-                if (itemIcon != null)
+                if (slotUI.icon != null)
                 {
-                    slots[i].icon.sprite = itemIcon;
-                    slots[i].icon.color = Color.white;
-                }
-                else
-                {
-                    slots[i].icon.color = new Color(1, 1, 1, 0); // Resim yoksa gizle
+                    if (itemIcon != null)
+                    {
+                        slotUI.icon.sprite = itemIcon;
+                        slotUI.icon.color = Color.white;
+                    }
+                    else
+                    {
+                        slotUI.icon.color = new Color(1, 1, 1, 0); // Resim yoksa gizle
+                    }
                 }
             }
-            else
+            else if (slotUI.icon != null)
             {
-                slots[i].icon.sprite = null;
-                slots[i].icon.color = new Color(1, 1, 1, 0); // Bos slotu gizle
+                slotUI.icon.sprite = null;
+                slotUI.icon.color = new Color(1, 1, 1, 0); // Bos slotu gizle
             }
 
             // Aktif slotu vurgula (Scroll yapildikca sari cerceve kayar)
-            if (i == evt.ActiveSlotIndex)
+            if (slotUI.background != null)
             {
-                slots[i].background.color = activeColor;
-                slots[i].background.rectTransform.localScale = Vector3.one * 1.1f;
-            }
-            else
-            {
-                slots[i].background.color = inactiveColor;
-                slots[i].background.rectTransform.localScale = Vector3.one;
+                if (i == evt.ActiveSlotIndex)
+                {
+                    slotUI.background.color = activeColor;
+                    slotUI.background.rectTransform.localScale = Vector3.one * 1.1f;
+                }
+                else
+                {
+                    slotUI.background.color = inactiveColor;
+                    slotUI.background.rectTransform.localScale = Vector3.one;
+                }
             }
         }
     }
