@@ -49,7 +49,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 3.5
+  m_Speed: 2.5
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -75,12 +75,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   _patrolWaypoints: []
   _sightRange: 20
-  _attackRange: 2
+  _attackRange: 1
   _noiseDetectionRadius: 8
   _playerLayer:
     serializedVersion: 2
     m_Bits: 64
   _maxHealth: 60
+  _priestMaxHealth: 1000
   _fieldOfViewAngle: 110
   _useWanderMode: 1
   _useRangedAttack: 0
@@ -104,7 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 921449188
+  GlobalObjectIdHash: 714704458
   InScenePlacedSourceGlobalObjectIdHash: 714704458
   DeferredDespawnTick: 0
   Ownership: 1
