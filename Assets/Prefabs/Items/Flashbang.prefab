@@ -14,11 +14,10 @@ GameObject:
   - component: {fileID: 4412944416703844125}
   - component: {fileID: 3759340235938755726}
   - component: {fileID: 753600242715975897}
-  - component: {fileID: 8906665426514316541}
   - component: {fileID: 3525574963461281875}
   - component: {fileID: 4490869206252759160}
   - component: {fileID: -8104489728827190872}
-  - component: {fileID: 2387235075562175409}
+  - component: {fileID: 1631719411610468788}
   m_Layer: 9
   m_Name: Flashbang
   m_TagString: Interactable
@@ -171,22 +170,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &8906665426514316541
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7869045618340365188}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ba39582103e0c44e484c62663831443a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BaseItem
-  ItemId: 1
-  _itemName: Flashbang
-  _size: 0
-  _creditValue: 10
 --- !u!114 &3525574963461281875
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -274,7 +257,7 @@ MonoBehaviour:
   UseRigidBodyForMotion: 0
   AutoUpdateKinematicState: 1
   AutoSetKinematicOnDespawn: 1
---- !u!114 &2387235075562175409
+--- !u!114 &1631719411610468788
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -283,13 +266,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 7869045618340365188}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 761d7c3fadd171f4491267e3f5075e25, type: 3}
+  m_Script: {fileID: 11500000, guid: df174bca42221e64787110cfe7dd7e2f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ThrownFlashbang
+  m_EditorClassIdentifier: Assembly-CSharp::Flashbang
   ShowTopMostFoldoutHeaderGroup: 1
+  definition: {fileID: 11400000, guid: 9bc5250238d7690499f9b84971229cff, type: 2}
   throwSpeed: 45
   upwardBoost: 1.5
   fuseTime: 1.6
+  armTime: 0.2
   blastRadius: 5
   blindDuration: 2.5
   peakAlpha: 1
