@@ -68,10 +68,43 @@ public class PlayerInventory : NetworkBehaviour
         _useAction    = input.actions["Gameplay/UseItem"];
         _dropAction   = input.actions["Gameplay/Drop"];
 
+        // Mevcut: flashbang / hareket entegrasyonu
         _movement = GetComponent<PlayerMovement>();
         _look = GetComponent<PlayerLook>();
         EnsureFlashOverlay();
         EnsureFlashbangAudio();
+
+        // Esmanur UI kopru: Sunucu cantaya esya koydugunda / slot degisiminde
+        // GameEventBus.Publish(LocalInventoryUpdatedEvent) otomatik tetikle.
+        // Anonim lambda ile abone olursak unsubscribe edemeyiz; named handler kullaniyoruz.
+        Slots.OnListChanged += OnSlotsChanged;
+        ActiveSlot.OnValueChanged += OnActiveSlotChanged;
+
+        // Ilk frame'de UI bir kere sifir state'le cizilsin
+        TriggerUIUpdate();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (!IsOwner) return;
+
+        Slots.OnListChanged -= OnSlotsChanged;
+        ActiveSlot.OnValueChanged -= OnActiveSlotChanged;
+    }
+
+    private void OnSlotsChanged(Unity.Netcode.NetworkListEvent<ushort> changeEvent) => TriggerUIUpdate();
+    private void OnActiveSlotChanged(byte prev, byte current) => TriggerUIUpdate();
+
+    /// <summary>UI'a "cantam degisti, kendini yeniden ciz" sinyali fırlatır.</summary>
+    private void TriggerUIUpdate()
+    {
+        ushort[] currentItems = new ushort[Slots.Count];
+        for (int i = 0; i < Slots.Count; i++)
+        {
+            currentItems[i] = Slots[i];
+        }
+
+        GameEventBus.Publish(new LocalInventoryUpdatedEvent(currentItems, ActiveSlot.Value));
     }
 
     private void Update()
@@ -83,6 +116,41 @@ public class PlayerInventory : NetworkBehaviour
                           (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame);
         if (usePressed)
             UseActiveItem();
+
+        // Çantadan seçili eşyayı yere atma tuşuna basılırsa
+        if (_dropAction != null && _dropAction.WasPressedThisFrame())
+        {
+            DropActiveItemFromInventory();
+        }
+    }
+
+    // ÇANTADAN YERE ATMA OPERASYONU
+    private void DropActiveItemFromInventory()
+    {
+        // Çanta boşsa hiçbir şey yapma
+        if (Slots.Count == 0) return;
+
+        // 1. Atılacak eşyanın ID'sini al
+        ushort itemIdToDrop = Slots[ActiveSlot.Value];
+
+        // 2. Eşyayı çantadan (Listeden) sil
+        RemoveAtSlot(ActiveSlot.Value);
+
+        // 3. Sunucuya "Bu eşyayı önüme fiziksel olarak geri yarat" de
+        Vector3 spawnPos = transform.position + transform.forward * 1.5f + Vector3.up * 1f;
+        SpawnItemServerRpc(itemIdToDrop, spawnPos);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void SpawnItemServerRpc(ushort itemId, Vector3 spawnPosition)
+    {
+        // Veritabanından gerçek Prefab'ı çek ve yere fırlat!
+        GameObject itemPrefab = ItemDatabase.Instance.GetPrefab(itemId);
+        if (itemPrefab != null)
+        {
+            GameObject spawned = Instantiate(itemPrefab, spawnPosition, Quaternion.identity);
+            spawned.GetComponent<NetworkObject>().Spawn();
+        }
     }
 
     private void HandleScroll()
@@ -634,5 +702,16 @@ public class PlayerInventory : NetworkBehaviour
             flashbangRingingClip.LoadAudioData();
         if (flashbangExplosionClip != null && flashbangExplosionClip.loadState == AudioDataLoadState.Unloaded)
             flashbangExplosionClip.LoadAudioData();
+    }
+
+    /// <summary>Cantadaki aktif esyayi siler ve ID'sini doner. UI extraction akisinda kullanilir.</summary>
+    public bool TryTakeActiveItem(out ushort itemId)
+    {
+        itemId = 0;
+        if (Slots.Count == 0) return false;
+
+        itemId = Slots[ActiveSlot.Value];
+        RemoveAtSlot(ActiveSlot.Value);
+        return true;
     }
 }
