@@ -201,7 +201,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2767991521
+  GlobalObjectIdHash: 1526811899
   InScenePlacedSourceGlobalObjectIdHash: 2767991521
   DeferredDespawnTick: 0
   Ownership: 8
@@ -376,6 +376,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateMachine
   ShowTopMostFoldoutHeaderGroup: 1
   maxHealth: 100
+  _dropItemsOnDeath: 1
+  _spawnCorpseOnDeath: 1
+  _corpsePrefab: {fileID: 7400000000000000001, guid: 46461b7334904e67b3c7c2489f16dc71, type: 3}
+  _itemDropScatterRadius: 1.5
+  _itemDropHeightOffset: 0.6
 --- !u!114 &2494656452920728769
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -606,6 +611,7 @@ MonoBehaviour:
   drainRate: 20
   regenRate: 15
   exhaustionDamage: 5
+  _verbose: 0
 --- !u!114 &6539134475213516510
 MonoBehaviour:
   m_ObjectHideFlags: 0
