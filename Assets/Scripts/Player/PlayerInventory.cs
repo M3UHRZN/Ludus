@@ -95,8 +95,11 @@ public class PlayerInventory : NetworkBehaviour
     private void OnSlotsChanged(Unity.Netcode.NetworkListEvent<ushort> changeEvent) => TriggerUIUpdate();
     private void OnActiveSlotChanged(byte prev, byte current) => TriggerUIUpdate();
 
-    /// <summary>UI'a "cantam degisti, kendini yeniden ciz" sinyali fırlatır.</summary>
-    private void TriggerUIUpdate()
+    /// <summary>UI'a "cantam degisti, kendini yeniden ciz" sinyali fırlatır.
+    /// Public yapildi cunku UI (InventoryUIController) sahne degisiminde geç
+    /// subscribe olabiliyor; Awake/OnEnable'da bu metodu cagirip mevcut durumu
+    /// yeniden cizebilsin diye.</summary>
+    public void TriggerUIUpdate()
     {
         ushort[] currentItems = new ushort[Slots.Count];
         for (int i = 0; i < Slots.Count; i++)

@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -7,11 +8,11 @@ public class InventoryUIController : MonoBehaviour
     [System.Serializable]
     public class InventorySlotUI
     {
-        public Image background; // Slotun kendi çerçevesi
-        public Image icon;       // Ýçindeki eþyanýn resmi
+        public Image background; // Slotun kendi cercevesi
+        public Image icon;       // Icindeki esyanin resmi
     }
 
-    [Header("UI Referanslarý")]
+    [Header("UI Referanslari")]
     public InventorySlotUI[] slots;
     public TextMeshProUGUI weightText;
 
@@ -19,19 +20,39 @@ public class InventoryUIController : MonoBehaviour
     public Color activeColor = Color.yellow;
     public Color inactiveColor = Color.white;
 
-    private void Awake()
+    private void OnEnable()
     {
         GameEventBus.Subscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
+
+        // Sahne degisiminde / late activation'da PlayerInventory zaten spawn
+        // olmus olabilir; subscribe sirasinda kacirmadigimizdan emin olmak icin
+        // local player inventory'i bul ve mevcut durumu yeniden ciz.
+        RefreshFromLocalInventory();
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         GameEventBus.Unsubscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
     }
 
+    /// <summary>
+    /// Local oyuncunun PlayerInventory'sini bulup TriggerUIUpdate cagirir.
+    /// UI ile inventory subscribe sirasi yanlistan yana olsa bile bu sayede
+    /// HUD her zaman dogru state'i yansitir (lobby -> map gecisinde bos slot
+    /// problemini cozer).
+    /// </summary>
+    private void RefreshFromLocalInventory()
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null || nm.LocalClient == null || nm.LocalClient.PlayerObject == null) return;
+
+        var inv = nm.LocalClient.PlayerObject.GetComponent<PlayerInventory>();
+        if (inv != null) inv.TriggerUIUpdate();
+    }
+
     private void OnInventoryUpdated(LocalInventoryUpdatedEvent evt)
     {
-        // Geçici Aðýrlýk Hesabý (Þimdilik her eþya 2 KG olsun, gerçek DB gelince düzelir)
+        // Gecici agirlik hesabi (her esya 2 KG; ileride ItemDatabase'den okunur)
         float totalWeight = evt.ItemIds.Length * 2f;
         if (weightText != null) weightText.text = $"{totalWeight:F1} KG";
 
@@ -39,10 +60,12 @@ public class InventoryUIController : MonoBehaviour
         {
             if (i < evt.ItemIds.Length)
             {
-                ushort itemId = evt.ItemIds[i]; // Çantadaki eþyanýn numarasý
+                ushort itemId = evt.ItemIds[i];
 
-                // Resmi Merkez Veritabanýndan istiyoruz!
-                Sprite itemIcon = ItemDatabase.Instance.GetIcon(itemId);
+                // Resmi merkez veritabanindan al
+                Sprite itemIcon = ItemDatabase.Instance != null
+                    ? ItemDatabase.Instance.GetIcon(itemId)
+                    : null;
 
                 if (itemIcon != null)
                 {
@@ -51,16 +74,16 @@ public class InventoryUIController : MonoBehaviour
                 }
                 else
                 {
-                    slots[i].icon.color = new Color(1, 1, 1, 0); // Resim yoksa gizle
+                    slots[i].icon.color = new Color(1, 1, 1, 0);
                 }
             }
             else
             {
                 slots[i].icon.sprite = null;
-                slots[i].icon.color = new Color(1, 1, 1, 0); // Boþ slotu gizle
+                slots[i].icon.color = new Color(1, 1, 1, 0);
             }
 
-            // Aktif slotu vurgula (Scroll yaptýkça sarý çerçeve kayacak)
+            // Aktif slotu vurgula (scroll yapildikca sari cerceve kayar)
             if (i == evt.ActiveSlotIndex)
             {
                 slots[i].background.color = activeColor;

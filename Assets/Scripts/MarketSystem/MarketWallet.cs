@@ -47,7 +47,11 @@ public class MarketWallet : NetworkBehaviour
         if (!CanAfford(amount))
             return false;
 
-        SetCredits(currentCredits - amount);
+        // CurrentCredits property (NetCredits.Value when spawned) okumamiz sart;
+        // `currentCredits` field NGO callback'i fire olana kadar stale kalir, ardarda
+        // satin almalarda hep eski deger kullanilir ve para hic dusmez ("sadece bir
+        // defa alindi" yanilgisinin sebebi buydu).
+        SetCredits(CurrentCredits - amount);
         return true;
     }
 
@@ -56,7 +60,7 @@ public class MarketWallet : NetworkBehaviour
         if (amount <= 0)
             return;
 
-        SetCredits(currentCredits + amount);
+        SetCredits(CurrentCredits + amount);
     }
 
     public void SetCredits(int amount)
