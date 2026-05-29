@@ -1,37 +1,39 @@
-// Assets/Scripts/Items/BaseItem.cs
+using Unity.Netcode;
 using UnityEngine;
 
+/// <summary>
+/// Item hiyerarÅŸisinin kÃ¶kÃ¼. Networked (NetworkBehaviour) â€” bÃ¶ylece usable/equippable
+/// alt sÄ±nÄ±flarÄ± onu IS-A ile miras alÄ±r VE RPC kullanabilir. Item verisi
+/// ItemDefinition'dan gelir.
+/// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class BaseItem : MonoBehaviour, IItem
+[RequireComponent(typeof(NetworkObject))]
+public class BaseItem : NetworkBehaviour, IItem
 {
-    [Header("Item Config")]
-    public ushort ItemId; // Envanterin eþyayý tanýmasý için kimlik numarasý
-    [SerializeField] private string   _itemName    = "Unknown Item";
-    [SerializeField] private ItemSize _size        = ItemSize.Small;
-    [SerializeField] private float    _creditValue = 10f;
+    [Header("Item")]
+    [Tooltip("Item verisi (id, ad, boyut, deger, icon). Envanter/market kimligini belirler.")]
+    [SerializeField] private ItemDefinition definition;
 
-    public string   ItemName    => _itemName;
-    public ItemSize Size        => _size;
-    public int      Weight      => _size switch {
-        ItemSize.Small  => 1,
-        ItemSize.Medium => 3,
-        ItemSize.Large  => 6,
-        _               => 1
-    };
-    public float CreditValue => _creditValue;
+    public ItemDefinition Definition => definition;
+    public ushort ItemId => definition != null ? definition.Id : (ushort)0;
+
+    public string ItemName  => definition != null ? definition.DisplayName : "Unknown Item";
+    public ItemSize Size     => definition != null ? definition.Size : ItemSize.Small;
+    public int Weight        => definition != null ? definition.Weight : 1;
+    public float CreditValue => definition != null ? definition.CreditValue : 0f;
 
     public virtual void OnPickup(PlayerInventory inventory)
     {
-        GetComponent<Rigidbody>().isKinematic = true;
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null) rb.isKinematic = true;
         gameObject.SetActive(false);
         GameEventBus.Publish(new ItemPickedUpEvent(ItemName, Weight, CreditValue));
-        Debug.Log($"[Item] {ItemName} picked up | Weight: {Weight} | Value: {CreditValue}cr");
     }
 
     public virtual void OnDrop()
     {
-        GetComponent<Rigidbody>().isKinematic = false;
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null) rb.isKinematic = false;
         gameObject.SetActive(true);
-        Debug.Log($"[Item] {ItemName} dropped.");
     }
 }
