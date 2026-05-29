@@ -82,6 +82,7 @@ crashlytics-build.properties
 # OS and tool generated files
 .DS_Store
 .claude/
+docs/
 Thumbs.db
 
 # Unity crash recovery klasoru (gecici, commit edilmemeli)
