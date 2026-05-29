@@ -61,40 +61,16 @@ public class LobbyRoomManager : NetworkBehaviour
         _playerNames.Dispose();
     }
 
-    //public void StartRun()
-    //{
-    //    if (!IsServer) return;
-    //    if (PlayerSpawnCoordinator.Instance != null)
-    //    {
-    //        PlayerSpawnCoordinator.Instance.StartGameTransition();
-    //        return;
-    //    }
-
-    //    Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
-    //}
-
     public void StartRun()
     {
         if (!IsServer) return;
+        if (PlayerSpawnCoordinator.Instance != null)
+        {
+            PlayerSpawnCoordinator.Instance.StartGameTransition();
+            return;
+        }
 
-        // Loading Ekranýni cagiriyoruz
-        if (LoadingManager.Instance != null)
-        {
-            LoadingManager.Instance.LoadSceneNetwork("RNGMap");
-        }
-        else
-        {
-            // GÜVENLÝK: Eðer test yaparken LoadingManager'ý sahneye koymayý unutursanýz
-            // oyun çökmesin, eski usül takým arkadaþýnýn yazdýðý sistemden devam etsin.
-            if (PlayerSpawnCoordinator.Instance != null)
-            {
-                PlayerSpawnCoordinator.Instance.StartGameTransition();
-            }
-            else
-            {
-                Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
-            }
-        }
+        Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
     }
 
     [ServerRpc(RequireOwnership = false)]

@@ -45,25 +45,11 @@ public static class GameEventBus
 
         if (!_handlers.ContainsKey(type)) return;
 
-        // Listeyi kopyala - yayin sirasinda abonelik degisirse sorun cikmasin
+        // Listeyi kopyala - yayın sırasında abonelik değişirse sorun çıkmasın
         var handlers = new List<Delegate>(_handlers[type]);
 
-        // Defensive dispatch: bir subscriber exception atarsa diger subscriber'lar
-        // event'i almaya devam etmeli. Onceden tek bir InventoryUIController NRE'si
-        // tum publish zincirini koparıp FlashbangCounter / AI listener'larini
-        // sessizce sakatliyordu.
         foreach (var handler in handlers)
-        {
-            try
-            {
-                (handler as Action<T>)?.Invoke(eventData);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-                Debug.LogWarning($"[GameEventBus] {type.Name} handler exception swallowed: {handler.Method?.DeclaringType?.Name}.{handler.Method?.Name}");
-            }
-        }
+            (handler as Action<T>)?.Invoke(eventData);
     }
 
     // Tüm Abonelikleri Temizle (sahne geçişlerinde çağır)

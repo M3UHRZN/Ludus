@@ -11,7 +11,7 @@ public class UniversalSettings : MonoBehaviour
 
     [Header("Ayarlar (Sliderlar)")]
     public Slider volumeSlider;
-    public Slider sensitivitySlider; // Fare hassasiyeti çubuðu
+    public Slider sensitivitySlider; // YENÝ: Fare hassasiyeti çubuðu
 
     [Header("Sahne Ayarlarý")]
     public string firstMainMenuScene = "esmnr-MainMenu"; // Dönülecek ilk ekranýn adý
@@ -25,7 +25,7 @@ public class UniversalSettings : MonoBehaviour
         AudioListener.volume = savedVolume;
         if (volumeSlider != null) volumeSlider.value = savedVolume;
 
-        // --- HASSASÝYET YÜKLEME ---
+        // --- YENÝ: HASSASÝYET YÜKLEME ---
         float savedSens = PlayerPrefs.GetFloat("MouseSensitivity", 2f); // Varsayýlan hýz 2.0 olsun
         if (sensitivitySlider != null) sensitivitySlider.value = savedSens;
     }
@@ -45,19 +45,16 @@ public class UniversalSettings : MonoBehaviour
         bool isActive = settingsPanel.activeSelf;
         settingsPanel.SetActive(!isActive);
 
-        if (!isActive) // Menü AÇILDIYSA
+        if (!isActive) // Menü açýldýysa
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
-        else // Menü KAPANDIYSA
+        else // Menü kapandýysa (Oyuna dönüldüyse)
         {
-            // Sadece Ana Menüde DEÐÝLSEK fareyi kilitle
-            if (SceneManager.GetActiveScene().name != firstMainMenuScene)
-            {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-            }
+            // Oyundayken farenin tekrar gizlenmesi ve kilitlenmesi lazým
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
     }
 
@@ -70,11 +67,11 @@ public class UniversalSettings : MonoBehaviour
 
     public void OnSensitivityChanged(float sens)
     {
-        // Hassasiyeti diske kaydediyoruz.
+        // Hassasiyeti diske kaydediyoruz. (Kamera kodunu yazan arkadaþ bu veriyi okuyacak!)
         PlayerPrefs.SetFloat("MouseSensitivity", sens);
     }
 
-    // --- BUTON FONKSÝYONLARI ---
+    // --- YENÝ EKLENEN BUTON FONKSÝYONLARI ---
 
     public void ResumeGame()
     {

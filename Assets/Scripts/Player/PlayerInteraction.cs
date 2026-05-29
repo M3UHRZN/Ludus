@@ -144,57 +144,12 @@ public class PlayerInteraction : NetworkBehaviour
             }
             if (canInteract)
             {
-                //_lookedInteractable = interactable;
-
-                //if (TryGetPhysicsObject(hit.collider, out var po))
-                //    po.SetHighlight(true);
-
-                //ShowPrompt(true);
-                //return;
-
                 _lookedInteractable = interactable;
 
                 if (TryGetPhysicsObject(hit.collider, out var po))
                     po.SetHighlight(true);
 
-                string displayName = "Etkileşimli Obje";
-                float displayPrice = 0f;
-
-                try
-                {
-                    // 1. İHTİMAL: Bu bir eşya ise (BaseItem), ismini VE FİYATINI Database'den al!
-                    if (TryGetPhysicsObject(hit.collider, out var pObj) && pObj.TryGetComponent<BaseItem>(out var bItem))
-                    {
-                        if (ItemDatabase.Instance != null)
-                        {
-                            var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == bItem.ItemId);
-                            if (data != null)
-                            {
-                                displayName = data.ItemName;
-                                displayPrice = data.ItemPrice; // YENİ: Fiyatı veritabanından cımbızla çektik!
-                            }
-                        }
-                    }
-                    // 2. İHTİMAL: Eşya değilse (Konsol, Kapı vb.)
-                    else if (!string.IsNullOrEmpty(interactable.InteractPrompt))
-                    {
-                        displayName = interactable.InteractPrompt;
-                    }
-                    // 3. İHTİMAL: Hiçbiri yoksa
-                    else if (interactable is Component comp)
-                    {
-                        displayName = comp.gameObject.name;
-                    }
-                }
-                catch
-                {
-                    if (interactable is Component comp) displayName = comp.gameObject.name;
-                }
-
-                // === DEDEKTİF LOGU: Konsola ne yazdırıyor bakacağız ===
-                Debug.Log($"[Etkileşim Testi] Şu an şuna bakıyorsun: {displayName} | CanInteract: {canInteract}");
-
-                ShowPrompt(true, displayName, displayPrice);
+                ShowPrompt(true);
                 return;
             }
 
@@ -536,28 +491,10 @@ public class PlayerInteraction : NetworkBehaviour
         IsHolding.Value = false;
     }
 
-    //private void ShowPrompt(bool active)
-    //{
-    //    if (interactPromptUI != null)
-    //        interactPromptUI.SetActive(active);
-    //}
-
-    // Eski ShowPrompt(bool active) silindi, bu eklendi:
-    private void ShowPrompt(bool active, string itemName = "Obje", float price = 0f)
+    private void ShowPrompt(bool active)
     {
-        // Eğer sahnede senin efsanevi UI Controller'ın varsa onu kullan
-        if (InteractionUIController.Instance != null)
-        {
-            if (active)
-                InteractionUIController.Instance.ShowInteraction(itemName, price);
-            else
-                InteractionUIController.Instance.HideInteraction();
-        }
-        else if (interactPromptUI != null)
-        {
-            // Eğer UI Controller yoksa oyun çökmesin, eski usül aç kapa yapsın (Güvenlik)
+        if (interactPromptUI != null)
             interactPromptUI.SetActive(active);
-        }
     }
 
     private static IInteractable FindInteractable(Component source)

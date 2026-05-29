@@ -7,7 +7,6 @@ public class ItemData
 {
     public ushort ItemId;       // Eþyanýn Numarasý (Örn: 0)
     public string ItemName;     // Eþyanýn Adý (Örn: "Yeþil Küp")
-    public float ItemPrice;     // Eþyanýn Deðeri (Örn: 100.0)
     public GameObject Prefab;   // 3D Modeli (Ele almak / yere atmak için)
     public Sprite Icon;         // 2D Resmi (UI / Çanta slotu için)
 }
