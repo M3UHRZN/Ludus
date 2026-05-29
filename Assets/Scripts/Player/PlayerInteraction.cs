@@ -198,6 +198,15 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (TryGetPhysicsObject(component, out var physObj))
         {
+            if (physObj.CanPickupToInventory)
+            {
+                if (physObj.NetworkObject == null)
+                    return;
+
+                RequestInventoryPickupServerRpc(new NetworkObjectReference(physObj.NetworkObject));
+                return;
+            }
+
             if (physObj.NetIsHeld.Value)
             {
                 if (debugInteraction)
@@ -262,6 +271,24 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (_machine != null && _machine.LocalState == PlayerStateEnum.Carrying)
             _machine.ChangeState(new AliveState());
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestInventoryPickupServerRpc(NetworkObjectReference targetRef, RpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        if (!targetRef.TryGet(out var targetNob)) return;
+        if (!targetNob.TryGetComponent<PhysicsObject>(out var physObj)) return;
+
+        float dist = Vector3.Distance(transform.position, physObj.transform.position);
+        if (dist > interactRange + 1.5f)
+            return;
+
+        PlayerInventory inventory = _machine != null ? _machine.Inventory : GetComponent<PlayerInventory>();
+        if (inventory == null)
+            return;
+
+        physObj.ServerTryPickupInto(inventory);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]

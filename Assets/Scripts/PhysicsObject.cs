@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -6,6 +7,13 @@ using UnityEngine;
 public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 {
     private const ulong NoGrabberClientId = ulong.MaxValue;
+
+    // Server-side global kayit: su an oyuncularin elindeki TUM lure-trigger eden
+    // objeleri tutar. LureBehavior bu listeden tasiyici sayisini ve konumlarini
+    // okur, FindObjectsByType yapmaktan kacinir. Hold basladi -> add, drop/despawn
+    // -> remove. Sadece _triggersLure=true objeler kayitli (trash sessiz kalir).
+    private static readonly List<PhysicsObject> s_heldItems = new();
+    public static IReadOnlyList<PhysicsObject> HeldItems => s_heldItems;
 
     [Header("Grab Ayarlari")]
     public float grabDistance = 4f;
@@ -18,6 +26,10 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
     [Header("Gorsel Geribildirim")]
     public Material highlightMaterial;
+
+    [Header("Lure (Priest algilamasi)")]
+    [Tooltip("True ise oyuncu bu objeyi aldigi anda priest tipi dusmanlar olayi duyar (LureBehavior). False ise sessizce alinir — trash item icin kullan.")]
+    [SerializeField] private bool _triggersLure = true;
 
     [Header("Firlatma Hasari")]
     [Tooltip("Bir firlatmanin 'hasarli' kabul edildigi pencere (sn). Bu sure icinde dusmana carparsa hasar verir.")]
@@ -36,6 +48,16 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
     public readonly NetworkVariable<ulong> NetGrabberClientId = new(
         NoGrabberClientId,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<bool> NetCanInventoryPickup = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    public readonly NetworkVariable<ushort> NetInventoryItemId = new(
+        0,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
@@ -61,6 +83,15 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     // --- IGrabbable ---
     public float Weight => weight;
     public bool IsHeld => NetIsHeld.Value;
+    public bool CanPickupToInventory => NetCanInventoryPickup.Value;
+    public ushort InventoryItemId => NetInventoryItemId.Value;
+
+    /// <summary>
+    /// Server-side flag: true iken bu obje firlatma penceresi icinde "ucan mermi"
+    /// gibi davranir (carptiginda hasar verir). Dusman AI'nin yolundan it kosesi
+    /// bu durumdaki objeleri itmemeli — yoksa hasari yetistirmeden saptirir.
+    /// </summary>
+    public bool IsActiveThrow => Time.time <= _throwExpiry && !NetIsHeld.Value;
 
     // --- IInteractable ---
     public string InteractPrompt => "E — Pick up";
@@ -121,6 +152,8 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
     public override void OnNetworkDespawn()
     {
         NetGrabberClientId.OnValueChanged -= OnGrabberChanged;
+        // Despawn anindaki "elde tutuluyordu" durumunda kaydi sizdirma — temizle.
+        s_heldItems.Remove(this);
     }
 
     private void OnGrabberChanged(ulong previous, ulong current)
@@ -198,6 +231,20 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
         // Bekleyen "throw penceresi sonu" reenable cagrisini de iptal et.
         CancelInvoke(nameof(ReenableNavObstacle));
         if (_navObstacle != null) _navObstacle.enabled = false;
+
+        // Pickup'i konum + tasinan objenin kendisi referansiyla yayinla: priest
+        // LureBehavior bu objeyi takip eder (taşıyıcıyı kovalar) ve NetIsHeld
+        // false olunca lure'u sonlandirir (drop -> patrol). _triggersLure false
+        // ise sessiz grab (trash item) — duyusal AI etkilenmez.
+        if (_triggersLure)
+        {
+            // Aktif tasiyici kaydina ekle (LureBehavior buradan okur).
+            if (!s_heldItems.Contains(this)) s_heldItems.Add(this);
+
+            int weightInt = Mathf.RoundToInt(weight);
+            GameEventBus.Publish(new ItemPickedUpEvent(
+                name, weightInt, 0f, transform.position, grabberClientId, this));
+        }
     }
 
     public void ServerStopHold()
@@ -213,6 +260,33 @@ public class PhysicsObject : NetworkBehaviour, IGrabbable, IInteractable
 
         // Tekrar carve etmeye basla (yere dustugunde dusmanlar etrafindan dolasir).
         if (_navObstacle != null) _navObstacle.enabled = true;
+
+        // Aktif tasiyici kaydindan cikar — LureBehavior bunu drop sinyali olarak okur.
+        s_heldItems.Remove(this);
+    }
+
+    public void ServerConfigureInventoryPickup(bool canPickup, ushort itemId)
+    {
+        if (!IsServer) return;
+
+        NetCanInventoryPickup.Value = canPickup;
+        NetInventoryItemId.Value = itemId;
+    }
+
+    public bool ServerTryPickupInto(PlayerInventory inventory)
+    {
+        if (!IsServer) return false;
+        if (inventory == null) return false;
+        if (NetIsHeld.Value) return false;
+        if (!NetCanInventoryPickup.Value) return false;
+
+        ushort itemId = NetInventoryItemId.Value;
+        if (!inventory.ServerTryAddItem(itemId))
+            return false;
+
+        NetCanInventoryPickup.Value = false;
+        Invoke(nameof(DespawnSelf), 0f);
+        return true;
     }
 
     public void ServerSetHoldTarget(Vector3 target)

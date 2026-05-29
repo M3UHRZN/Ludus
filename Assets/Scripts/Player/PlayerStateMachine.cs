@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(NetworkObject))]
-public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, IKnockbackable
+public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, IKnockbackable, ISlowable
 {
     /// <summary>
     /// Server-only registry of every spawned PlayerStateMachine. Populated in
@@ -13,6 +13,24 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     /// that revive flows do not need extra plumbing. Empty on non-server peers.
     /// </summary>
     public static readonly List<PlayerStateMachine> ServerPlayers = new();
+
+    /// <summary>
+    /// Server-side: clientId -> PlayerStateMachine arama. Sadece CANLI eslesmeyi
+    /// doner; oyuncu olmus / despawn olmussa null. EnemyController bunu hasar
+    /// kaynagi ve carrier-id resolve etmek icin kullanir.
+    /// </summary>
+    public static PlayerStateMachine GetServerPlayer(ulong clientId)
+    {
+        for (int i = 0; i < ServerPlayers.Count; i++)
+        {
+            var p = ServerPlayers[i];
+            if (p == null) continue;
+            if (p.OwnerClientId != clientId) continue;
+            if (!p.IsAlive) continue;
+            return p;
+        }
+        return null;
+    }
 
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
@@ -23,6 +41,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     public PlayerInventory Inventory { get; private set; }
     public SpectatorController Spectator { get; private set; }
     public PlayerInput PlayerInput { get; private set; }
+    public PlayerDisplayName DisplayNameSource { get; private set; }
 
     public readonly NetworkVariable<byte> NetState = new(
         (byte)PlayerStateEnum.Alive,
@@ -42,7 +61,10 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     // NetState server'dan roundtrip ile gelir; owner local state ise aninda guncellenir.
     public PlayerStateEnum LocalState => _currentState != null ? StateToEnum(_currentState) : (PlayerStateEnum)NetState.Value;
 
-    public Transform SpectateTarget => transform;    public string DisplayName => $"Player-{OwnerClientId}";
+    public Transform SpectateTarget => transform;
+    public string DisplayName => DisplayNameSource != null && !string.IsNullOrWhiteSpace(DisplayNameSource.DisplayName)
+        ? DisplayNameSource.DisplayName
+        : $"Player-{OwnerClientId}";
     public bool CanBeSpectated => IsAlive;
 
     private void Awake()
@@ -53,6 +75,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         Inventory = GetComponent<PlayerInventory>();
         Spectator = GetComponent<SpectatorController>();
         PlayerInput = GetComponent<PlayerInput>();
+        DisplayNameSource = GetComponent<PlayerDisplayName>();
     }
 
     public override void OnNetworkSpawn()
@@ -199,6 +222,25 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
         ForceStun(stunDuration);
         ApplyKnockbackRpc(dir * force);
+    }
+
+    /// <summary>
+    /// ISlowable — dusman mermisi vb. dis kaynak oyuncuyu gecici olarak yavaslatir.
+    /// Server'da tetiklenir, owner'a RPC ile gonderilir. Owner'in PlayerMovement
+    /// scripti slow'u uygular (FearSystem'in hiz cezasiyla carpilarak compose).
+    /// </summary>
+    public void ApplySlow(float multiplier, float duration)
+    {
+        if (!IsServer || !IsAlive) return;
+        if (duration <= 0f) return;
+        ApplySlowRpc(Mathf.Clamp(multiplier, 0.05f, 1f), duration);
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void ApplySlowRpc(float multiplier, float duration)
+    {
+        if (Movement != null)
+            Movement.ApplyTemporarySlow(multiplier, duration);
     }
 
     [Rpc(SendTo.Owner)]

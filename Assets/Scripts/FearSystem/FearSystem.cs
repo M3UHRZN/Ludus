@@ -54,6 +54,17 @@ public class FearSystem : MonoBehaviour
         new DistanceFearEntry { distance = 1f, fear = 95f },
     };
 
+    [Header("Priest Proximity (Type B)")]
+    [Tooltip("Priest tipi dusmanin etkili oldugu sezgi mesafesi. Standart enemyDetectRadius'tan " +
+             "genis tutulur — priest dogaustu sezgi.")]
+    public float priestSensingRange   = 20f;
+    [Tooltip("Priest hemen yanindayken eklenen maksimum bonus korku (mesafeyle quadratic azalir).")]
+    [Range(0f, 50f)] public float priestProximityBonus = 25f;
+    [Tooltip("Vignette uzerine binen sinusoidal titreme miktari (priest yakindayken zil/ışık titreme hissi).")]
+    [Range(0f, 0.3f)] public float priestFlickerAmount    = 0.12f;
+    [Tooltip("Titreme hizi (cycle/sn).")]
+    public float priestFlickerFrequency = 5.5f;
+
     [Header("Event Triggers")]
     [Range(0f, 100f)] public float deathWitnessAdd = 30f;
     [Range(0f, 100f)] public float damageAdd       = 15f;
@@ -112,6 +123,7 @@ public class FearSystem : MonoBehaviour
 
     private float _fearLevel;
     private float _smoothedClosestDistance = float.MaxValue;
+    private float _smoothedPriestDistance  = float.MaxValue;
     private float _smoothedFearTarget;
     private float _panicThresholdTimer;
     private bool  _panicLock;
@@ -257,6 +269,11 @@ public class FearSystem : MonoBehaviour
         float dt          = Time.deltaTime;
         float closestDist = GetClosestEnemyDistance();
         closestDist = GetSmoothedEnemyDistance(closestDist, dt);
+
+        // Priest sezgisi (Type B'ye ozel, daha genis yaricap)
+        float priestDist = GetClosestPriestDistance();
+        priestDist = GetSmoothedPriestDistance(priestDist, dt);
+
         bool  dark        = RenderSettings.ambientIntensity < darkThreshold;
 
         // Calculate target fear based on distance
@@ -264,7 +281,16 @@ public class FearSystem : MonoBehaviour
         if (closestDist < GetEnemySearchRadius())
             fearTarget = GetFearForDistance(closestDist);
 
+        // Priest yakinligi bonus korkusu: priest hemen yanindaysa (0m) maksimum bonus,
+        // sezgi yaricapinda (priestSensingRange) sifir; arasinda quadratic ramp.
+        if (priestDist < priestSensingRange)
+        {
+            float closeness = 1f - (priestDist / priestSensingRange);
+            fearTarget += priestProximityBonus * closeness * closeness;
+        }
+
         if (dark) fearTarget = Mathf.Max(fearTarget, 30f);
+        fearTarget = Mathf.Clamp(fearTarget, 0f, 100f);
 
         // Tehdit yaklasinca korku ANINDA hedefe ziplar (mesafeye gore direkt tepki);
         // tehdit uzaklasinca yavasca iner (gerilim kademeli dagilir).
@@ -312,6 +338,7 @@ public class FearSystem : MonoBehaviour
     {
         _fearLevel = 0f;
         _smoothedClosestDistance = float.MaxValue;
+        _smoothedPriestDistance = float.MaxValue;
         _smoothedFearTarget = 0f;
         _panicThresholdTimer = 0f;
         _panicArmed = true;
@@ -374,6 +401,47 @@ public class FearSystem : MonoBehaviour
         return closest;
     }
 
+    /// <summary>
+    /// En yakin priest (Type B) tipi dusmana olan mesafeyi doner. enemyLayer
+    /// overlap'inden EnemyController'i alip IsPriest filtresi uygulariz; Type A
+    /// (robot) sezgi bonusuna sebep olmaz.
+    /// </summary>
+    private float GetClosestPriestDistance()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, priestSensingRange, enemyLayer);
+        float closest = float.MaxValue;
+        foreach (var h in hits)
+        {
+            var ec = h.GetComponentInParent<EnemyController>();
+            if (ec == null) continue;
+            if (!ec.IsPriest) continue;
+
+            Vector3 closestPoint = h.ClosestPoint(transform.position);
+            float d = Vector3.Distance(transform.position, closestPoint);
+            if (d < closest) closest = d;
+        }
+        return closest;
+    }
+
+    private float GetSmoothedPriestDistance(float rawDistance, float dt)
+    {
+        if (rawDistance == float.MaxValue)
+            rawDistance = priestSensingRange;
+
+        if (_smoothedPriestDistance == float.MaxValue)
+        {
+            _smoothedPriestDistance = rawDistance;
+            return _smoothedPriestDistance;
+        }
+
+        bool approaching = rawDistance < _smoothedPriestDistance;
+        float followSpeed = approaching
+            ? Mathf.Max(distanceApproachFollowSpeed, 25f)
+            : distanceRetreatFollowSpeed;
+        _smoothedPriestDistance = Mathf.MoveTowards(_smoothedPriestDistance, rawDistance, followSpeed * dt);
+        return _smoothedPriestDistance;
+    }
+
     private float GetSmoothedEnemyDistance(float rawDistance, float dt)
     {
         if (rawDistance == float.MaxValue)
@@ -407,7 +475,20 @@ public class FearSystem : MonoBehaviour
         float t = fear / 100f;
 
         if (_vignette != null)
-            _vignette.intensity.Override(Mathf.Lerp(0.2f, 0.65f, t));
+        {
+            float baseIntensity = Mathf.Lerp(0.2f, 0.65f, t);
+
+            // Priest yakindaysa vignette'a sinusoidal titreme bin: bell/yanip-sonen ışık hissi.
+            // Genlik priest yakinligi ile orantili (cok yakin = guclu titreme).
+            if (_smoothedPriestDistance < priestSensingRange)
+            {
+                float closeness = 1f - (_smoothedPriestDistance / priestSensingRange);
+                float wave = Mathf.Sin(Time.unscaledTime * priestFlickerFrequency * Mathf.PI * 2f);
+                baseIntensity += priestFlickerAmount * closeness * wave;
+            }
+
+            _vignette.intensity.Override(Mathf.Clamp01(baseIntensity));
+        }
 
         if (_chromatic != null)
             _chromatic.intensity.Override(
@@ -590,6 +671,8 @@ public class FearSystem : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, GetEnemySearchRadius());
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, nearDeathRadius);
+        Gizmos.color = new Color(0.6f, 0f, 0.8f, 0.4f);   // priest sezgi alani — mor
+        Gizmos.DrawWireSphere(transform.position, priestSensingRange);
 
         // Show distance threshold rings
         if (distanceFearTable != null)

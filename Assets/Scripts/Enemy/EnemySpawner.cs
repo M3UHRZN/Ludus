@@ -42,8 +42,23 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("MapReadyEvent'ten sonra ilk enemy ne kadar sure sonra cikar")]
     [SerializeField] private float _firstSpawnDelay = 5f;
 
-    [Tooltip("Iki ardisik spawn arasi sure (saniye)")]
-    [SerializeField] private float _spawnInterval = 15f;
+    [Tooltip("INITIAL FILL fazinda iki ardisik spawn arasi sure (saniye). Bu sirada " +
+             "harita hizli doldurulur (oyuncu daha sahneyi tanirken).")]
+    [SerializeField] private float _spawnInterval = 8f;
+
+    [Tooltip("RESPAWN fazinda (initial fill tamamlandiktan sonra) bir Type A oldukten " +
+             "sonra yenisinin gelmesi icin bekleme suresi. Priest (Type B) yine respawn " +
+             "etmez - cap-1 (_rareEnemyMaxCount).")]
+    [SerializeField] private float _respawnDelay = 35f;
+
+    [Tooltip("True ise canli oyuncunun GORUS HATTINDA olan spawn point'ler tercih " +
+             "edilmez (dusman oyuncunun gozunun onunde belirmesin). LOS-blocked nokta " +
+             "yoksa fallback olarak normal mesafe filtresi kullanilir.")]
+    [SerializeField] private bool _avoidLineOfSight = true;
+
+    [Tooltip("LOS kontrolu icin maksimum kontrol mesafesi. Bu mesafenin uzaginda olan " +
+             "spawn point'ler 'oyuncu gormez' kabul edilir (raycast atilmaz).")]
+    [SerializeField] private float _losCheckRange = 35f;
 
     [Header("Patrol Bagi")]
     [Tooltip("Spawn'da yakin patrol grubu aramak icin maks. mesafe")]
@@ -63,11 +78,26 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("Fallback durumda Start'tan sonra ne kadar bekle")]
     [SerializeField] private float _fallbackStartDelay = 2f;
 
+    [Header("Loot Room Guardian (Feature 2)")]
+    [Tooltip("Loot odalarinda dedicated robot bekciler spawn edilsin mi (oyuncuya zorluk + 'oh dusunmusler' hissi).")]
+    [SerializeField] private bool _spawnLootGuardians = true;
+    [Tooltip("MapReadyEvent'ten sonra item'larin spawn olmasini beklemek icin gecikme.")]
+    [SerializeField] private float _lootGuardianDelay = 3f;
+    [Tooltip("Toplam max kac loot guardian doganlir (cok olmasin, oyuncu nefes alsin).")]
+    [SerializeField] private int _lootGuardianCap = 3;
+    [Tooltip("Bir odaya guardian uretebilmek icin oda icindeki minimum item sayisi.")]
+    [SerializeField] private int _minItemsPerLootRoom = 2;
+    [Tooltip("Guardian'in gorus mesafesi (varsayilan 15m'den dusuk; sneak'e izin verir).")]
+    [SerializeField] private float _guardianSightRange = 11f;
+    [Tooltip("Guardian'in ranged saldiri tetik mesafesi (varsayilan 12m'den dusuk).")]
+    [SerializeField] private float _guardianAttackRange = 9f;
+
     private int _targetEnemyCount;
     private int _aliveCount;
     private bool _waveLoopActive;
     private Coroutine _waveLoop;
     private int _rareSpawned;
+    private bool _initialFillComplete;  // false -> _spawnInterval, true -> _respawnDelay
 
     public override void OnNetworkSpawn()
     {
@@ -115,6 +145,133 @@ public class EnemySpawner : NetworkBehaviour
         _targetEnemyCount = CalculateTarget(evt.RoomCount);
         Debug.Log($"[EnemySpawner] MapReadyEvent alindi (rooms={evt.RoomCount}). Target enemy count: {_targetEnemyCount}.");
         StartWaveLoop();
+
+        // Item'lar genelde MapReadyEvent ile yakin zamanda spawn olur ama
+        // exact siralama garanti degil — kucuk bir gecikmeyle loot odalarini
+        // tariyoruz. Wave loop'undan AYRI (extra) guardian'lar uretilir.
+        if (_spawnLootGuardians && evt.RoomBounds != null && evt.RoomBounds.Length > 0)
+            StartCoroutine(SpawnLootGuardiansDelayed(evt.RoomBounds));
+    }
+
+    /// <summary>
+    /// Item'lar spawn olduktan sonra hangi odalarda item oldugunu tespit eder
+    /// ve top-N odanin merkezine 1 robot guardian doğurur. Bu robotlar
+    /// SetupAsLootGuardian ile yapilandirilir: oda disina cikmazlar, gorus
+    /// kisa, oyuncu sneak edebilir; ama gorurse lazer + ates yapar.
+    /// </summary>
+    private IEnumerator SpawnLootGuardiansDelayed(Bounds[] roomBounds)
+    {
+        yield return new WaitForSeconds(_lootGuardianDelay);
+
+        var items = FindObjectsByType<BaseItem>(FindObjectsSortMode.None);
+        if (items == null || items.Length == 0)
+        {
+            Debug.Log("[EnemySpawner] Loot guardian icin item bulunamadi — atlandi.");
+            yield break;
+        }
+
+        // Her oda icin item sayisini topla
+        int[] itemsInRoom = new int[roomBounds.Length];
+        for (int r = 0; r < roomBounds.Length; r++)
+        {
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i] == null) continue;
+                if (roomBounds[r].Contains(items[i].transform.position))
+                    itemsInRoom[r]++;
+            }
+        }
+
+        // Min eşigin altinda olmayan odalari sayilarina gore sirala (desc)
+        var ranked = new List<(int idx, int count)>();
+        for (int r = 0; r < itemsInRoom.Length; r++)
+        {
+            if (itemsInRoom[r] >= _minItemsPerLootRoom)
+                ranked.Add((r, itemsInRoom[r]));
+        }
+        ranked.Sort((a, b) => b.count.CompareTo(a.count));
+
+        int spawnCount = Mathf.Min(_lootGuardianCap, ranked.Count);
+        Debug.Log($"[EnemySpawner] Loot guardian taramasi: {ranked.Count} aday oda, {spawnCount} guardian uretilecek.");
+
+        for (int i = 0; i < spawnCount; i++)
+            SpawnLootGuardianInRoom(roomBounds[ranked[i].idx]);
+    }
+
+    /// <summary>
+    /// Oda merkezi yakininda NavMesh'e snap'lenmis bir noktada robot (Type A)
+    /// instantiate eder, NetworkObject.Spawn ile replicate eder, sonra
+    /// SetupAsLootGuardian ile guardian moduna gecirir. Bu robotlar EnemyDied
+    /// event'ini de tetikler (alive count azalir) ama wave loop'una sayilmaz
+    /// (counter ayri); wave bagimsiz devam eder.
+    /// </summary>
+    private void SpawnLootGuardianInRoom(Bounds roomBounds)
+    {
+        if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return;
+        GameObject prefab = _enemyPrefabs[0]; // Type A (robot) garantili
+        if (prefab == null) return;
+
+        Vector3 raw = roomBounds.center;
+        Vector3 spawnPos = raw;
+        if (NavMesh.SamplePosition(raw, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+            spawnPos = hit.position;
+
+        Quaternion rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        var enemyGo = Instantiate(prefab, spawnPos, rot);
+        var netObj = enemyGo.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogError($"[EnemySpawner] Guardian prefab'inda NetworkObject yok: {prefab.name}");
+            Destroy(enemyGo);
+            return;
+        }
+        netObj.Spawn(true);
+
+        var agent = enemyGo.GetComponent<NavMeshAgent>();
+        if (agent != null) agent.avoidancePriority = Random.Range(20, 80);
+
+        var ctrl = enemyGo.GetComponent<EnemyController>();
+        if (ctrl != null)
+        {
+            Transform[] roomCorners = BuildRoomCornerWaypoints(roomBounds, enemyGo.transform);
+            ctrl.SetupAsLootGuardian(_guardianSightRange, _guardianAttackRange, roomCorners);
+        }
+
+        _aliveCount++;
+        Debug.Log($"[EnemySpawner] Loot guardian spawn edildi (oda merkezi={roomBounds.center}). Alive: {_aliveCount}.");
+    }
+
+    /// <summary>
+    /// Oda Bounds'inin 4 kose noktasinda runtime Transform'lar uretip patrol
+    /// waypoint'leri olarak doner. Y'yi spawn pos'undan alir (multi-level
+    /// olabilir). Robot bu kose listesi arasinda turlayarak odayi "korur".
+    /// </summary>
+    private Transform[] BuildRoomCornerWaypoints(Bounds roomBounds, Transform parent)
+    {
+        Vector3 c = roomBounds.center;
+        Vector3 e = roomBounds.extents * 0.6f; // tam kose yerine biraz ic
+        float y = parent.position.y;
+
+        Vector3[] corners = {
+            new Vector3(c.x - e.x, y, c.z - e.z),
+            new Vector3(c.x + e.x, y, c.z - e.z),
+            new Vector3(c.x + e.x, y, c.z + e.z),
+            new Vector3(c.x - e.x, y, c.z + e.z),
+        };
+
+        var list = new List<Transform>(4);
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 wp = corners[i];
+            if (NavMesh.SamplePosition(wp, out NavMeshHit h, 3f, NavMesh.AllAreas))
+                wp = h.position;
+
+            var go = new GameObject($"GuardianWP_{i}");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            go.transform.position = wp;
+            list.Add(go.transform);
+        }
+        return list.ToArray();
     }
 
     private void FallbackStart()
@@ -147,7 +304,10 @@ public class EnemySpawner : NetworkBehaviour
             if (_aliveCount < _targetEnemyCount)
                 TrySpawnOne();
 
-            yield return new WaitForSeconds(_spawnInterval);
+            // Initial fill devam ediyorsa hizli interval; tamamlandiysa yavas respawn.
+            // Faz gecisi TrySpawnOne icinde aliveCount ilk kez target'a ulasinca yapilir.
+            float interval = _initialFillComplete ? _respawnDelay : _spawnInterval;
+            yield return new WaitForSeconds(interval);
         }
     }
 
@@ -209,7 +369,17 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         _aliveCount++;
-        Debug.Log($"[EnemySpawner] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
+
+        // Initial fill bittiyse faz gecisi yap — bundan sonra wave loop respawn delay'e
+        // baglanir (35sn default). Bir kez true, hep true (ölum gelse de respawn modu).
+        string phase = _initialFillComplete ? "RESPAWN" : "INITIAL_FILL";
+        if (!_initialFillComplete && _aliveCount >= _targetEnemyCount)
+        {
+            _initialFillComplete = true;
+            Debug.Log($"[EnemySpawner] Initial fill tamamlandi. Respawn fazina geciliyor (delay={_respawnDelay}s).");
+        }
+
+        Debug.Log($"[EnemySpawner] [{phase}] Yeni enemy spawn edildi ({prefab.name}). Alive: {_aliveCount}/{_targetEnemyCount}.");
         return true;
     }
 
@@ -233,39 +403,88 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     /// <summary>
-    /// Player'dan min mesafede ve (varsa) max mesafenin altinda olan spawn point'leri filtreleyip
-    /// rastgele birini doner. Player bulunamazsa veya filtre bos donerse fallback olarak
-    /// havuzdan rastgele dondurur.
+    /// Spawn point secim zinciri:
+    ///   1. Mesafe filtresi (TUM canli oyunculardan min-max araliginda olanlar)
+    ///   2. LOS filtresi (hicbir oyuncunun gormedigi noktalar tercih edilir)
+    ///   3. Filtre bos donerse soft fallback (mesafe-only, sonra rastgele)
+    /// Multiplayer'da TUM oyunculara karsi check yapilir — bir oyuncu gorse bile elenir.
     /// </summary>
     private EnemySpawnPoint PickSpawnPoint(EnemySpawnPoint[] candidates)
     {
-        var playerObj = GameObject.FindWithTag("Player");
-        if (playerObj == null)
+        var players = PlayerStateMachine.ServerPlayers;
+        if (players == null || players.Count == 0)
             return candidates[Random.Range(0, candidates.Length)];
 
-        Vector3 playerPos = playerObj.transform.position;
         float minSqr = _minDistanceFromPlayer * _minDistanceFromPlayer;
         float maxSqr = _maxDistanceFromPlayer > 0f
             ? _maxDistanceFromPlayer * _maxDistanceFromPlayer
             : float.MaxValue;
 
-        var filtered = new List<EnemySpawnPoint>(candidates.Length);
+        // 1) Mesafe filtresi (tum canli oyunculara karsi min/max kontrol)
+        var distanceOk = new List<EnemySpawnPoint>(candidates.Length);
         foreach (var sp in candidates)
         {
             if (sp == null) continue;
-            float sqr = (sp.transform.position - playerPos).sqrMagnitude;
-            if (sqr < minSqr) continue;
-            if (sqr > maxSqr) continue;
-            filtered.Add(sp);
+            if (IsWithinAcceptableDistance(sp.transform.position, players, minSqr, maxSqr))
+                distanceOk.Add(sp);
         }
 
-        if (filtered.Count == 0)
+        if (distanceOk.Count == 0)
         {
-            Debug.LogWarning("[EnemySpawner] Player mesafe filtresi sonucu bos. Rastgele spawn'a fallback.");
+            Debug.LogWarning("[EnemySpawner] Mesafe filtresi sonucu bos. Rastgele spawn fallback.");
             return candidates[Random.Range(0, candidates.Length)];
         }
 
-        return filtered[Random.Range(0, filtered.Count)];
+        // 2) LOS filtresi (oyuncularin gormedigi noktalar tercih)
+        if (!_avoidLineOfSight) return distanceOk[Random.Range(0, distanceOk.Count)];
+
+        var losBlocked = new List<EnemySpawnPoint>(distanceOk.Count);
+        foreach (var sp in distanceOk)
+        {
+            if (!IsVisibleToAnyAlivePlayer(sp.transform.position, players))
+                losBlocked.Add(sp);
+        }
+
+        if (losBlocked.Count > 0) return losBlocked[Random.Range(0, losBlocked.Count)];
+
+        // 3) Hicbir LOS-blocked nokta yok — distance-only fallback
+        Debug.LogWarning("[EnemySpawner] Tum mesafe-OK spawn noktalari LOS'ta. Distance-only fallback.");
+        return distanceOk[Random.Range(0, distanceOk.Count)];
+    }
+
+    private bool IsWithinAcceptableDistance(Vector3 pos, List<PlayerStateMachine> players, float minSqr, float maxSqr)
+    {
+        // Spawn point HER canli oyuncudan min mesafenin disinda olmali
+        // (bir oyuncudan uzak bile olsa baska bir oyuncunun burnunde olmamali)
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null || !p.IsAlive) continue;
+            float sqr = (pos - p.transform.position).sqrMagnitude;
+            if (sqr < minSqr) return false;
+            if (sqr > maxSqr) return false; // max var ise (0 = limit yok)
+        }
+        return true;
+    }
+
+    private bool IsVisibleToAnyAlivePlayer(Vector3 pos, List<PlayerStateMachine> players)
+    {
+        Vector3 spawnEye = pos + Vector3.up * 1.5f;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var p = players[i];
+            if (p == null || !p.IsAlive) continue;
+            Vector3 playerEye = p.transform.position + Vector3.up * 1.5f;
+            Vector3 dir = spawnEye - playerEye;
+            float dist = dir.magnitude;
+            if (dist > _losCheckRange) continue;
+            if (dist < 0.01f) return true;
+
+            // Engelsiz yol varsa oyuncu gorur — kotu nokta
+            if (!Physics.Raycast(playerEye, dir.normalized, dist))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
