@@ -35,6 +35,22 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
+    [Header("Death Drop")]
+    [Tooltip("Olunce envanterdeki esyalar yere dokulsun mu? Co-op kurtarma akisi icin true.")]
+    [SerializeField] private bool _dropItemsOnDeath = true;
+
+    [Tooltip("Olunce ceset prefab'i spawn edilsin mi? Diger oyuncular tasiyabilir, infirmary'ye getirebilir.")]
+    [SerializeField] private bool _spawnCorpseOnDeath = true;
+
+    [Tooltip("Ceset prefab'i (CorpseItem + PhysicsObject + NetworkObject). Bos ise ceset spawn atlanir.")]
+    [SerializeField] private GameObject _corpsePrefab;
+
+    [Tooltip("Eldeki/envanterdeki esyalar bu yaricap icinde rastgele yerlerde dokulur (yiginda kalmasin diye).")]
+    [SerializeField] private float _itemDropScatterRadius = 1.5f;
+
+    [Tooltip("Esya drop yerden bu yukseklikte spawn edilir (zemine yerlessin diye).")]
+    [SerializeField] private float _itemDropHeightOffset = 0.6f;
+
     public PlayerMovement Movement { get; private set; }
     public PlayerLook Look { get; private set; }
     public PlayerInteraction Interaction { get; private set; }
@@ -340,10 +356,116 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
         if (NetHealth.Value <= 0f)
         {
+            // Co-op kurtarma akisinin temeli: olunce elindeki + envanterdeki
+            // esyalari yere dok ve ceset prefab'ini spawn et. Sira onemli —
+            // event PUBLISH'ten ONCE drop ki dinleyiciler (ExtractionManager,
+            // priest LureBehavior, vs.) "olu oyuncunun yere dokulen esyalari"
+            // gorebilsin.
+            if (_dropItemsOnDeath)
+            {
+                ServerDropHeldObjectOnDeath();
+                ServerDropInventoryItemsOnDeath();
+            }
+            if (_spawnCorpseOnDeath)
+                ServerSpawnCorpse();
+
             GameEventBus.Publish(new PlayerDiedEvent(
                 (int)OwnerClientId, transform.position));
             NetState.Value = (byte)PlayerStateEnum.Dead;
         }
+    }
+
+    /// <summary>
+    /// Server-only: oyuncu elinde tuttugu PhysicsObject varsa ServerStopHold
+    /// cagirarak birakir. Boylece NetIsHeld false olur, baska oyuncular
+    /// (veya priest LureBehavior'in HeldItems registry'si) dogru state'i okur.
+    /// </summary>
+    private void ServerDropHeldObjectOnDeath()
+    {
+        if (Interaction == null) return;
+        var held = Interaction.HeldObject;
+        if (held == null) return;
+        if (!held.IsHeld) return;
+        held.ServerStopHold();
+    }
+
+    /// <summary>
+    /// Server-only: PlayerInventory.Slots'taki tum item ID'leri icin
+    /// ItemDatabase'den prefab cek, olum pozisyonu civarinda rastgele
+    /// noktalarda NetworkObject.Spawn et. Sonra Slots'u temizle.
+    /// Slot bos veya ItemDatabase null ise sessizce atlanir.
+    /// </summary>
+    private void ServerDropInventoryItemsOnDeath()
+    {
+        if (Inventory == null) return;
+        if (Inventory.Slots == null || Inventory.Slots.Count == 0) return;
+
+        var db = ItemDatabase.Instance;
+        if (db == null)
+        {
+            Debug.LogWarning("[PlayerStateMachine] ItemDatabase yok, envanter drop atlandi.");
+            return;
+        }
+
+        Vector3 origin = transform.position + Vector3.up * _itemDropHeightOffset;
+        int dropped = 0;
+        for (int i = 0; i < Inventory.Slots.Count; i++)
+        {
+            ushort itemId = Inventory.Slots[i];
+            var prefab = db.GetPrefab(itemId);
+            if (prefab == null) continue;
+
+            // Rastgele yatay sapma — esyalar tek noktada ust uste yigilmasin
+            Vector2 planar = Random.insideUnitCircle * _itemDropScatterRadius;
+            Vector3 pos = origin + new Vector3(planar.x, 0f, planar.y);
+
+            var go = Instantiate(prefab, pos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            var netObj = go.GetComponent<NetworkObject>();
+            if (netObj == null)
+            {
+                Debug.LogWarning($"[PlayerStateMachine] '{prefab.name}' uzerinde NetworkObject yok, drop iptal.");
+                Destroy(go);
+                continue;
+            }
+            netObj.Spawn(true);
+            dropped++;
+        }
+
+        // Envanteri temizle (server-side NetworkList yazma)
+        Inventory.Slots.Clear();
+
+        if (dropped > 0)
+            Debug.Log($"[PlayerStateMachine] Olum sirasinda {dropped} esya yere dokuldu.");
+    }
+
+    /// <summary>
+    /// Server-only: ceset prefab'i olum pozisyonunda spawn eder, CorpseItem.Initialize
+    /// cagirarak owner identity yazar. Diger oyuncular ceseti kaldirip Yasin'in
+    /// extraction/infirmary akisini calistirabilir.
+    /// </summary>
+    private void ServerSpawnCorpse()
+    {
+        if (_corpsePrefab == null) return;
+
+        var corpseGo = Instantiate(
+            _corpsePrefab,
+            transform.position + Vector3.up * _itemDropHeightOffset,
+            transform.rotation);
+
+        var netObj = corpseGo.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogError($"[PlayerStateMachine] Corpse prefab '{_corpsePrefab.name}' uzerinde NetworkObject yok.");
+            Destroy(corpseGo);
+            return;
+        }
+        netObj.Spawn(true);
+
+        var corpseItem = corpseGo.GetComponent<CorpseItem>();
+        if (corpseItem != null)
+            corpseItem.Initialize(DisplayName, OwnerClientId);
+
+        Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {DisplayName} (clientId={OwnerClientId}).");
     }
 
     private static PlayerStateEnum StateToEnum(IPlayerState state) => state switch
