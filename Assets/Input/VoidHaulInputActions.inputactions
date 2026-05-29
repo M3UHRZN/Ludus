@@ -61,9 +61,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Throw",
+                    "name": "Drop",
                     "type": "Button",
-                    "id": "0d03baf7-f86d-43d6-9c2d-84bf2923b0cc",
+                    "id": "b8aafd8c-c82b-4445-9fb6-7ad157040f40",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "UseItem",
+                    "type": "Button",
+                    "id": "adc13cfb-978c-45a6-a46c-55a5f54f191f",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -79,9 +88,9 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Flashlight",
+                    "name": "Throw",
                     "type": "Button",
-                    "id": "adc13cfb-978c-45a6-a46c-55a5f54f191f",
+                    "id": "0d03baf7-f86d-43d6-9c2d-84bf2923b0cc",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -95,15 +104,6 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
-                },
-                {
-                    "name": "UseItem",
-                    "type": "Button",
-                    "id": "8b46fc9c-f36e-4aab-aec2-ce3b9031f4fd",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 },
                 {
                     "name": "Emote1",
@@ -136,15 +136,6 @@
                     "name": "WalkieTalkie",
                     "type": "Button",
                     "id": "37bd5fe0-9966-4a81-86fb-5cb74161e84f",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "Drop",
-                    "type": "Button",
-                    "id": "b8aafd8c-c82b-4445-9fb6-7ad157040f40",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -300,7 +291,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Flashlight",
+                    "action": "UseItem",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -312,17 +303,6 @@
                     "processors": "",
                     "groups": "",
                     "action": "Scroll",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "de88aaef-e2ad-4217-91c9-6b35784391ed",
-                    "path": "<Mouse>/rightButton",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "UseItem",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

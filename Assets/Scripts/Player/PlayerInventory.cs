@@ -114,8 +114,7 @@ public class PlayerInventory : NetworkBehaviour
         if (_scrollAction == null) return;
         HandleScroll();
 
-        bool usePressed = _useAction.WasPressedThisFrame() ||
-                          (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame);
+        bool usePressed = _useAction != null && _useAction.WasPressedThisFrame();
         if (usePressed)
             UseActiveItem();
 

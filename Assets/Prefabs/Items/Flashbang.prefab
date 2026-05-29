@@ -135,7 +135,7 @@ BoxCollider:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 320
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
@@ -162,7 +162,7 @@ Rigidbody:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
@@ -271,11 +271,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Flashbang
   ShowTopMostFoldoutHeaderGroup: 1
   definition: {fileID: 11400000, guid: 9bc5250238d7690499f9b84971229cff, type: 2}
-  throwSpeed: 45
-  upwardBoost: 1.5
   fuseTime: 1.6
   armTime: 0.2
-  blastRadius: 5
+  blastRadius: 8
   blindDuration: 2.5
   peakAlpha: 1
   enemyStunDuration: 3

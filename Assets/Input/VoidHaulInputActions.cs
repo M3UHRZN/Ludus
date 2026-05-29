@@ -147,9 +147,18 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Throw"",
+                    ""name"": ""Drop"",
                     ""type"": ""Button"",
-                    ""id"": ""0d03baf7-f86d-43d6-9c2d-84bf2923b0cc"",
+                    ""id"": ""b8aafd8c-c82b-4445-9fb6-7ad157040f40"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""UseItem"",
+                    ""type"": ""Button"",
+                    ""id"": ""adc13cfb-978c-45a6-a46c-55a5f54f191f"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -165,9 +174,9 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Flashlight"",
+                    ""name"": ""Throw"",
                     ""type"": ""Button"",
-                    ""id"": ""adc13cfb-978c-45a6-a46c-55a5f54f191f"",
+                    ""id"": ""0d03baf7-f86d-43d6-9c2d-84bf2923b0cc"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -181,15 +190,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
-                },
-                {
-                    ""name"": ""UseItem"",
-                    ""type"": ""Button"",
-                    ""id"": ""8b46fc9c-f36e-4aab-aec2-ce3b9031f4fd"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
                 },
                 {
                     ""name"": ""Emote1"",
@@ -222,15 +222,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""name"": ""WalkieTalkie"",
                     ""type"": ""Button"",
                     ""id"": ""37bd5fe0-9966-4a81-86fb-5cb74161e84f"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""Drop"",
-                    ""type"": ""Button"",
-                    ""id"": ""b8aafd8c-c82b-4445-9fb6-7ad157040f40"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -386,7 +377,7 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Flashlight"",
+                    ""action"": ""UseItem"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -398,17 +389,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Scroll"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
-                    ""id"": ""de88aaef-e2ad-4217-91c9-6b35784391ed"",
-                    ""path"": ""<Mouse>/rightButton"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""UseItem"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -708,16 +688,15 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         m_Gameplay_Crouch = m_Gameplay.FindAction("Crouch", throwIfNotFound: true);
         m_Gameplay_Sprint = m_Gameplay.FindAction("Sprint", throwIfNotFound: true);
         m_Gameplay_Interact = m_Gameplay.FindAction("Interact", throwIfNotFound: true);
-        m_Gameplay_Throw = m_Gameplay.FindAction("Throw", throwIfNotFound: true);
-        m_Gameplay_Hold = m_Gameplay.FindAction("Hold", throwIfNotFound: true);
-        m_Gameplay_Flashlight = m_Gameplay.FindAction("Flashlight", throwIfNotFound: true);
-        m_Gameplay_Scroll = m_Gameplay.FindAction("Scroll", throwIfNotFound: true);
+        m_Gameplay_Drop = m_Gameplay.FindAction("Drop", throwIfNotFound: true);
         m_Gameplay_UseItem = m_Gameplay.FindAction("UseItem", throwIfNotFound: true);
+        m_Gameplay_Hold = m_Gameplay.FindAction("Hold", throwIfNotFound: true);
+        m_Gameplay_Throw = m_Gameplay.FindAction("Throw", throwIfNotFound: true);
+        m_Gameplay_Scroll = m_Gameplay.FindAction("Scroll", throwIfNotFound: true);
         m_Gameplay_Emote1 = m_Gameplay.FindAction("Emote1", throwIfNotFound: true);
         m_Gameplay_Emote2 = m_Gameplay.FindAction("Emote2", throwIfNotFound: true);
         m_Gameplay_Emote3 = m_Gameplay.FindAction("Emote3", throwIfNotFound: true);
         m_Gameplay_WalkieTalkie = m_Gameplay.FindAction("WalkieTalkie", throwIfNotFound: true);
-        m_Gameplay_Drop = m_Gameplay.FindAction("Drop", throwIfNotFound: true);
         m_Gameplay_Table = m_Gameplay.FindAction("Table", throwIfNotFound: true);
         // Spectator
         m_Spectator = asset.FindActionMap("Spectator", throwIfNotFound: true);
@@ -818,16 +797,15 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Gameplay_Crouch;
     private readonly InputAction m_Gameplay_Sprint;
     private readonly InputAction m_Gameplay_Interact;
-    private readonly InputAction m_Gameplay_Throw;
-    private readonly InputAction m_Gameplay_Hold;
-    private readonly InputAction m_Gameplay_Flashlight;
-    private readonly InputAction m_Gameplay_Scroll;
+    private readonly InputAction m_Gameplay_Drop;
     private readonly InputAction m_Gameplay_UseItem;
+    private readonly InputAction m_Gameplay_Hold;
+    private readonly InputAction m_Gameplay_Throw;
+    private readonly InputAction m_Gameplay_Scroll;
     private readonly InputAction m_Gameplay_Emote1;
     private readonly InputAction m_Gameplay_Emote2;
     private readonly InputAction m_Gameplay_Emote3;
     private readonly InputAction m_Gameplay_WalkieTalkie;
-    private readonly InputAction m_Gameplay_Drop;
     private readonly InputAction m_Gameplay_Table;
     /// <summary>
     /// Provides access to input actions defined in input action map "Gameplay".
@@ -865,25 +843,25 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @Interact => m_Wrapper.m_Gameplay_Interact;
         /// <summary>
-        /// Provides access to the underlying input action "Gameplay/Throw".
+        /// Provides access to the underlying input action "Gameplay/Drop".
         /// </summary>
-        public InputAction @Throw => m_Wrapper.m_Gameplay_Throw;
+        public InputAction @Drop => m_Wrapper.m_Gameplay_Drop;
+        /// <summary>
+        /// Provides access to the underlying input action "Gameplay/UseItem".
+        /// </summary>
+        public InputAction @UseItem => m_Wrapper.m_Gameplay_UseItem;
         /// <summary>
         /// Provides access to the underlying input action "Gameplay/Hold".
         /// </summary>
         public InputAction @Hold => m_Wrapper.m_Gameplay_Hold;
         /// <summary>
-        /// Provides access to the underlying input action "Gameplay/Flashlight".
+        /// Provides access to the underlying input action "Gameplay/Throw".
         /// </summary>
-        public InputAction @Flashlight => m_Wrapper.m_Gameplay_Flashlight;
+        public InputAction @Throw => m_Wrapper.m_Gameplay_Throw;
         /// <summary>
         /// Provides access to the underlying input action "Gameplay/Scroll".
         /// </summary>
         public InputAction @Scroll => m_Wrapper.m_Gameplay_Scroll;
-        /// <summary>
-        /// Provides access to the underlying input action "Gameplay/UseItem".
-        /// </summary>
-        public InputAction @UseItem => m_Wrapper.m_Gameplay_UseItem;
         /// <summary>
         /// Provides access to the underlying input action "Gameplay/Emote1".
         /// </summary>
@@ -900,10 +878,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Gameplay/WalkieTalkie".
         /// </summary>
         public InputAction @WalkieTalkie => m_Wrapper.m_Gameplay_WalkieTalkie;
-        /// <summary>
-        /// Provides access to the underlying input action "Gameplay/Drop".
-        /// </summary>
-        public InputAction @Drop => m_Wrapper.m_Gameplay_Drop;
         /// <summary>
         /// Provides access to the underlying input action "Gameplay/Table".
         /// </summary>
@@ -952,21 +926,21 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
             @Interact.started += instance.OnInteract;
             @Interact.performed += instance.OnInteract;
             @Interact.canceled += instance.OnInteract;
-            @Throw.started += instance.OnThrow;
-            @Throw.performed += instance.OnThrow;
-            @Throw.canceled += instance.OnThrow;
-            @Hold.started += instance.OnHold;
-            @Hold.performed += instance.OnHold;
-            @Hold.canceled += instance.OnHold;
-            @Flashlight.started += instance.OnFlashlight;
-            @Flashlight.performed += instance.OnFlashlight;
-            @Flashlight.canceled += instance.OnFlashlight;
-            @Scroll.started += instance.OnScroll;
-            @Scroll.performed += instance.OnScroll;
-            @Scroll.canceled += instance.OnScroll;
+            @Drop.started += instance.OnDrop;
+            @Drop.performed += instance.OnDrop;
+            @Drop.canceled += instance.OnDrop;
             @UseItem.started += instance.OnUseItem;
             @UseItem.performed += instance.OnUseItem;
             @UseItem.canceled += instance.OnUseItem;
+            @Hold.started += instance.OnHold;
+            @Hold.performed += instance.OnHold;
+            @Hold.canceled += instance.OnHold;
+            @Throw.started += instance.OnThrow;
+            @Throw.performed += instance.OnThrow;
+            @Throw.canceled += instance.OnThrow;
+            @Scroll.started += instance.OnScroll;
+            @Scroll.performed += instance.OnScroll;
+            @Scroll.canceled += instance.OnScroll;
             @Emote1.started += instance.OnEmote1;
             @Emote1.performed += instance.OnEmote1;
             @Emote1.canceled += instance.OnEmote1;
@@ -979,9 +953,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
             @WalkieTalkie.started += instance.OnWalkieTalkie;
             @WalkieTalkie.performed += instance.OnWalkieTalkie;
             @WalkieTalkie.canceled += instance.OnWalkieTalkie;
-            @Drop.started += instance.OnDrop;
-            @Drop.performed += instance.OnDrop;
-            @Drop.canceled += instance.OnDrop;
             @Table.started += instance.OnTable;
             @Table.performed += instance.OnTable;
             @Table.canceled += instance.OnTable;
@@ -1014,21 +985,21 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
             @Interact.started -= instance.OnInteract;
             @Interact.performed -= instance.OnInteract;
             @Interact.canceled -= instance.OnInteract;
-            @Throw.started -= instance.OnThrow;
-            @Throw.performed -= instance.OnThrow;
-            @Throw.canceled -= instance.OnThrow;
-            @Hold.started -= instance.OnHold;
-            @Hold.performed -= instance.OnHold;
-            @Hold.canceled -= instance.OnHold;
-            @Flashlight.started -= instance.OnFlashlight;
-            @Flashlight.performed -= instance.OnFlashlight;
-            @Flashlight.canceled -= instance.OnFlashlight;
-            @Scroll.started -= instance.OnScroll;
-            @Scroll.performed -= instance.OnScroll;
-            @Scroll.canceled -= instance.OnScroll;
+            @Drop.started -= instance.OnDrop;
+            @Drop.performed -= instance.OnDrop;
+            @Drop.canceled -= instance.OnDrop;
             @UseItem.started -= instance.OnUseItem;
             @UseItem.performed -= instance.OnUseItem;
             @UseItem.canceled -= instance.OnUseItem;
+            @Hold.started -= instance.OnHold;
+            @Hold.performed -= instance.OnHold;
+            @Hold.canceled -= instance.OnHold;
+            @Throw.started -= instance.OnThrow;
+            @Throw.performed -= instance.OnThrow;
+            @Throw.canceled -= instance.OnThrow;
+            @Scroll.started -= instance.OnScroll;
+            @Scroll.performed -= instance.OnScroll;
+            @Scroll.canceled -= instance.OnScroll;
             @Emote1.started -= instance.OnEmote1;
             @Emote1.performed -= instance.OnEmote1;
             @Emote1.canceled -= instance.OnEmote1;
@@ -1041,9 +1012,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
             @WalkieTalkie.started -= instance.OnWalkieTalkie;
             @WalkieTalkie.performed -= instance.OnWalkieTalkie;
             @WalkieTalkie.canceled -= instance.OnWalkieTalkie;
-            @Drop.started -= instance.OnDrop;
-            @Drop.performed -= instance.OnDrop;
-            @Drop.canceled -= instance.OnDrop;
             @Table.started -= instance.OnTable;
             @Table.performed -= instance.OnTable;
             @Table.canceled -= instance.OnTable;
@@ -1390,12 +1358,19 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnInteract(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Throw" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Drop" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnThrow(InputAction.CallbackContext context);
+        void OnDrop(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "UseItem" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnUseItem(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Hold" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
@@ -1404,12 +1379,12 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnHold(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Flashlight" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Throw" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnFlashlight(InputAction.CallbackContext context);
+        void OnThrow(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Scroll" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
@@ -1417,13 +1392,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnScroll(InputAction.CallbackContext context);
-        /// <summary>
-        /// Method invoked when associated input action "UseItem" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-        /// </summary>
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnUseItem(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Emote1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
@@ -1452,13 +1420,6 @@ public partial class @VoidHaulInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnWalkieTalkie(InputAction.CallbackContext context);
-        /// <summary>
-        /// Method invoked when associated input action "Drop" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-        /// </summary>
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnDrop(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Table" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>

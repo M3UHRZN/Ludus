@@ -38,8 +38,9 @@ public class PlayerInteraction : NetworkBehaviour
     private InputAction _interactAction;
     private InputAction _throwAction;
     private InputAction _scrollAction;
-    private InputAction _flashlightAction;
     private InputAction _dropAction;
+    private InputAction _holdAction;
+    private bool _isGrabbingFromGround;
 
     private PlayerStateMachine _machine;
     private bool _loggedMissingCamera;
@@ -60,8 +61,8 @@ public class PlayerInteraction : NetworkBehaviour
         _interactAction = input.actions["Gameplay/Interact"];
         _throwAction = input.actions["Gameplay/Throw"];
         _scrollAction = input.actions["Gameplay/Scroll"];
-        _flashlightAction = input.actions["Gameplay/Flashlight"];
         _dropAction = input.actions["Gameplay/Drop"];
+        _holdAction = input.actions["Gameplay/Hold"];
 
         // === RADAR KODU ===
         if (interactPromptUI == null)
@@ -167,10 +168,46 @@ public class PlayerInteraction : NetworkBehaviour
     {
         if (_interactAction.WasPressedThisFrame())
         {
-            if (_heldObject == null)
-                TryGrab();
+            if (_heldObject != null)
+            {
+                TryStashObject(); // Elim doluysa çantaya at (E ile)
+            }
             else
+            {
+                if (_lookedInteractable != null)
+                {
+                    var component = _lookedInteractable as Component;
+                    if (component != null && TryGetPhysicsObject(component, out var physObj))
+                    {
+                        // Interact can only pick up items to inventory, NOT hold them physically in hands.
+                        if (physObj.CanPickupToInventory && physObj.NetworkObject != null)
+                        {
+                            RequestInventoryPickupServerRpc(new NetworkObjectReference(physObj.NetworkObject));
+                        }
+                    }
+                    else
+                    {
+                        // Non-physics interactables (doors, buttons, switches)
+                        _lookedInteractable.Interact(_machine);
+                    }
+                }
+                else
+                {
+                    TryEquipFromStash(); // Elim boşsa ve bir şeye bakmıyorsam çantadan çıkarıp elime al! (E ile)
+                }
+            }
+        }
+
+        if (_holdAction != null)
+        {
+            if (_holdAction.WasPressedThisFrame() && _heldObject == null)
+            {
+                TryGrabPhysical();
+            }
+            else if (_holdAction.WasReleasedThisFrame() && _heldObject != null)
+            {
                 DropObject();
+            }
         }
 
         if (_dropAction.WasPressedThisFrame() && _heldObject != null)
@@ -184,18 +221,43 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (_throwAction.WasReleasedThisFrame() && _isChargingThrow && _heldObject != null)
             ThrowObject();
+    }
 
-        // YENİ AKILLI 'F' TUŞU: Çantaya At VEYA Çantadan Çıkar!
-        if (Keyboard.current.fKey.wasPressedThisFrame)
+    private void TryGrabPhysical()
+    {
+        if (_lookedInteractable == null)
         {
-            if (_heldObject != null)
+            if (debugInteraction)
+                Debug.Log("[PlayerInteraction] TryGrabPhysical aborted: no looked interactable.", this);
+            return;
+        }
+        var component = _lookedInteractable as Component;
+        if (component == null)
+        {
+            if (debugInteraction)
+                Debug.LogWarning("[PlayerInteraction] TryGrabPhysical aborted: looked interactable is not a Component.", this);
+            return;
+        }
+
+        if (TryGetPhysicsObject(component, out var physObj))
+        {
+            if (physObj.NetIsHeld.Value)
             {
-                TryStashObject(); // Elim doluysa çantaya at
+                if (debugInteraction)
+                    Debug.Log($"[PlayerInteraction] TryGrabPhysical aborted: '{physObj.name}' already held.", this);
+                return;
             }
-            else
+            if (physObj.NetworkObject == null)
             {
-                TryEquipFromStash(); // Elim boşsa çantadan çıkarıp elime al!
+                if (debugInteraction)
+                    Debug.LogWarning($"[PlayerInteraction] TryGrabPhysical aborted: '{physObj.name}' has no NetworkObject.", this);
+                return;
             }
+
+            if (debugInteraction)
+                Debug.Log($"[PlayerInteraction] Requesting physical grab for '{physObj.name}'.", this);
+            _isGrabbingFromGround = true;
+            RequestGrabServerRpc(new NetworkObjectReference(physObj.NetworkObject));
         }
     }
 
@@ -325,6 +387,12 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (physObj.Weight >= 6f && _machine != null)
             _machine.ChangeState(new CarryingState());
+
+        // HATA ÖNLEME: Yerden alırken hold tuşu bırakılmışsa nesneyi hemen bırak
+        if (_isGrabbingFromGround && _holdAction != null && !_holdAction.IsPressed())
+        {
+            DropObject();
+        }
     }
 
     public void NotifyReleased(PhysicsObject physObj)
@@ -488,6 +556,7 @@ public class PlayerInteraction : NetworkBehaviour
         {
             // ID'li eşyayı hemen önümde yarat ve direkt elime ver!"
             Vector3 spawnPos = playerCamera.transform.position + playerCamera.transform.forward * holdDistance;
+            _isGrabbingFromGround = false;
             RequestSpawnAndGrabServerRpc(itemId, spawnPos);
         }
     }
