@@ -525,6 +525,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1855268726 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6256497676097082257, guid: ac4efea000ad7af45a66d2ee6912c6dc, type: 3}
+  m_PrefabInstance: {fileID: 29756355833175828}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 699c0d6bf8e1c63428e5c7fc6b797c79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UniversalSettings
 --- !u!1001 &29756355833175828
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -885,6 +896,10 @@ PrefabInstance:
     - target: {fileID: 3504433126907263749, guid: 70f747f45f003d849a9bc6fe617b2e46, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
+      objectReference: {fileID: 1855268726}
+    - target: {fileID: 3504433126907263749, guid: 70f747f45f003d849a9bc6fe617b2e46, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: ToggleSettings
       objectReference: {fileID: 0}
     - target: {fileID: 7049384375213778058, guid: 70f747f45f003d849a9bc6fe617b2e46, type: 3}
       propertyPath: m_AnchorMax.y

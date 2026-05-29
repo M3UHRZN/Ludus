@@ -45,16 +45,19 @@ public class UniversalSettings : MonoBehaviour
         bool isActive = settingsPanel.activeSelf;
         settingsPanel.SetActive(!isActive);
 
-        if (!isActive) // Menü açýldýysa
+        if (!isActive) // Menü AÇILDIYSA
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
-        else // Menü kapandýysa (Oyuna dönüldüyse)
+        else // Menü KAPANDIYSA
         {
-            // Oyundayken farenin tekrar gizlenmesi ve kilitlenmesi lazým
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            // Sadece Ana Menüde DEÐÝLSEK fareyi kilitle
+            if (SceneManager.GetActiveScene().name != firstMainMenuScene)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
         }
     }
 
