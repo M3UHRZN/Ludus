@@ -1,6 +1,4 @@
-﻿using UnityEngine;
-
-// ItemDecorator.cs - Decorator Pattern Temeli
+﻿// ItemDecorator.cs - Decorator Pattern Temeli
 // Assets/Scripts/Items/Decorators/ItemDecorator.cs
 
 /// <summary>
@@ -41,36 +39,9 @@ public abstract class ItemDecorator : IItem
 /// </summary>
 public class FlashbangDecorator : ItemDecorator
 {
-    [Tooltip("Kaç birim içindeki düşmanlar etkilensin")]
-    private float _flashRadius;
-
-    [Tooltip("Körlük süresi (saniye)")]
-    private float _blindDuration;
-
+    // RequestFlashbang was removed in the NetworkUsableItem refactor (Task 5).
+    // FlashbangDecorator's activate-on-pickup path is obsolete; flashbang
+    // behaviour now lives in ThrownFlashbang.ServerActivate.
     public FlashbangDecorator(IItem inner, float flashRadius = 5f, float blindDuration = 3f)
-        : base(inner)
-    {
-        _flashRadius = flashRadius;
-        _blindDuration = blindDuration;
-    }
-
-    public override void OnPickup(PlayerInventory inventory)
-    {
-        // Önce normal pickup davranışı
-        base.OnPickup(inventory);
-
-        // Sonra flashbang efekti
-        TriggerFlashbang(inventory);
-    }
-
-    private void TriggerFlashbang(PlayerInventory inventory)
-    {
-        if (inventory == null) return;
-
-        // Server-authoritative: client sadece request atar; gercek OverlapSphere ve SetBlinded server'da olur.
-        Vector3 origin = inventory.transform.position;
-        inventory.RequestFlashbang(origin, _flashRadius, _blindDuration);
-
-        Debug.Log($"[FlashbangDecorator] Flashbang istegi gonderildi. Merkez: {origin}, Yaricap: {_flashRadius}");
-    }
+        : base(inner) { }
 }
