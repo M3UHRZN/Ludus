@@ -4,27 +4,21 @@ using UnityEngine.SceneManagement;
 public class MainMenuController : MonoBehaviour
 {
     [Header("Sahne Ayarlarý")]
-    public string lobbySceneName = "LobbyScene"; 
+    public string lobbySceneName = "LobbyScene";
 
     public void OnPlayClicked()
     {
-        SceneManager.LoadScene(lobbySceneName);
+        // Loading ekranýný çaðýrýyoruz!
+        if (LoadingManager.Instance != null)
+        {
+            LoadingManager.Instance.LoadSceneLocal(lobbySceneName);
+        }
+        else
+        {
+            // Güvenlik Önlemi: Eðer test yaparken LoadingManager sahnede yoksa oyun çökmesin diye direk yükleme yapýyoruz.
+            SceneManager.LoadScene(lobbySceneName);
+        }
     }
-
-    //public void OnOptionsClicked()
-    //{
-    //    // Burada Ayarlar panelini açmak için UniversalSettings script'ine eriþebiliriz.
-    //    // Eðer UniversalSettings script'i ana menü sahnesinde deðilse, bu fonksiyonun çalýþmasý için o script'in de ana menü sahnesine eklenmesi gerekir.
-    //    UniversalSettings settings = FindObjectOfType<UniversalSettings>();
-    //    if (settings != null)
-    //    {
-    //        settings.ToggleSettings();
-    //    }
-    //    else
-    //    {
-    //        Debug.LogWarning("UniversalSettings script'i bulunamadý! Ayarlar paneli açýlamayacak.");
-    //    }
-    //}
 
     public void OnQuitClicked()
     {
