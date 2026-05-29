@@ -369,6 +369,11 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             if (_spawnCorpseOnDeath)
                 ServerSpawnCorpse();
 
+            // Ceset spawn olduktan sonra olen oyuncunun GORUNUR modelini ve
+            // nameplate'ini gizle ki sahnede iki tane "Alp" gozukmesin.
+            // RPC'yle tum client'larda lokal olarak SetActive(false).
+            HidePlayerVisualOnAllClientsRpc();
+
             GameEventBus.Publish(new PlayerDiedEvent(
                 (int)OwnerClientId, transform.position));
             NetState.Value = (byte)PlayerStateEnum.Dead;
@@ -473,6 +478,30 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             corpseItem.Initialize(DisplayName, OwnerClientId);
 
         Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {DisplayName} (clientId={OwnerClientId}, yaw={yaw:F0}).");
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void HidePlayerVisualOnAllClientsRpc()
+    {
+        // Olen oyuncunun GORUNUR alt-modelini ve nameplate'ini gizle. PlayerStateMachine
+        // gibi mantik component'leri aktif kalir (Spectator vb. icin), sadece "Mesh +
+        // nickname etiketi" gorunmez olur. Ceset prefab'i kendi mesh + label'ini
+        // gosterir ve sahnede "iki Alp" gibi yanlis okunmaz.
+        HideVisualChildren(transform);
+    }
+
+    private static void HideVisualChildren(Transform root)
+    {
+        // 1) Tum MeshRenderer / SkinnedMeshRenderer'lari kapat
+        var renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = false;
+
+        // 2) Nameplate (TextMeshPro World) varsa kapat
+        var tmp = root.GetComponentsInChildren<TMPro.TextMeshPro>(true);
+        for (int i = 0; i < tmp.Length; i++) tmp[i].enabled = false;
+
+        var tmpUi = root.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+        for (int i = 0; i < tmpUi.Length; i++) tmpUi[i].enabled = false;
     }
 
     private static PlayerStateEnum StateToEnum(IPlayerState state) => state switch
