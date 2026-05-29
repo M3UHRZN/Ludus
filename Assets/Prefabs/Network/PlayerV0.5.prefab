@@ -2197,7 +2197,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3933335816
+  GlobalObjectIdHash: 837362145
   InScenePlacedSourceGlobalObjectIdHash: 2767991521
   DeferredDespawnTick: 0
   Ownership: 8
@@ -2425,8 +2425,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  usableCatalog: {fileID: 11400000, guid: d634a29f975f4ec42bc568b84e9d461c, type: 2}
-  flashbangItemId: 100
+  usableCatalog: {fileID: 11400000, guid: 54581749af9305a48ad73144dccce647, type: 2}
+  flashbangItemId: 1
   flashbangMarketPrice: 40
 --- !u!114 &3464923751118398266
 MonoBehaviour:

@@ -18,6 +18,8 @@ public class ThrownFlashbang : NetworkUsableItem
     [SerializeField] private float throwSpeed = 16f;
     [SerializeField] private float upwardBoost = 1.5f;
     [SerializeField] private float fuseTime = 1.6f;
+    [Tooltip("Seconds before the projectile may detonate on surface contact. Lets it clear the thrower so it doesn't explode at their feet.")]
+    [SerializeField] private float armTime = 0.2f;
 
     [Header("Blast")]
     [SerializeField] private float blastRadius = 5f;
@@ -31,12 +33,20 @@ public class ThrownFlashbang : NetworkUsableItem
     [SerializeField] private float explosionAudibleRange = 18f;
 
     private readonly List<int> _affectedIndices = new();
+    private Transform _throwerRoot;
 
     protected override void OnServerActivate(in UsableActivationContext context)
     {
         Vector3 direction = context.Direction.sqrMagnitude > 0.0001f
             ? context.Direction.normalized
             : transform.forward;
+
+        // Resolve the thrower so the projectile ignores its own thrower's colliders.
+        // Otherwise the fuse linecast hits the player on frame 1 and the grenade
+        // detonates instantly at the thrower's feet instead of flying.
+        if (context.UserObject.TryGet(out NetworkObject userObject))
+            _throwerRoot = userObject.transform;
+        IgnoreThrowerCollisions();
 
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
@@ -47,10 +57,23 @@ public class ThrownFlashbang : NetworkUsableItem
             rb.AddTorque(Random.insideUnitSphere * 4f, ForceMode.Impulse);
         }
 
-        StartCoroutine(ServerFuseRoutine(direction));
+        StartCoroutine(ServerFuseRoutine());
     }
 
-    private IEnumerator ServerFuseRoutine(Vector3 direction)
+    /// <summary>Stop the rigidbody physically bouncing off the thrower as it leaves the hand.</summary>
+    private void IgnoreThrowerCollisions()
+    {
+        if (_throwerRoot == null) return;
+        Collider own = GetComponent<Collider>();
+        if (own == null) return;
+        foreach (Collider c in _throwerRoot.GetComponentsInChildren<Collider>())
+        {
+            if (c != null)
+                Physics.IgnoreCollision(own, c, true);
+        }
+    }
+
+    private IEnumerator ServerFuseRoutine()
     {
         Vector3 lastPosition = transform.position;
         Vector3 explosionPoint = lastPosition;
@@ -60,11 +83,17 @@ public class ThrownFlashbang : NetworkUsableItem
         {
             timer += Time.deltaTime;
             Vector3 currentPosition = transform.position;
-            if (Physics.Linecast(lastPosition, currentPosition, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore))
+
+            // Detonate on surface contact only after arming, and never on the thrower
+            // or the projectile itself.
+            if (timer >= armTime &&
+                Physics.Linecast(lastPosition, currentPosition, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore) &&
+                !IsSelfOrThrower(hit.collider))
             {
                 explosionPoint = hit.point;
                 break;
             }
+
             explosionPoint = currentPosition;
             lastPosition = currentPosition;
             yield return null;
@@ -73,6 +102,14 @@ public class ThrownFlashbang : NetworkUsableItem
         ServerApplyBlast(explosionPoint);
         PlayExplosionAudioRpc(explosionPoint, blindDuration);
         ServerDespawnSelf();
+    }
+
+    private bool IsSelfOrThrower(Collider col)
+    {
+        if (col == null) return false;
+        if (col.transform == transform || col.transform.IsChildOf(transform)) return true;
+        if (_throwerRoot != null && (col.transform == _throwerRoot || col.transform.IsChildOf(_throwerRoot))) return true;
+        return false;
     }
 
     private void ServerApplyBlast(Vector3 explosionPoint)

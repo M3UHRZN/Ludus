@@ -141,7 +141,13 @@ public class PlayerFlashEffect : NetworkBehaviour
         Transform existing = transform.Find("FlashbangAudioSource");
         GameObject audioObject = existing != null ? existing.gameObject : new GameObject("FlashbangAudioSource");
         audioObject.transform.SetParent(transform, false);
-        _audioSource = audioObject.GetComponent<AudioSource>() ?? audioObject.AddComponent<AudioSource>();
+        // NOTE: use Unity's overloaded == null check, NOT the C# ?? operator. A
+        // pre-existing "FlashbangAudioSource" child can carry a destroyed/"fake-null"
+        // AudioSource that ?? treats as non-null, then playOnAwake throws
+        // MissingComponentException (which aborted ApplyBlindRpc -> no flash).
+        _audioSource = audioObject.GetComponent<AudioSource>();
+        if (_audioSource == null)
+            _audioSource = audioObject.AddComponent<AudioSource>();
         _audioSource.playOnAwake = false;
         _audioSource.loop = false;
         _audioSource.spatialBlend = 0f;
