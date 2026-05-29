@@ -5,6 +5,7 @@ using UnityEngine;
 public class BaseItem : MonoBehaviour, IItem
 {
     [Header("Item Config")]
+    public ushort ItemId; // Envanterin eþyayý tanýmasý için kimlik numarasý
     [SerializeField] private string   _itemName    = "Unknown Item";
     [SerializeField] private ItemSize _size        = ItemSize.Small;
     [SerializeField] private float    _creditValue = 10f;

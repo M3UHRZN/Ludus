@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-// Bu s�n�f, Extraction (G�rev Tamamlama) ekran�n� y�netir. G�rev tamamland���nda veya kota ba�ar�s�z oldu�unda bu ekran a��l�r ve ilgili bilgileri g�sterir.
+using Unity.Netcode; // AĞ KÜTÜPHANESİ EKLENDİ
+
 public class ExtractionUIController : MonoBehaviour
 {
     [Header("Ana Panel")]
@@ -12,44 +13,81 @@ public class ExtractionUIController : MonoBehaviour
     public TextMeshProUGUI creditsText;
     public TextMeshProUGUI penaltyText;
 
-    [Header("Kota Bar�")]
+    [Header("Kota Barı")]
     public Image quotaFillImage;
+
+    // Öldüğümüzde ekrandan silinmesini istediğimiz şeyler (Timer, Stamina vb.)
+    [Header("Gizlenecek HUD Parçaları")]
+    public GameObject[] hudElementsToHide;
+
+    private void Awake()
+    {
+        // GameSessionManager'ın fırlattığı sinyali dinliyoruz!
+        GameEventBus.Subscribe<SessionEndedEvent>(OnSessionEnded);
+        GameEventBus.Subscribe<PlayerDiedEvent>(OnPlayerDied);
+    }
+
+    private void OnDestroy()
+    {
+        GameEventBus.Unsubscribe<SessionEndedEvent>(OnSessionEnded);
+        GameEventBus.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
+    }
 
     private void Start()
     {
-        extractionPanel.SetActive(false); // Oyun ba�larken gizli
+        extractionPanel.SetActive(false);
     }
 
-    private void OnEnable()
+    // SÜRE/OYUN BİTTİĞİNDE ÇALIŞIR
+    private void OnSessionEnded(SessionEndedEvent evt)
     {
-        GameEventBus.Subscribe<LevelEndedEvent>(OnLevelEnded);
+        bool isSuccess = (evt.Reason == SessionEndReason.Escaped);
+
+        // === Parayı ExtractionManager dan çekiyoruz! ===
+        int finalCredits = 0;
+        if (ExtractionManager.Instance != null)
+        {
+            finalCredits = ExtractionManager.Instance.TotalCredits.Value;
+        }
+
+        ShowExtractionScreen(isSuccess, finalCredits, 0, 0f);
     }
 
-    private void OnDisable()
+    // BİZ ÖLDÜĞÜMÜZDE ÇALIŞIR
+    private void OnPlayerDied(PlayerDiedEvent evt)
     {
-        Time.timeScale = 1f;
-        GameEventBus.Unsubscribe<LevelEndedEvent>(OnLevelEnded);
-    }
+        if (NetworkManager.Singleton != null && evt.PlayerId == (int)NetworkManager.Singleton.LocalClientId)
+        {
+            // === Parayı ExtractionManager dan çekiyoruz! ===
+            int currentCredits = 0;
+            if (ExtractionManager.Instance != null)
+            {
+                currentCredits = ExtractionManager.Instance.TotalCredits.Value;
+            }
 
-    private void OnLevelEnded(LevelEndedEvent evt)
-    {
-        // Event'ten gelen verileri alp, ekran gsterme fonksiyonuna gonderiyoruz
-        ShowExtractionScreen(evt.IsSuccess, evt.CollectedCredits, evt.PenaltyAmount, evt.QuotaFillAmount);
+            ShowExtractionScreen(false, currentCredits, 50, 0f);
+        }
     }
-    // --- EVENTBUS ABONELKLER BT ---
 
     public void ShowExtractionScreen(bool isSuccess, int collectedCredits, int penaltyAmount, float quotaFillAmount)
     {
-        // 1. Ekran grnr yap
         extractionPanel.SetActive(true);
+        // Oyuncu butona tıklayabilsin diye farenin kilidini aç ve görünür yap!
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
-        // 2. OYUNU DURDUR!
-        Time.timeScale = 0f;
+        // Arkadaki Timer, Stamina, Envanter gibi şeyleri gizliyoruz
+        if (hudElementsToHide != null)
+        {
+            foreach (var element in hudElementsToHide)
+            {
+                if (element != null) element.SetActive(false);
+            }
+        }
 
-        // 3. Bal baar durumuna gre ayarla
         if (isSuccess)
         {
-            titleText.text = "GREV TAMAMLANDI";
+            titleText.text = "MISSION SUCCESS";
             titleText.color = Color.white;
         }
         else
@@ -58,10 +96,8 @@ public class ExtractionUIController : MonoBehaviour
             titleText.color = Color.red;
         }
 
-        // Krediler
         creditsText.text = "COLLECTED CREDITS: " + collectedCredits;
 
-        // Ceza Yazs
         if (penaltyAmount > 0)
         {
             penaltyText.text = "PENALTY: -" + penaltyAmount + " CREDITS";
@@ -72,15 +108,13 @@ public class ExtractionUIController : MonoBehaviour
             penaltyText.gameObject.SetActive(false);
         }
 
-        // Kota Bar
         if (quotaFillImage != null)
             quotaFillImage.fillAmount = quotaFillAmount;
     }
 
-    // Bu fonksiyon "Gemiye Dn" butonunun OnClick() ksmna balanacak!!!!!!!!
     public void ReturnToShip()
     {
-        Time.timeScale = 1f;
         extractionPanel.SetActive(false);
+        // SceneManager.LoadScene("LobbyScene"); 
     }
 }

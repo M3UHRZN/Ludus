@@ -163,6 +163,7 @@ GameObject:
   - component: {fileID: 880100100100100101}
   - component: {fileID: 880100100100100102}
   - component: {fileID: 880100100100100103}
+  - component: {fileID: 2283508357184726688}
   m_Layer: 6
   m_Name: PlayerV0.3
   m_TagString: Player
@@ -555,7 +556,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e956c339a18418cba39267bbaa808ef, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerDisplayName
   ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &880100100100100102
@@ -568,7 +569,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 619cb530214547ef8824791b9817dd2f, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraModeController
   ShowTopMostFoldoutHeaderGroup: 1
   playerLook: {fileID: 6484822293942998558}
@@ -593,7 +594,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 65c69ba0c6b749d98b42763a40b82c7d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerWorldNameplate
   ShowTopMostFoldoutHeaderGroup: 1
   displayNameSource: {fileID: 880100100100100101}
@@ -606,3 +607,21 @@ MonoBehaviour:
   outlineColor: {r: 0, g: 0, b: 0, a: 1}
   outlineWidth: 0.22
   hideOwnerInFirstPerson: 1
+--- !u!114 &2283508357184726688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1646a91d34be6e04ca5a36f5758122d2, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStamina
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxStamina: 100
+  currentStamina: 0
+  drainRate: 20
+  regenRate: 15
+  exhaustionDamage: 5

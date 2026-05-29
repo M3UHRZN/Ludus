@@ -10,14 +10,15 @@ public class StaminaUIController : MonoBehaviour
     public Color normalColor = new Color(1f, 0.7f, 0f); // Turuncu/Sarýmsý
     public Color exhaustedColor = Color.red; // Stamina bitip cana vurduðunda kýrmýzý olacak
 
-    private void OnEnable()
+    private void Awake()
     {
-        // EventBus'a abone oluyoruz
+        // OnEnable yerine Awake kullanýyoruz ki saðýr kalmasýn
         GameEventBus.Subscribe<StaminaUpdatedEvent>(OnStaminaUpdated);
     }
 
-    private void OnDisable()
+    private void OnDestroy()
     {
+        // OnDisable yerine OnDestroy
         GameEventBus.Unsubscribe<StaminaUpdatedEvent>(OnStaminaUpdated);
     }
 

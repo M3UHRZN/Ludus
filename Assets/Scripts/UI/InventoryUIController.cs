@@ -12,44 +12,64 @@ public class InventoryUIController : MonoBehaviour
     }
 
     [Header("UI Referanslarý")]
-    public InventorySlotUI[] slots; // 3 slotumuzu buraya atacaðýz
+    public InventorySlotUI[] slots;
     public TextMeshProUGUI weightText;
 
     [Header("Vurgu Renkleri")]
-    public Color activeColor = Color.yellow; // Seçili slotun rengi
-    public Color inactiveColor = Color.white; // Seçili olmayan slotun rengi
+    public Color activeColor = Color.yellow;
+    public Color inactiveColor = Color.white;
 
-    // Her eþya alýndýðýnda veya býrakýldýðýnda bu fonksiyon calisacak  
-    public void UpdateInventory(Sprite[] currentItems, int activeSlotIndex, float totalWeight)
+    private void Awake()
     {
-        // 1. Aðýrlýðý Güncelle
-        weightText.text = $"{totalWeight:F1} KG";
+        GameEventBus.Subscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
+    }
 
-        // 2. Slotlarý Güncelle
+    private void OnDestroy()
+    {
+        GameEventBus.Unsubscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
+    }
+
+    private void OnInventoryUpdated(LocalInventoryUpdatedEvent evt)
+    {
+        // Geçici Aðýrlýk Hesabý (Þimdilik her eþya 2 KG olsun, gerçek DB gelince düzelir)
+        float totalWeight = evt.ItemIds.Length * 2f;
+        if (weightText != null) weightText.text = $"{totalWeight:F1} KG";
+
         for (int i = 0; i < slots.Length; i++)
         {
-            // Ýkonu ayarla
-            if (i < currentItems.Length && currentItems[i] != null)
+            if (i < evt.ItemIds.Length)
             {
-                slots[i].icon.sprite = currentItems[i];
-                slots[i].icon.color = Color.white; // Ýkonu görünür yap
+                ushort itemId = evt.ItemIds[i]; // Çantadaki eþyanýn numarasý
+
+                // Resmi Merkez Veritabanýndan istiyoruz!
+                Sprite itemIcon = ItemDatabase.Instance.GetIcon(itemId);
+
+                if (itemIcon != null)
+                {
+                    slots[i].icon.sprite = itemIcon;
+                    slots[i].icon.color = Color.white;
+                }
+                else
+                {
+                    slots[i].icon.color = new Color(1, 1, 1, 0); // Resim yoksa gizle
+                }
             }
             else
             {
                 slots[i].icon.sprite = null;
-                slots[i].icon.color = new Color(1, 1, 1, 0); // Ýkonu gizle (saydam)
+                slots[i].icon.color = new Color(1, 1, 1, 0); // Boþ slotu gizle
             }
 
-            // Aktif slotu vurgula
-            if (i == activeSlotIndex)
+            // Aktif slotu vurgula (Scroll yaptýkça sarý çerçeve kayacak)
+            if (i == evt.ActiveSlotIndex)
             {
                 slots[i].background.color = activeColor;
-                slots[i].background.rectTransform.localScale = Vector3.one * 1.1f; // Biraz büyüt
+                slots[i].background.rectTransform.localScale = Vector3.one * 1.1f;
             }
             else
             {
                 slots[i].background.color = inactiveColor;
-                slots[i].background.rectTransform.localScale = Vector3.one; // Normal boyut
+                slots[i].background.rectTransform.localScale = Vector3.one;
             }
         }
     }

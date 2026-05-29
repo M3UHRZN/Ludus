@@ -64,7 +64,13 @@ public class GameSessionManager : NetworkBehaviour
         if (!IsServer)
         {
             NetRemainingTime.OnValueChanged += OnTimerChanged;
-            NetIsActive.OnValueChanged      += OnSessionActiveChanged;
+            NetIsActive.OnValueChanged += OnSessionActiveChanged;
+        }
+        else
+        {
+            // === Sunucu oyuna girince süreyi otomatik başlat! ===
+            int playersInGame = NetworkManager.Singleton.ConnectedClientsIds.Count;
+            StartSession(playersInGame);
         }
     }
 
