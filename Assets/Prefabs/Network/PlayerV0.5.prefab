@@ -2159,6 +2159,7 @@ GameObject:
   - component: {fileID: 880100100100100101}
   - component: {fileID: 880100100100100103}
   - component: {fileID: 2283508357184726688}
+  - component: {fileID: 2856084898748154316}
   m_Layer: 6
   m_Name: PlayerV0.5
   m_TagString: Player
@@ -2424,24 +2425,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
+  usableCatalog: {fileID: 11400000, guid: d634a29f975f4ec42bc568b84e9d461c, type: 2}
   flashbangItemId: 100
-  flashbangWorldPrefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
-  flashbangThrowSpeed: 16
-  flashbangUpwardBoost: 1.5
-  flashbangFuseTime: 1.6
-  flashbangBlastRadius: 5
-  flashbangBlindDuration: 2.5
-  flashbangPeakAlpha: 1
-  flashbangEnemyStunDuration: 3
-  blindedMoveMultiplier: 0.35
-  blindedLookMultiplier: 0.25
   flashbangMarketPrice: 40
-  flashbangExplosionClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
-  flashbangExplosionVolume: 1
-  flashbangExplosionAudibleRange: 18
-  flashbangRingingClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
-  flashbangRingingVolume: 0.7
-  flashbangAudioExtraFadeTime: 1
 --- !u!114 &3464923751118398266
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2585,6 +2571,25 @@ MonoBehaviour:
   drainRate: 20
   regenRate: 15
   exhaustionDamage: 5
+  _verbose: 0
+--- !u!114 &2856084898748154316
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78df872b1a4f93148b8d62a6ddf31be2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerFlashEffect
+  ShowTopMostFoldoutHeaderGroup: 1
+  blindedMoveMultiplier: 0.35
+  blindedLookMultiplier: 0.25
+  ringingClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
+  ringingVolume: 0.7
+  audioExtraFadeTime: 1
 --- !u!1 &8563462531544348386
 GameObject:
   m_ObjectHideFlags: 0
