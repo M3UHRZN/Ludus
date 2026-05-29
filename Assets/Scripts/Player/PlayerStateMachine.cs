@@ -447,10 +447,17 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     {
         if (_corpsePrefab == null) return;
 
+        // Olen oyuncunun baktigi yone gore cesedi yere yatir: yaw'i koruyup
+        // pitch=90 vererek "sirt ustu / yuzu yukari" yatik pozisyon olusur.
+        // Prefab'in kendi LocalRotation'i da +90 X ile geldigi icin "lie down"
+        // kompoze edilir.
+        float yaw = transform.eulerAngles.y;
+        Quaternion lieDown = Quaternion.Euler(0f, yaw, 0f);
+
         var corpseGo = Instantiate(
             _corpsePrefab,
             transform.position + Vector3.up * _itemDropHeightOffset,
-            transform.rotation);
+            lieDown);
 
         var netObj = corpseGo.GetComponent<NetworkObject>();
         if (netObj == null)
@@ -465,7 +472,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         if (corpseItem != null)
             corpseItem.Initialize(DisplayName, OwnerClientId);
 
-        Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {DisplayName} (clientId={OwnerClientId}).");
+        Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {DisplayName} (clientId={OwnerClientId}, yaw={yaw:F0}).");
     }
 
     private static PlayerStateEnum StateToEnum(IPlayerState state) => state switch
