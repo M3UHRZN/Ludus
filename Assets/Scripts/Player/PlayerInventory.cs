@@ -95,7 +95,7 @@ public class PlayerInventory : NetworkBehaviour
     private void OnActiveSlotChanged(byte prev, byte current) => TriggerUIUpdate();
 
     /// <summary>UI'a "cantam degisti, kendini yeniden ciz" sinyali fırlatır.</summary>
-    private void TriggerUIUpdate()
+    public void TriggerUIUpdate()
     {
         ushort[] currentItems = new ushort[Slots.Count];
         for (int i = 0; i < Slots.Count; i++)

@@ -56,4 +56,16 @@ public class AudioManager : MonoBehaviour
         musicSource.loop = true;
         musicSource.Play();
     }
+
+    /// <summary>
+    /// Çalan müziði kapatir (Oyun içine girince sessizlik isterseniz)
+    /// </summary>
+    public void StopMusic()
+    {
+        if (musicSource.isPlaying)
+        {
+            musicSource.Stop();
+        }
+        musicSource.clip = null;
+    }
 }
