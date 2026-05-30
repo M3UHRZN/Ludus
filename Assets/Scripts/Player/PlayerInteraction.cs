@@ -185,8 +185,8 @@ public class PlayerInteraction : NetworkBehaviour
                     if (interactable is Component comp) displayName = comp.gameObject.name;
                 }
 
-                // === DEDEKTİF LOGU: Konsola ne yazdırıyor bakacağız ===
-                Debug.Log($"[Etkileşim Testi] Şu an şuna bakıyorsun: {displayName} | CanInteract: {canInteract}");
+                if (debugInteraction)
+                    Debug.Log($"[PlayerInteraction] Bakılan: {displayName} | CanInteract: {canInteract}", this);
 
                 ShowPrompt(true, displayName, displayPrice);
                 return;
@@ -303,6 +303,15 @@ public class PlayerInteraction : NetworkBehaviour
     // ÇANTAYA ATMA (STASH) OPERASYONU
     private void TryStashObject()
     {
+        // Aktive edilmis (arm/pini cekilmis) usable cantaya atilamaz — yoksa fünyeyi
+        // bedavaya iptal etme exploit'i olur (arm → E → despawn → patlamadan geri).
+        if (_heldObject.TryGetComponent<UsableItem>(out var armedUsable) && armedUsable.NetActivated.Value)
+        {
+            if (debugInteraction)
+                Debug.Log("[PlayerInteraction] Aktive edilmis item cantaya atilamaz.", this);
+            return;
+        }
+
         // Tuttuğumuz obje bir BaseItem mi? (Yani çantaya atılabilir bir şey mi?)
         if (_heldObject.TryGetComponent<BaseItem>(out var baseItem))
         {
