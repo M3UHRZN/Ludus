@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class PlayerAudioController : MonoBehaviour
 {
+    public UnityEngine.Audio.AudioMixerGroup sfxMixerGroup; // DJ Masasýndaki SFX kanalý
+
     [Header("SES KASETLERÝ")]
     public AudioClip footstepClip;
     public AudioClip jumpLandClip; // YENÝ: Yere inme (Düþme) sesi!
@@ -33,6 +35,8 @@ public class PlayerAudioController : MonoBehaviour
         zrhliHoparlor.volume = 1f;       // Full Ses
         zrhliHoparlor.mute = false;
         zrhliHoparlor.playOnAwake = false;
+
+        zrhliHoparlor.outputAudioMixerGroup = sfxMixerGroup; // Sesi SFX kanalýna yolla
     }
 
     private void Update()

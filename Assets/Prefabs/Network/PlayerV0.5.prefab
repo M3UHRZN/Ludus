@@ -2606,6 +2606,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72b2708ef572772478b4d97731bcc64e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAudioController
+  sfxMixerGroup: {fileID: -5182160358845619200, guid: b4298e415ad363a40a6ab6e282a799eb, type: 2}
   footstepClip: {fileID: 8300000, guid: ae89872e4620cd546a041497b5a2865d, type: 3}
   jumpLandClip: {fileID: 8300000, guid: 5b55f88f63cd69744ac6b08174429952, type: 3}
   stepDistance: 1.5
