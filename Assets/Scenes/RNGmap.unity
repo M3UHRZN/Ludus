@@ -128,7 +128,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 694514319}
-  - component: {fileID: 694514318}
   m_Layer: 0
   m_Name: GameDatabase
   m_TagString: Untagged
@@ -136,29 +135,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &694514318
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 694514317}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c2bf3b601fc9d241aa5d96d24d555e4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ItemDatabase
-  AllItems:
-  - ItemId: 0
-    ItemName: Kup
-    ItemPrice: 10
-    Prefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
-    Icon: {fileID: 21300000, guid: 144d5c35043c7f04193d57dc3c38bbcb, type: 3}
-  - ItemId: 1
-    ItemName: Flashbang
-    ItemPrice: 0
-    Prefab: {fileID: 7869045618340365188, guid: e6eb6c6b56e23994b9fd24f69eaa7077, type: 3}
-    Icon: {fileID: 21300000, guid: c4d2256bf54ca0948bc30a5cc74fb153, type: 3}
 --- !u!4 &694514319
 Transform:
   m_ObjectHideFlags: 0

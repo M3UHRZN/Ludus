@@ -2091,15 +2091,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MarketCatalog
   items:
-  - itemId: 100
+  - itemId: 1
     displayName: Flashbang
     description: Temporary buyable flashbang item. It cannot be sold back to the
       market.
-    icon: {fileID: 0}
+    icon: {fileID: -1542460328, guid: a01ae78f7d833fe43958ef496c205019, type: 3}
     buyPrice: 40
-    sellValue: 0
+    sellValue: 10
     canBuy: 1
-    canSell: 0
+    canSell: 1
     maxStock: -1
     deliveryPrefab: {fileID: 0}
 --- !u!114 &879318355

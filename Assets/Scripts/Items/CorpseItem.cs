@@ -62,14 +62,17 @@ public class CorpseItem : NetworkBehaviour
         if (_nameplateGo != null) Destroy(_nameplateGo);
     }
 
+    private Camera _cam;
+
     private void LateUpdate()
     {
         if (_nameplateGo == null) return;
-        // Nameplate her zaman ana kameraya bakar (billboard)
-        var cam = Camera.main;
-        if (cam == null) return;
+        // Nameplate her zaman ana kameraya bakar (billboard).
+        // Camera.main her frame FindGameObjectWithTag yapar → cache'le, sadece null'sa tazele.
+        if (_cam == null) _cam = Camera.main;
+        if (_cam == null) return;
         _nameplateGo.transform.position = transform.position + Vector3.up * _nameplateHeight;
-        _nameplateGo.transform.rotation = Quaternion.LookRotation(_nameplateGo.transform.position - cam.transform.position);
+        _nameplateGo.transform.rotation = Quaternion.LookRotation(_nameplateGo.transform.position - _cam.transform.position);
     }
 
     private void BuildNameplate()
