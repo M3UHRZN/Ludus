@@ -70,11 +70,7 @@ public class ExtractZone : MonoBehaviour
         if (physicsObject.TryGetComponent<BaseItem>(out var bItem))
         {
             extractedItemId = bItem.ItemId;
-            if (ItemDatabase.Instance != null)
-            {
-                var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == extractedItemId);
-                if (data != null) credits = (int)data.ItemPrice; // Parayı çekti!
-            }
+            credits = Mathf.RoundToInt(bItem.CreditValue); // Deger item'in kendi ItemDefinition'indan (ItemCatalog tek kaynak).
         }
         else
         {
