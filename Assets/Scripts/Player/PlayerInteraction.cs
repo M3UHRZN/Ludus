@@ -165,15 +165,9 @@ public class PlayerInteraction : NetworkBehaviour
                     // 1. İHTİMAL: Bu bir eşya ise (BaseItem), ismini VE FİYATINI Database'den al!
                     if (TryGetPhysicsObject(hit.collider, out var pObj) && pObj.TryGetComponent<BaseItem>(out var bItem))
                     {
-                        if (ItemDatabase.Instance != null)
-                        {
-                            var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == bItem.ItemId);
-                            if (data != null)
-                            {
-                                displayName = data.ItemName;
-                                displayPrice = data.ItemPrice; // YENİ: Fiyatı veritabanından cımbızla çektik!
-                            }
-                        }
+                        // Isim ve deger artik item'in kendi ItemDefinition'indan gelir (ItemCatalog tek kaynak).
+                        displayName = bItem.ItemName;
+                        displayPrice = bItem.CreditValue;
                     }
                     // 2. İHTİMAL: Eşya değilse (Konsol, Kapı vb.)
                     else if (!string.IsNullOrEmpty(interactable.InteractPrompt))

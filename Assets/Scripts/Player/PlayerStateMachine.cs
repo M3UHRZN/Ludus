@@ -396,19 +396,19 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
     /// <summary>
     /// Server-only: PlayerInventory.Slots'taki tum item ID'leri icin
-    /// ItemDatabase'den prefab cek, olum pozisyonu civarinda rastgele
+    /// ItemCatalog'dan prefab cek, olum pozisyonu civarinda rastgele
     /// noktalarda NetworkObject.Spawn et. Sonra Slots'u temizle.
-    /// Slot bos veya ItemDatabase null ise sessizce atlanir.
+    /// Slot bos veya ItemCatalog null ise sessizce atlanir.
     /// </summary>
     private void ServerDropInventoryItemsOnDeath()
     {
         if (Inventory == null) return;
         if (Inventory.Slots == null || Inventory.Slots.Count == 0) return;
 
-        var db = ItemDatabase.Instance;
-        if (db == null)
+        var catalog = ItemCatalog.Instance;
+        if (catalog == null)
         {
-            Debug.LogWarning("[PlayerStateMachine] ItemDatabase yok, envanter drop atlandi.");
+            Debug.LogWarning("[PlayerStateMachine] ItemCatalog yok, envanter drop atlandi.");
             return;
         }
 
@@ -418,7 +418,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         {
             ushort itemId = Inventory.Slots[i];
             if (itemId == 0) continue;
-            var prefab = db.GetPrefab(itemId);
+            var prefab = catalog.GetPrefab(itemId);
             if (prefab == null) continue;
 
             // Rastgele yatay sapma — esyalar tek noktada ust uste yigilmasin

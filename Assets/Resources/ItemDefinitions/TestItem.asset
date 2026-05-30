@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: TestItem
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   id: 0
-  displayName: Test Item
+  displayName: Kup
   size: 0
   creditValue: 10
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 144d5c35043c7f04193d57dc3c38bbcb, type: 3}
   worldPrefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
   isBuyable: 0
   marketPrice: 0

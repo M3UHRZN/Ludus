@@ -183,11 +183,7 @@ public class ExitZoneInteractable : MonoBehaviour, IInteractable
                     if (heldItem.TryGetComponent<BaseItem>(out var bItem))
                     {
                         heldItemId = bItem.ItemId;
-                        if (ItemDatabase.Instance != null)
-                        {
-                            var data = ItemDatabase.Instance.AllItems.Find(x => x.ItemId == heldItemId);
-                            if (data != null) credits = (int)data.ItemPrice;
-                        }
+                        credits = Mathf.RoundToInt(bItem.CreditValue); // Deger item'in kendi ItemDefinition'indan.
                     }
                     else
                     {
