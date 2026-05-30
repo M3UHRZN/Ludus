@@ -2160,6 +2160,7 @@ GameObject:
   - component: {fileID: 880100100100100103}
   - component: {fileID: 2283508357184726688}
   - component: {fileID: 2856084898748154316}
+  - component: {fileID: 398483732038233821}
   m_Layer: 6
   m_Name: PlayerV0.5
   m_TagString: Player
@@ -2197,7 +2198,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 837362145
+  GlobalObjectIdHash: 3933335816
   InScenePlacedSourceGlobalObjectIdHash: 2767991521
   DeferredDespawnTick: 0
   Ownership: 8
@@ -2372,6 +2373,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateMachine
   ShowTopMostFoldoutHeaderGroup: 1
   maxHealth: 100
+  _dropItemsOnDeath: 1
+  _spawnCorpseOnDeath: 1
+  _corpsePrefab: {fileID: 0}
+  _itemDropScatterRadius: 1.5
+  _itemDropHeightOffset: 0.6
 --- !u!114 &2494656452920728769
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2425,9 +2431,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  usableCatalog: {fileID: 11400000, guid: 54581749af9305a48ad73144dccce647, type: 2}
   flashbangItemId: 1
-  flashbangMarketPrice: 40
 --- !u!114 &3464923751118398266
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2590,6 +2594,21 @@ MonoBehaviour:
   ringingClip: {fileID: 8300000, guid: bd93eb76cffd94955bcb2beb8fd6a84f, type: 3}
   ringingVolume: 0.7
   audioExtraFadeTime: 1
+--- !u!114 &398483732038233821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8460012054609115418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72b2708ef572772478b4d97731bcc64e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAudioController
+  footstepClip: {fileID: 8300000, guid: ae89872e4620cd546a041497b5a2865d, type: 3}
+  jumpLandClip: {fileID: 8300000, guid: 5b55f88f63cd69744ac6b08174429952, type: 3}
+  stepDistance: 1.5
 --- !u!1 &8563462531544348386
 GameObject:
   m_ObjectHideFlags: 0

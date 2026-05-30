@@ -85,12 +85,12 @@ public class LureBehavior : IEnemyBehavior
 
         Debug.Log($"[LureBehavior] Pickup sinyali alindi, en yakin tasiyici takip basliyor (clientId={_currentCarrierClientId}).");
 
-        // --- RAHİP FARK EDİNCE SES ÇALIŞIR ---
-        if (AudioManager.Instance != null && AudioManager.Instance.wrongSound != null)
-        {
-            AudioManager.Instance.PlaySFX(AudioManager.Instance.wrongSound); // İstersen buraya jumpscare sesi de koyabilirsin
-        }
-        // ------------------------------------------------------
+        //// --- RAHİP FARK EDİNCE SES ÇALIŞIR ---
+        //if (AudioManager.Instance != null && AudioManager.Instance.wrongSound != null)
+        //{
+        //    AudioManager.Instance.PlaySFX(AudioManager.Instance.wrongSound); // İstersen buraya jumpscare sesi de koyabilirsin
+        //}
+        //// ------------------------------------------------------
     }
 
     public void Tick(EnemyController enemy)
