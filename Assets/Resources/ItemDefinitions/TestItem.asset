@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c5053c37b7e49b41bce511b4a1e959d, type: 3}
   m_Name: TestItem
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  id: 0
+  id: 2
   displayName: Kup
   size: 0
   creditValue: 10

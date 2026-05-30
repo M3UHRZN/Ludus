@@ -201,6 +201,14 @@ public class PlayerInventory : NetworkBehaviour
         if (!IsServer) return false;
         if (IsFull()) return false;
 
+        // Önce seçili (aktif) slot boş mu kontrol et, boşsa ona koy!
+        if (ActiveSlot.Value < Slots.Count && Slots[ActiveSlot.Value] == 0)
+        {
+            Slots[ActiveSlot.Value] = itemId;
+            return true;
+        }
+
+        // Aktif slot doluysa, ilk boş slotu bul
         for (int i = 0; i < Slots.Count; i++)
         {
             if (Slots[i] == 0)
@@ -305,6 +313,14 @@ public class PlayerInventory : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void AddItemServerRpc(ushort itemId)
     {
+        // Önce seçili (aktif) slot boş mu kontrol et, boşsa ona koy!
+        if (ActiveSlot.Value < Slots.Count && Slots[ActiveSlot.Value] == 0)
+        {
+            Slots[ActiveSlot.Value] = itemId;
+            return;
+        }
+
+        // Aktif slot doluysa, ilk boş slotu bul
         for (int i = 0; i < Slots.Count; i++)
         {
             if (Slots[i] == 0)
