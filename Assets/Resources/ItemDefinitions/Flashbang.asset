@@ -20,3 +20,5 @@ MonoBehaviour:
   worldPrefab: {fileID: 7869045618340365188, guid: e6eb6c6b56e23994b9fd24f69eaa7077, type: 3}
   isBuyable: 1
   marketPrice: 40
+  isSellable: 1
+  sellPrice: 10
