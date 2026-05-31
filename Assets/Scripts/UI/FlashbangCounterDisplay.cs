@@ -3,45 +3,18 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Bagimsiz, kucuk bir "Flashbangs: N" gostergesi. Esmanur'un HUD slot
-/// sistemine paralel calisir; oyuncu lobby veya gameplay sahnesinde ne
-/// kadar flashbang tasidigini ekranin sag alt kosesinde net olarak gorur.
-///
-/// Kullanim:
-/// - Bu component'i sahnedeki herhangi bir GameObject'e ekle. Ilk Awake'te
-///   kendi Canvas'ini + TextMeshPro widget'ini runtime'da olusturur.
-/// - Singleton: birden fazla sahnede zaten varsa duplicate eden kendini yok eder.
-/// - Sahneler arasi yasayabilmesi icin DontDestroyOnLoad ile isaretlenir;
-///   boylece tek bir Lobby placement bile lobby + RNGmap'te calisir.
-/// - LocalInventoryUpdatedEvent'i dinler, slotlardaki itemId == _flashbangItemId
-///   sayisini sayar ve "Flashbangs: N" formatinda yazar. Sayi sifirsa yaziyi gizler.
-/// </summary>
+// HUD slot UI yokken yedek olarak calisan sag alt "Flashbangs: N" gostergesi.
+// Runtime'da kendi Canvas + TMP widget'ini olusturur, DontDestroyOnLoad ile sahneler arasi yasar.
 public class FlashbangCounterDisplay : MonoBehaviour
 {
     public static FlashbangCounterDisplay Instance { get; private set; }
 
-    [Header("Item")]
-    [Tooltip("Sayilacak item ID. PlayerInventory.flashbangItemId ile ayni olmali (default 100).")]
     [SerializeField] private ushort _flashbangItemId = 100;
-
-    [Header("Gorunum")]
-    [Tooltip("Bicim string'i — {0} flashbang sayisi ile dolusur.")]
     [SerializeField] private string _format = "Flashbangs: {0}";
-
-    [Tooltip("Yazi sayi 0 oldugunda gizlensin mi?")]
     [SerializeField] private bool _hideWhenZero = true;
-
-    [Tooltip("Yazi font boyutu")]
     [SerializeField] private float _fontSize = 28f;
-
-    [Tooltip("Yazi rengi")]
     [SerializeField] private Color _color = Color.white;
-
-    [Tooltip("Sag alt kosege offset (pixel)")]
     [SerializeField] private Vector2 _bottomRightOffset = new Vector2(-30f, 30f);
-
-    [Tooltip("Canvas sorting order — yuksek ise diger UI'larin ustunde gozukur.")]
     [SerializeField] private int _sortingOrder = 50;
 
     private GameObject _canvasGo;
@@ -50,7 +23,6 @@ public class FlashbangCounterDisplay : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton koruma
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -65,8 +37,6 @@ public class FlashbangCounterDisplay : MonoBehaviour
     private void OnEnable()
     {
         GameEventBus.Subscribe<LocalInventoryUpdatedEvent>(OnInventoryUpdated);
-        // Sahne degisiminde yeni PlayerInventory daha event publishlemis olabilir;
-        // local oyuncudan mevcut durumu bir kez sorgula.
         TryRefreshFromLocalInventory();
     }
 
@@ -128,7 +98,7 @@ public class FlashbangCounterDisplay : MonoBehaviour
             }
         }
 
-        if (count == _lastCount) return; // gereksiz UI guncellemesi yok
+        if (count == _lastCount) return;
         _lastCount = count;
 
         if (count <= 0 && _hideWhenZero)
@@ -141,10 +111,7 @@ public class FlashbangCounterDisplay : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sahne yuklendikten hemen sonra PlayerInventory event'i fire etmis olabilir;
-    /// local oyuncu objesinden mevcut Slots durumunu hesaplayip uygula.
-    /// </summary>
+    // Sahne ilk yuklendiginde event'leri kacirmamak icin local oyuncudan mevcut envanteri oku.
     private void TryRefreshFromLocalInventory()
     {
         var nm = NetworkManager.Singleton;

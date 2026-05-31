@@ -1,29 +1,13 @@
 using UnityEngine;
 
-/// <summary>
-/// Uzaktan saldiri oncesi kirmizi lazer "telegraph" davranisi. Type A (robot)
-/// dusman oyuncuyu yeni gordugunde RangedAttackBehavior'a gecmeden once burada
-/// kisa bir nisan alma penceresi (AimDuration) acar; bu sirada FirePoint'ten
-/// oyuncuya kirmizi lazer cizilir. Pencere oyuncuya kacma / koruga gecme firsati
-/// verir. Sure dolunca dogrudan RangedAttackBehavior'a devredilir.
-///
-/// Telegraph sirasinda gorus kaybi veya menzil disina cikis -> Chase'e doner
-/// (atis yapilmaz). Ayni engagement'ta tekrar yakinlasilirsa Chase yeniden
-/// bu davranisa baglar; yani her yeni temas icin yeni bir telegraph.
-///
-/// Lazer cizimi multiplayer'da hem host'ta hem client'larda gorunmek zorunda
-/// oldugu icin LineRenderer'i bu davranis dogrudan olusturmaz; bunun yerine
-/// EnemyNetState'teki NetworkVariable'lara aim durumu ve hedef pozisyonu
-/// yazilir, gorsel cizimi her client kendi EnemyNetState.Update'inde yapar.
-///
-/// Strategy pattern'in 8. concrete davranisi.
-/// </summary>
+// Type A robot ates etmeden once kisa bir lazer telegraph gosterir.
+// Sure dolunca RangedAttackBehavior'a gecer. LOS kaybi veya menzil disi cikis Chase'e dondurur.
 public class RangedAimBehavior : IEnemyBehavior
 {
-    private const float AimDuration    = 1.2f;   // lazerin gorundugu sure (telegraph)
-    private const float DisengageRange = 16f;    // bu mesafenin disina cikilirsa Chase'e don
-    private const float AimTurnSpeed   = 10f;    // nisan alirken govdeyi oyuncuya cevirme hizi
-    private const float TargetEpsilon  = 0.25f;  // NetAimTarget'i tekrar yazma esigi (bandwidth)
+    private const float AimDuration = 1.2f;
+    private const float DisengageRange = 16f;
+    private const float AimTurnSpeed = 10f;
+    private const float TargetEpsilon = 0.25f;
 
     private float _aimTimer;
     private EnemyNetState _netState;
@@ -63,7 +47,7 @@ public class RangedAimBehavior : IEnemyBehavior
 
         FacePlayer(enemy);
 
-        // Mesafe disina ciktiysa nisani iptal et, tekrar kovala
+        // Menzil disina cikti, Chase
         float dist = Vector3.Distance(enemy.transform.position, enemy.PlayerTransform.position);
         if (dist > DisengageRange)
         {
@@ -71,14 +55,14 @@ public class RangedAimBehavior : IEnemyBehavior
             return;
         }
 
-        // Gorus kaybi -> nisani iptal, atis yapmadan Chase'e
+        // LOS kayip, atis iptal
         if (!enemy.CanSeePlayer())
         {
             enemy.SwitchBehavior(new ChaseBehavior());
             return;
         }
 
-        // Hedefi guncelle (esik kadar hareket ettiyse network yazimi yap)
+        // Hedef pozisyonunu network'e yaz (epsilon ile bandwidth)
         Vector3 target = enemy.PlayerTransform.position + Vector3.up;
         if (_netState != null &&
             (!_publishedOnce || (target - _lastPublishedTarget).sqrMagnitude > TargetEpsilon * TargetEpsilon))
@@ -91,8 +75,6 @@ public class RangedAimBehavior : IEnemyBehavior
         _aimTimer -= Time.deltaTime;
         if (_aimTimer <= 0f)
         {
-            // Telegraph bitti -> RangedAttackBehavior devral. Exit() lazeri kapatir,
-            // RangedAttackBehavior kendi enter'inda ilk atisini ~0.6s sonra yapar.
             enemy.SwitchBehavior(new RangedAttackBehavior());
         }
     }
