@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,14 +14,12 @@ public class MarketUIController : MonoBehaviour
     [SerializeField] private TMP_Text selectedItemText;
     [SerializeField] private TMP_Text statusText;
 
-    [Header("Buy Controls")]
-    [SerializeField] private Button buyFlashbangButton;
-    [SerializeField] private ushort flashbangItemId = 100;
+    [Header("Dynamic Lists")]
+    [SerializeField] private Transform buyListContent;    // ScrollView Content (VerticalLayoutGroup)
+    [SerializeField] private Transform sellListContent;   // ScrollView Content (VerticalLayoutGroup)
 
-    [Header("Sell Controls")]
-    [SerializeField] private Button sellSelectedButton;
+    [Header("Bulk Controls")]
     [SerializeField] private Button sellAllButton;
-    [SerializeField] private TMP_InputField sellSlotInput;
 
     [Header("Close")]
     [SerializeField] private Button closeButton;
@@ -30,12 +30,6 @@ public class MarketUIController : MonoBehaviour
 
     private void Awake()
     {
-        if (buyFlashbangButton != null)
-            buyFlashbangButton.onClick.AddListener(BuyFlashbang);
-
-        if (sellSelectedButton != null)
-            sellSelectedButton.onClick.AddListener(SellSelectedSlot);
-
         if (sellAllButton != null)
             sellAllButton.onClick.AddListener(SellAll);
 
@@ -59,6 +53,9 @@ public class MarketUIController : MonoBehaviour
     {
         if (_service != null && _service.Wallet != null)
             _service.Wallet.CreditsChanged -= OnCreditsChanged;
+
+        if (_inventory != null && _inventory.Slots != null)
+            _inventory.Slots.OnListChanged -= OnInventoryChanged;
     }
 
     public void Open(MarketTransactionService service, PlayerInventory inventory, TestPlayer testPlayer = null)
@@ -66,12 +63,18 @@ public class MarketUIController : MonoBehaviour
         if (_service != null && _service.Wallet != null)
             _service.Wallet.CreditsChanged -= OnCreditsChanged;
 
+        if (_inventory != null && _inventory.Slots != null)
+            _inventory.Slots.OnListChanged -= OnInventoryChanged;
+
         _service   = service;
         _inventory = inventory;
         _testPlayer = testPlayer;
 
         if (_service != null && _service.Wallet != null)
             _service.Wallet.CreditsChanged += OnCreditsChanged;
+
+        if (_inventory != null && _inventory.Slots != null)
+            _inventory.Slots.OnListChanged += OnInventoryChanged;
 
         if (panelRoot != null)
             panelRoot.SetActive(true);
@@ -83,6 +86,8 @@ public class MarketUIController : MonoBehaviour
             _testPlayer.SetInputEnabled(false);
 
         SetStatus("Market opened.");
+        BuildBuyList();
+        BuildSellList();
         Refresh();
     }
 
@@ -91,73 +96,14 @@ public class MarketUIController : MonoBehaviour
         if (panelRoot != null)
             panelRoot.SetActive(false);
 
+        if (_inventory != null && _inventory.Slots != null)
+            _inventory.Slots.OnListChanged -= OnInventoryChanged;
+
         // Lock cursor back, unfreeze player
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible   = false;
         if (_testPlayer != null)
             _testPlayer.SetInputEnabled(true);
-    }
-
-    public void BuyFlashbang()
-    {
-        if (_inventory == null)
-        {
-            SetStatus("Inventory is missing.");
-            return;
-        }
-
-        if (_service == null)
-        {
-            SetStatus("Market service is missing.");
-            return;
-        }
-
-        if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening)
-        {
-            _inventory.RequestMarketFlashbangPurchase(_service.DeliveryPosition, _service.DeliveryForward);
-            SetStatus("Purchase requested.");
-        }
-        else if (_service.IsSpawned && !_service.IsServer)
-        {
-            _service.RequestBuy(flashbangItemId, _inventory);
-            SetStatus("Purchase requested.");
-        }
-        else
-        {
-            _service.TryBuy(flashbangItemId, out string message);
-            SetStatus(message);
-        }
-
-        Refresh();
-    }
-
-    public void SellSelectedSlot()
-    {
-        if (_service == null)
-        {
-            SetStatus("Market service is missing.");
-            return;
-        }
-
-        if (_inventory == null)
-        {
-            SetStatus("Inventory is missing.");
-            return;
-        }
-
-        int slotIndex = ReadSlotIndex();
-        if (_service.IsSpawned && !_service.IsServer)
-        {
-            _service.RequestSellOne(_inventory, slotIndex);
-            SetStatus("Sell requested.");
-        }
-        else
-        {
-            _service.TrySellOne(_inventory, slotIndex, out string message);
-            SetStatus(message);
-        }
-
-        Refresh();
     }
 
     public void SellAll()
@@ -174,7 +120,8 @@ public class MarketUIController : MonoBehaviour
             return;
         }
 
-        if (_service.IsSpawned && !_service.IsServer)
+        var nm = NetworkManager.Singleton;
+        if (nm != null && nm.IsListening && _service.IsSpawned && !_service.IsServer)
         {
             _service.RequestSellAll(_inventory);
             SetStatus("Sell all requested.");
@@ -188,6 +135,180 @@ public class MarketUIController : MonoBehaviour
         }
 
         Refresh();
+    }
+
+    private void OnInventoryChanged(NetworkListEvent<ushort> _)
+    {
+        BuildSellList();
+        Refresh();
+    }
+
+    private void BuildBuyList()
+    {
+        if (buyListContent == null || _service == null) return;
+        ClearChildren(buyListContent);
+        IReadOnlyList<ItemDefinition> items = _service.GetBuyableItems();
+        for (int i = 0; i < items.Count; i++)
+        {
+            ItemDefinition def = items[i];
+            if (def == null) continue;
+            CreateBuyRow(def);
+        }
+    }
+
+    private void BuildSellList()
+    {
+        if (sellListContent == null || _service == null || _inventory == null) return;
+        ClearChildren(sellListContent);
+        for (int slot = 0; slot < _inventory.Slots.Count; slot++)
+        {
+            ushort itemId = _inventory.Slots[slot];
+            if (itemId == 0) continue;
+            ItemDefinition def = ItemCatalog.Instance?.GetById(itemId);
+            if (def == null) continue;
+            CreateSellRow(def, slot);
+        }
+    }
+
+    private static void ClearChildren(Transform parent)
+    {
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Destroy(parent.GetChild(i).gameObject);
+    }
+
+    private void CreateBuyRow(ItemDefinition def)
+    {
+        GameObject row = CreateRow(buyListContent, $"BuyRow_{def.Id}");
+        CreateRowText(row.transform, "Name", def.DisplayName, 16, TextAlignmentOptions.MidlineLeft);
+        int price = _service.GetBuyPriceFor(def.Id);
+        CreateRowText(row.transform, "Price", $"{price} cr", 16, TextAlignmentOptions.Center);
+        Button button = CreateRowButton(row.transform, "BuyButton", "Buy");
+
+        ushort capturedId = def.Id;
+        button.onClick.AddListener(() =>
+        {
+            if (_service == null || _inventory == null)
+                return;
+
+            var nm = NetworkManager.Singleton;
+            if (nm != null && nm.IsListening && _service.IsSpawned && !_service.IsServer)
+            {
+                _service.RequestBuy(capturedId, _inventory);
+                SetStatus("Purchase requested.");
+            }
+            else
+            {
+                _service.TryBuy(capturedId, out string msg);
+                SetStatus(!string.IsNullOrEmpty(msg) ? msg : "Purchase requested.");
+            }
+
+            Refresh();
+        });
+    }
+
+    private void CreateSellRow(ItemDefinition def, int slotIndex)
+    {
+        GameObject row = CreateRow(sellListContent, $"SellRow_{slotIndex}_{def.Id}");
+        CreateRowText(row.transform, "Name", $"[{slotIndex}] {def.DisplayName}", 16, TextAlignmentOptions.MidlineLeft);
+        int price = _service.GetSellPriceFor(def.Id);
+        CreateRowText(row.transform, "Price", $"{price} cr", 16, TextAlignmentOptions.Center);
+        Button button = CreateRowButton(row.transform, "SellButton", "Sell");
+
+        int capturedSlot = slotIndex;
+        button.onClick.AddListener(() =>
+        {
+            if (_service == null || _inventory == null)
+                return;
+
+            var nm = NetworkManager.Singleton;
+            if (nm != null && nm.IsListening && _service.IsSpawned && !_service.IsServer)
+            {
+                _service.RequestSellOne(_inventory, capturedSlot);
+                SetStatus("Sell requested.");
+            }
+            else
+            {
+                _service.TrySellOne(_inventory, capturedSlot, out string msg);
+                SetStatus(msg);
+            }
+            // Refresh inventory.Slots.OnListChanged uzerinden gelecek
+        });
+    }
+
+    private GameObject CreateRow(Transform parent, string name)
+    {
+        GameObject obj = new GameObject(name);
+        obj.transform.SetParent(parent, false);
+
+        RectTransform rect = obj.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 0f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image bg = obj.AddComponent<Image>();
+        bg.color = new Color(0.16f, 0.22f, 0.28f, 1f);
+
+        LayoutElement layout = obj.AddComponent<LayoutElement>();
+        layout.minHeight = 44f;
+        layout.preferredHeight = 44f;
+
+        HorizontalLayoutGroup hlg = obj.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 6f;
+        hlg.padding = new RectOffset(8, 8, 4, 4);
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+
+        return obj;
+    }
+
+    private TMP_Text CreateRowText(Transform parent, string name, string text, int fontSize, TextAlignmentOptions align)
+    {
+        GameObject obj = new GameObject(name);
+        obj.transform.SetParent(parent, false);
+        obj.AddComponent<RectTransform>();
+
+        TextMeshProUGUI label = obj.AddComponent<TextMeshProUGUI>();
+        label.text = text;
+        label.fontSize = fontSize;
+        label.color = Color.white;
+        label.alignment = align;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        return label;
+    }
+
+    private Button CreateRowButton(Transform parent, string name, string label)
+    {
+        GameObject obj = new GameObject(name);
+        obj.transform.SetParent(parent, false);
+        obj.AddComponent<RectTransform>();
+
+        Image image = obj.AddComponent<Image>();
+        image.color = new Color(0.22f, 0.45f, 0.55f, 1f);
+        Button button = obj.AddComponent<Button>();
+
+        LayoutElement layout = obj.AddComponent<LayoutElement>();
+        layout.minWidth = 70f;
+        layout.preferredWidth = 80f;
+
+        GameObject labelObj = new GameObject("Label");
+        labelObj.transform.SetParent(obj.transform, false);
+        RectTransform labelRect = labelObj.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI text = labelObj.AddComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.fontSize = 16;
+        text.color = Color.white;
+        text.alignment = TextAlignmentOptions.Center;
+        return button;
     }
 
     private void Refresh()
@@ -204,14 +325,6 @@ public class MarketUIController : MonoBehaviour
     private void OnCreditsChanged(int credits)
     {
         Refresh();
-    }
-
-    private int ReadSlotIndex()
-    {
-        if (sellSlotInput == null)
-            return 0;
-
-        return int.TryParse(sellSlotInput.text, out int value) ? Mathf.Max(0, value) : 0;
     }
 
     private void SetStatus(string message)
@@ -233,20 +346,18 @@ public class MarketUIController : MonoBehaviour
         TMP_Text credits,
         TMP_Text selected,
         TMP_Text status,
-        Button buyFlashbang,
-        Button sellSelected,
+        Transform buyListContent,
+        Transform sellListContent,
         Button sellAll,
-        TMP_InputField slotInput,
         Button close = null)
     {
-        panelRoot        = root;
-        creditsText      = credits;
-        selectedItemText = selected;
-        statusText       = status;
-        buyFlashbangButton = buyFlashbang;
-        sellSelectedButton = sellSelected;
-        sellAllButton    = sellAll;
-        sellSlotInput    = slotInput;
-        closeButton      = close;
+        panelRoot            = root;
+        creditsText          = credits;
+        selectedItemText     = selected;
+        statusText           = status;
+        this.buyListContent  = buyListContent;
+        this.sellListContent = sellListContent;
+        sellAllButton        = sellAll;
+        closeButton          = close;
     }
 }

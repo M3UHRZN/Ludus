@@ -1,17 +1,18 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(NetworkObject))]
 public class MarketTransactionService : NetworkBehaviour
 {
-    [SerializeField] private MarketCatalog catalog;
     [SerializeField] private MarketWallet wallet;
     [SerializeField] private Transform deliveryPoint;
     [SerializeField] private GameObject fallbackDeliveryPrefab;
     [SerializeField] private float deliveryImpulse = 1.5f;
 
+    private readonly List<ItemDefinition> _buyableCache = new();
+
     public MarketWallet Wallet => wallet;
-    public MarketCatalog Catalog => catalog;
     public Vector3 DeliveryPosition => deliveryPoint != null
         ? deliveryPoint.position
         : transform.position + transform.forward * 1.25f + Vector3.up * 0.5f;
@@ -19,9 +20,6 @@ public class MarketTransactionService : NetworkBehaviour
 
     private void Awake()
     {
-        if (catalog == null)
-            catalog = GetComponent<MarketCatalog>();
-
         if (wallet == null)
             wallet = GetComponent<MarketWallet>();
     }
@@ -141,38 +139,33 @@ public class MarketTransactionService : NetworkBehaviour
 
     private bool TryBuyInternal(ushort itemId, out string message)
     {
-        if (catalog == null)
-        {
-            message = "Market catalog is missing.";
-            return false;
-        }
-
         if (wallet == null)
         {
             message = "Market wallet is missing.";
             return false;
         }
 
-        if (!catalog.TryGetItem(itemId, out MarketCatalogItem item))
+        ItemDefinition def = ItemCatalog.Instance?.GetById(itemId);
+        if (def == null)
         {
-            message = "Item is not in the market catalog.";
+            message = "Item not in catalog.";
             return false;
         }
 
-        if (!item.CanBuy)
+        if (!def.IsBuyable)
         {
-            message = $"{item.DisplayName} cannot be bought.";
+            message = $"{def.DisplayName} cannot be bought.";
             return false;
         }
 
-        if (!wallet.TrySpend(item.BuyPrice))
+        if (!wallet.TrySpend(def.MarketPrice))
         {
             message = "Not enough credits.";
             return false;
         }
 
-        SpawnPurchasedItem(item);
-        message = $"Bought {item.DisplayName}.";
+        SpawnPurchasedItem(def);
+        message = $"Bought {def.DisplayName}.";
         return true;
     }
 
@@ -220,11 +213,6 @@ public class MarketTransactionService : NetworkBehaviour
         return soldCount;
     }
 
-    public void SetCatalog(MarketCatalog value)
-    {
-        catalog = value;
-    }
-
     public void SetWallet(MarketWallet value)
     {
         wallet = value;
@@ -238,6 +226,29 @@ public class MarketTransactionService : NetworkBehaviour
     public void SetFallbackDeliveryPrefab(GameObject value)
     {
         fallbackDeliveryPrefab = value;
+    }
+
+    /// <summary>UI buy listesini doldurmak icin; her cagrida tazelenir.</summary>
+    public IReadOnlyList<ItemDefinition> GetBuyableItems()
+    {
+        _buyableCache.Clear();
+        if (ItemCatalog.Instance != null)
+            ItemCatalog.Instance.CollectBuyable(_buyableCache);
+        return _buyableCache;
+    }
+
+    /// <summary>UI'da fiyati gostermek icin; satilamaz ise 0.</summary>
+    public int GetSellPriceFor(ushort itemId)
+    {
+        ItemDefinition def = ItemCatalog.Instance?.GetById(itemId);
+        return (def != null && def.IsSellable) ? def.SellPrice : 0;
+    }
+
+    /// <summary>UI'da fiyati gostermek icin; satin alinamaz ise 0.</summary>
+    public int GetBuyPriceFor(ushort itemId)
+    {
+        ItemDefinition def = ItemCatalog.Instance?.GetById(itemId);
+        return (def != null && def.IsBuyable) ? def.MarketPrice : 0;
     }
 
     private bool TryGetInventoryItem(PlayerInventory inventory, int slotIndex, out ushort itemId, out string message)
@@ -257,6 +268,12 @@ public class MarketTransactionService : NetworkBehaviour
         }
 
         itemId = inventory.Slots[slotIndex];
+        if (itemId == 0)
+        {
+            message = "Slot is empty.";
+            return false;
+        }
+
         message = string.Empty;
         return true;
     }
@@ -265,25 +282,26 @@ public class MarketTransactionService : NetworkBehaviour
     {
         sellValue = 0;
 
-        if (catalog == null)
-        {
-            message = "Market catalog is missing.";
-            return false;
-        }
-
         if (wallet == null)
         {
             message = "Market wallet is missing.";
             return false;
         }
 
-        if (!catalog.CanSell(itemId))
+        ItemDefinition def = ItemCatalog.Instance?.GetById(itemId);
+        if (def == null)
+        {
+            message = "Item not in catalog.";
+            return false;
+        }
+
+        if (!def.IsSellable)
         {
             message = "This item cannot be sold.";
             return false;
         }
 
-        sellValue = catalog.GetSellValue(itemId);
+        sellValue = def.SellPrice;
         if (sellValue <= 0)
         {
             message = "This item has no sell value.";
@@ -294,7 +312,7 @@ public class MarketTransactionService : NetworkBehaviour
         return true;
     }
 
-    private void SpawnPurchasedItem(MarketCatalogItem item)
+    private void SpawnPurchasedItem(ItemDefinition def)
     {
         Vector3 position = deliveryPoint != null
             ? deliveryPoint.position
@@ -303,17 +321,18 @@ public class MarketTransactionService : NetworkBehaviour
         Quaternion rotation = deliveryPoint != null ? deliveryPoint.rotation : Quaternion.identity;
         GameObject spawned;
 
-        GameObject deliveryPrefab = item.DeliveryPrefab != null ? item.DeliveryPrefab : fallbackDeliveryPrefab;
+        GameObject deliveryPrefab = def.WorldPrefab != null ? def.WorldPrefab : fallbackDeliveryPrefab;
 
         if (deliveryPrefab != null)
         {
             spawned = Instantiate(deliveryPrefab, position, rotation);
-            spawned.transform.localScale = new Vector3(0.28f, 0.18f, 0.45f);
+            // localScale prefab'tan miras alinir (1f); item-specific scale uygulamiyoruz.
         }
         else
         {
+            Debug.LogError($"[Market] {def.DisplayName} icin WorldPrefab atanmamis ve fallback yok — capsule fallback'a dusuluyor (client'larda gorunmeyecek).");
             spawned = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            spawned.name = $"{item.DisplayName} Delivery";
+            spawned.name = $"{def.DisplayName} Delivery";
             spawned.transform.SetPositionAndRotation(position, rotation);
             spawned.transform.localScale = new Vector3(0.25f, 0.25f, 0.45f);
 
@@ -331,11 +350,11 @@ public class MarketTransactionService : NetworkBehaviour
         {
             netObject.Spawn(true);
             if (spawned.TryGetComponent(out PhysicsObject physicsObject))
-                physicsObject.ServerConfigureInventoryPickup(true, item.ItemId);
+                physicsObject.ServerConfigureInventoryPickup(true, def.Id);
         }
         else if (IsServer && netObject == null)
         {
-            Debug.LogWarning($"[Market] Delivery prefab for {item.DisplayName} is missing NetworkObject.");
+            Debug.LogWarning($"[Market] Delivery prefab for {def.DisplayName} is missing NetworkObject.");
         }
 
         rb.AddForce((Vector3.up + transform.forward * 0.4f) * deliveryImpulse, ForceMode.Impulse);

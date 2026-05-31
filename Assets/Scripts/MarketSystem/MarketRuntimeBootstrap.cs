@@ -37,10 +37,8 @@ public static class MarketRuntimeBootstrap
             root = new GameObject(MarketRootName);
 
         MarketWallet wallet = EnsureComponent<MarketWallet>(root);
-        MarketCatalog catalog = EnsureComponent<MarketCatalog>(root);
         MarketTransactionService service = EnsureComponent<MarketTransactionService>(root);
         service.SetWallet(wallet);
-        service.SetCatalog(catalog);
 
         Transform deliveryPoint = root.transform.Find("MarketDeliveryPoint");
         if (deliveryPoint == null)
@@ -110,16 +108,50 @@ public static class MarketRuntimeBootstrap
         TMP_Text status = CreateText(panel.transform, "StatusText", "Open market from terminal.", 16, new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.15f));
         CreateText(panel.transform, "Title", "VOIDHAUL MARKET", 28, new Vector2(0.05f, 0.83f), new Vector2(0.72f, 0.96f));
 
-        Button buy = CreateButton(panel.transform, "BuyFlashbangButton", "Buy Flashbang", new Vector2(0.05f, 0.46f), new Vector2(0.45f, 0.58f));
-        Button sellOne = CreateButton(panel.transform, "SellSelectedButton", "Sell One", new Vector2(0.55f, 0.46f), new Vector2(0.95f, 0.58f));
-        Button sellAll = CreateButton(panel.transform, "SellAllButton", "Sell All", new Vector2(0.55f, 0.30f), new Vector2(0.95f, 0.42f));
+        CreateText(panel.transform, "BuyLabel", "BUY", 18, new Vector2(0.05f, 0.78f), new Vector2(0.48f, 0.83f));
+        CreateText(panel.transform, "SellLabel", "SELL", 18, new Vector2(0.52f, 0.78f), new Vector2(0.95f, 0.83f));
+
+        Transform buyListContent = CreateContainer(
+            panel.transform,
+            "BuyListContent",
+            new Vector2(0.05f, 0.30f),
+            new Vector2(0.48f, 0.78f),
+            new Color(0.06f, 0.08f, 0.10f, 0.7f));
+
+        Transform sellListContent = CreateContainer(
+            panel.transform,
+            "SellListContent",
+            new Vector2(0.52f, 0.30f),
+            new Vector2(0.95f, 0.78f),
+            new Color(0.06f, 0.08f, 0.10f, 0.7f));
+
+        Button sellAll = CreateButton(panel.transform, "SellAllButton", "Sell All", new Vector2(0.55f, 0.18f), new Vector2(0.95f, 0.28f));
         Button close = CreateButton(panel.transform, "CloseButton", "Close", new Vector2(0.78f, 0.84f), new Vector2(0.98f, 0.96f));
-        TMP_InputField slotInput = CreateInput(panel.transform, "SellSlotInput", "0", new Vector2(0.55f, 0.18f), new Vector2(0.75f, 0.28f));
 
         MarketUIController ui = canvasObject.AddComponent<MarketUIController>();
-        ui.Configure(panel, credits, selected, status, buy, sellOne, sellAll, slotInput, close);
+        ui.Configure(panel, credits, selected, status, buyListContent, sellListContent, sellAll, close);
         panel.SetActive(false);
         return ui;
+    }
+
+    private static Transform CreateContainer(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Color bg)
+    {
+        GameObject obj = CreateChild(parent, name);
+        Image img = obj.AddComponent<Image>();
+        img.color = bg;
+        RectTransform rect = EnsureRect(obj);
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        VerticalLayoutGroup vlg = obj.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 4f;
+        vlg.padding = new RectOffset(4, 4, 4, 4);
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        return obj.transform;
     }
 
     private static TMP_Text CreateText(Transform parent, string name, string text, int fontSize, Vector2 anchorMin, Vector2 anchorMax)
@@ -155,26 +187,6 @@ public static class MarketRuntimeBootstrap
         TMP_Text text = CreateText(obj.transform, "Label", label, 18, Vector2.zero, Vector2.one);
         text.alignment = TextAlignmentOptions.Center;
         return button;
-    }
-
-    private static TMP_InputField CreateInput(Transform parent, string name, string text, Vector2 anchorMin, Vector2 anchorMax)
-    {
-        GameObject obj = CreateChild(parent, name);
-        Image image = obj.AddComponent<Image>();
-        image.color = new Color(0.12f, 0.14f, 0.16f, 1f);
-        TMP_InputField input = obj.AddComponent<TMP_InputField>();
-
-        RectTransform rect = EnsureRect(obj);
-        rect.anchorMin = anchorMin;
-        rect.anchorMax = anchorMax;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        TMP_Text label = CreateText(obj.transform, "Text", text, 18, Vector2.zero, Vector2.one);
-        label.margin = new Vector4(8f, 0f, 8f, 0f);
-        input.textComponent = label;
-        input.text = text;
-        return input;
     }
 
     private static void EnsureEventSystem()
