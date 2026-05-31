@@ -12,6 +12,8 @@ public class ItemCatalog : ScriptableObject
 {
     [SerializeField] private List<ItemDefinition> definitions = new();
 
+    public IReadOnlyList<ItemDefinition> AllDefinitions => definitions;
+
     private static ItemCatalog _instance;
     public static ItemCatalog Instance
     {

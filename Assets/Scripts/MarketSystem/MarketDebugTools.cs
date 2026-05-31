@@ -6,7 +6,7 @@ public class MarketDebugTools : MonoBehaviour
     [SerializeField] private PlayerInventory inventory;
     [SerializeField] private int creditsToAdd = 100;
     [SerializeField] private ushort debugItemId = 1;
-    [SerializeField] private ushort flashbangItemId = 100;
+    [SerializeField] private ushort flashbangItemId = 1;
 
     private void Reset()
     {

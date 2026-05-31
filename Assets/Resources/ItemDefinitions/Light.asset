@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c5053c37b7e49b41bce511b4a1e959d, type: 3}
-  m_Name: TestItem
+  m_Name: Light
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  id: 2
-  displayName: Kup
+  id: 3
+  displayName: Light
   size: 0
-  creditValue: 25
-  icon: {fileID: 21300000, guid: 144d5c35043c7f04193d57dc3c38bbcb, type: 3}
-  worldPrefab: {fileID: 7869045618340365188, guid: 8ea7e8844ad3faf4da1a1bcf21aab78a, type: 3}
-  isBuyable: 0
-  marketPrice: 0
+  creditValue: 1
+  icon: {fileID: -1785421693, guid: fcdb4f12e1e10e3448f9b908cfd62761, type: 3}
+  worldPrefab: {fileID: 7869045618340365188, guid: e6eb6c6b56e23994b9fd24f69eaa7077, type: 3}
+  isBuyable: 1
+  marketPrice: 1
   isSellable: 1
-  sellPrice: 25
+  sellPrice: 1
