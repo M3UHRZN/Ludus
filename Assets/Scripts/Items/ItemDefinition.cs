@@ -18,6 +18,8 @@ public class ItemDefinition : ScriptableObject, IItemRecord
     [Header("Market")]
     [SerializeField] private bool isBuyable;
     [SerializeField] private int marketPrice;
+    [SerializeField] private bool isSellable = true;
+    [SerializeField] private int sellPrice;
 
     public ushort Id => id;
     public string DisplayName => displayName;
@@ -27,6 +29,8 @@ public class ItemDefinition : ScriptableObject, IItemRecord
     public GameObject WorldPrefab => worldPrefab;
     public bool IsBuyable => isBuyable;
     public int MarketPrice => marketPrice;
+    public bool IsSellable => isSellable;
+    public int SellPrice => sellPrice;
 
     // BaseItem'ın orijinal Small=1 / Medium=3 / Large=6 kuralı.
     public int Weight => size switch
