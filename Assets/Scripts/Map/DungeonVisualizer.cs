@@ -93,7 +93,7 @@ public class DungeonVisualizer : MonoBehaviour
         SpawnSide(room, ConnectionDirection.East,  worldPos, parent, data);
         SpawnSide(room, ConnectionDirection.West,  worldPos, parent, data);
 
-        if (room.Type == RoomType.Start)
+        if (room.Type == RoomType.End)
         {
             if (_extractZonePrefab != null)
                 Instantiate(_extractZonePrefab, worldPos + new Vector3(-1.5f, 0, 1f), Quaternion.identity, parent);
@@ -110,7 +110,7 @@ public class DungeonVisualizer : MonoBehaviour
         if (!IsGroupOrigin(room, data)) return;
 
         GameObject prefab;
-        if (room.Type == RoomType.Start)
+        if (room.Type == RoomType.End)
         {
             prefab = _entryFloorPrefab != null ? _entryFloorPrefab : _floorPrefab;
         }
@@ -133,7 +133,7 @@ public class DungeonVisualizer : MonoBehaviour
     private void PlaceProps(RoomNode room, Transform floorInstance)
     {
         if (!_placeProps || _propPalette == null) return;
-        if (room.Type == RoomType.Start) return; // Start odası temiz kalsın
+        if (room.Type == RoomType.End) return; // End (entry-styled) odası temiz kalsın
 
         var anchors = floorInstance.GetComponentsInChildren<PropAnchor>(true);
         if (anchors.Length == 0) return;
@@ -177,7 +177,7 @@ public class DungeonVisualizer : MonoBehaviour
             _                                  => null
         };
 
-        if (room.Type == RoomType.Start)
+        if (room.Type == RoomType.End)
         {
             if (hasDoor && _entryDoorPrefab != null)
                 wallPrefab = _entryDoorPrefab;
