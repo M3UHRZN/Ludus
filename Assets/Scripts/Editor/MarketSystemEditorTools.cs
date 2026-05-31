@@ -200,13 +200,14 @@ public static class MarketSystemEditorTools
         TMP_Text status = EnsureText(panel.transform, "StatusText", "Open market from terminal.", 16, new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.15f));
 
         Button buyFlashbang = EnsureButton(panel.transform, "BuyFlashbangButton", "Buy Flashbang", new Vector2(0.05f, 0.46f), new Vector2(0.45f, 0.58f));
+        Button buyTorch     = EnsureButton(panel.transform, "BuyTorchButton",     "Buy Torch",      new Vector2(0.05f, 0.30f), new Vector2(0.45f, 0.42f));
         Button sellSelected = EnsureButton(panel.transform, "SellSelectedButton", "Sell One",      new Vector2(0.55f, 0.46f), new Vector2(0.95f, 0.58f));
         Button sellAll      = EnsureButton(panel.transform, "SellAllButton",      "Sell All",      new Vector2(0.55f, 0.30f), new Vector2(0.95f, 0.42f));
         Button closeBtn     = EnsureButton(panel.transform, "CloseButton",        "✕ Close",       new Vector2(0.78f, 0.84f), new Vector2(0.98f, 0.96f));
         TMP_InputField slotInput = EnsureInput(panel.transform, "SellSlotInput", "0", new Vector2(0.55f, 0.18f), new Vector2(0.75f, 0.28f));
 
         MarketUIController ui = EnsureComponent<MarketUIController>(canvasObj);
-        ui.Configure(panel, credits, selected, status, buyFlashbang, sellSelected, sellAll, slotInput, closeBtn);
+        ui.Configure(panel, credits, selected, status, buyFlashbang, buyTorch, sellSelected, sellAll, slotInput, closeBtn);
         panel.SetActive(false);
 
         EditorUtility.SetDirty(canvasObj);

@@ -111,13 +111,14 @@ public static class MarketRuntimeBootstrap
         CreateText(panel.transform, "Title", "VOIDHAUL MARKET", 28, new Vector2(0.05f, 0.83f), new Vector2(0.72f, 0.96f));
 
         Button buy = CreateButton(panel.transform, "BuyFlashbangButton", "Buy Flashbang", new Vector2(0.05f, 0.46f), new Vector2(0.45f, 0.58f));
+        Button buyTorch = CreateButton(panel.transform, "BuyTorchButton", "Buy Torch", new Vector2(0.05f, 0.30f), new Vector2(0.45f, 0.42f));
         Button sellOne = CreateButton(panel.transform, "SellSelectedButton", "Sell One", new Vector2(0.55f, 0.46f), new Vector2(0.95f, 0.58f));
         Button sellAll = CreateButton(panel.transform, "SellAllButton", "Sell All", new Vector2(0.55f, 0.30f), new Vector2(0.95f, 0.42f));
         Button close = CreateButton(panel.transform, "CloseButton", "Close", new Vector2(0.78f, 0.84f), new Vector2(0.98f, 0.96f));
         TMP_InputField slotInput = CreateInput(panel.transform, "SellSlotInput", "0", new Vector2(0.55f, 0.18f), new Vector2(0.75f, 0.28f));
 
         MarketUIController ui = canvasObject.AddComponent<MarketUIController>();
-        ui.Configure(panel, credits, selected, status, buy, sellOne, sellAll, slotInput, close);
+        ui.Configure(panel, credits, selected, status, buy, buyTorch, sellOne, sellAll, slotInput, close);
         panel.SetActive(false);
         return ui;
     }

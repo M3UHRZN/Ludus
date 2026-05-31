@@ -14,7 +14,9 @@ public class MarketUIController : MonoBehaviour
 
     [Header("Buy Controls")]
     [SerializeField] private Button buyFlashbangButton;
-    [SerializeField] private ushort flashbangItemId = 100;
+    [SerializeField] private Button buyTorchButton;
+    [SerializeField] private ushort flashbangItemId = 1;
+    [SerializeField] private ushort torchItemId = 3;
 
     [Header("Sell Controls")]
     [SerializeField] private Button sellSelectedButton;
@@ -30,18 +32,9 @@ public class MarketUIController : MonoBehaviour
 
     private void Awake()
     {
-        if (buyFlashbangButton != null)
-            buyFlashbangButton.onClick.AddListener(BuyFlashbang);
-
-        if (sellSelectedButton != null)
-            sellSelectedButton.onClick.AddListener(SellSelectedSlot);
-
-        if (sellAllButton != null)
-            sellAllButton.onClick.AddListener(SellAll);
-
-        if (closeButton != null)
-            closeButton.onClick.AddListener(Close);
-
+        NormalizeLegacyIds();
+        EnsureTorchButton();
+        BindButtons();
         Close();
     }
 
@@ -100,6 +93,16 @@ public class MarketUIController : MonoBehaviour
 
     public void BuyFlashbang()
     {
+        BuyItem(flashbangItemId);
+    }
+
+    public void BuyTorch()
+    {
+        BuyItem(torchItemId);
+    }
+
+    private void BuyItem(ushort itemId)
+    {
         if (_inventory == null)
         {
             SetStatus("Inventory is missing.");
@@ -114,17 +117,17 @@ public class MarketUIController : MonoBehaviour
 
         if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening)
         {
-            _inventory.RequestMarketFlashbangPurchase(_service.DeliveryPosition, _service.DeliveryForward);
+            _inventory.RequestMarketItemPurchase(itemId, _service.DeliveryPosition, _service.DeliveryForward);
             SetStatus("Purchase requested.");
         }
         else if (_service.IsSpawned && !_service.IsServer)
         {
-            _service.RequestBuy(flashbangItemId, _inventory);
+            _service.RequestBuy(itemId, _inventory);
             SetStatus("Purchase requested.");
         }
         else
         {
-            _service.TryBuy(flashbangItemId, out string message);
+            _service.TryBuy(itemId, out string message);
             SetStatus(message);
         }
 
@@ -234,6 +237,7 @@ public class MarketUIController : MonoBehaviour
         TMP_Text selected,
         TMP_Text status,
         Button buyFlashbang,
+        Button buyTorch,
         Button sellSelected,
         Button sellAll,
         TMP_InputField slotInput,
@@ -244,9 +248,95 @@ public class MarketUIController : MonoBehaviour
         selectedItemText = selected;
         statusText       = status;
         buyFlashbangButton = buyFlashbang;
+        buyTorchButton   = buyTorch;
         sellSelectedButton = sellSelected;
         sellAllButton    = sellAll;
         sellSlotInput    = slotInput;
         closeButton      = close;
+
+        NormalizeLegacyIds();
+        EnsureTorchButton();
+        BindButtons();
+    }
+
+    private void NormalizeLegacyIds()
+    {
+        if (flashbangItemId == 100)
+            flashbangItemId = 1;
+    }
+
+    private void BindButtons()
+    {
+        if (buyFlashbangButton != null)
+        {
+            buyFlashbangButton.onClick.RemoveListener(BuyFlashbang);
+            buyFlashbangButton.onClick.AddListener(BuyFlashbang);
+        }
+
+        if (buyTorchButton != null)
+        {
+            buyTorchButton.onClick.RemoveListener(BuyTorch);
+            buyTorchButton.onClick.AddListener(BuyTorch);
+        }
+
+        if (sellSelectedButton != null)
+        {
+            sellSelectedButton.onClick.RemoveListener(SellSelectedSlot);
+            sellSelectedButton.onClick.AddListener(SellSelectedSlot);
+        }
+
+        if (sellAllButton != null)
+        {
+            sellAllButton.onClick.RemoveListener(SellAll);
+            sellAllButton.onClick.AddListener(SellAll);
+        }
+
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.AddListener(Close);
+        }
+    }
+
+    private void EnsureTorchButton()
+    {
+        if (buyTorchButton != null || panelRoot == null)
+            return;
+
+        Transform existing = panelRoot.transform.Find("BuyTorchButton");
+        if (existing != null && existing.TryGetComponent(out Button existingButton))
+        {
+            buyTorchButton = existingButton;
+            return;
+        }
+
+        GameObject obj = new GameObject("BuyTorchButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        obj.transform.SetParent(panelRoot.transform, false);
+
+        Image image = obj.GetComponent<Image>();
+        image.color = new Color(0.16f, 0.22f, 0.28f, 1f);
+
+        RectTransform rect = obj.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.05f, 0.30f);
+        rect.anchorMax = new Vector2(0.45f, 0.42f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        GameObject labelObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelObj.transform.SetParent(obj.transform, false);
+
+        RectTransform labelRect = labelObj.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        TMP_Text label = labelObj.GetComponent<TMP_Text>();
+        label.text = "Buy Torch";
+        label.fontSize = 18;
+        label.color = Color.white;
+        label.alignment = TextAlignmentOptions.Center;
+
+        buyTorchButton = obj.GetComponent<Button>();
     }
 }

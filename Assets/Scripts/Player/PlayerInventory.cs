@@ -93,17 +93,92 @@ public class PlayerInventory : NetworkBehaviour
         // Server-only: yok edilmeden once mevcut envanteri snapshot al ki
         // PlayerSpawnCoordinator sahne gecisinde yeni prefab spawn ettiginde
         // OnNetworkSpawn restore edebilsin (lobby -> map flashbang persist).
-        if (IsServer && Slots != null && Slots.Count > 0)
+        if (IsServer)
         {
-            var snap = new ushort[Slots.Count];
-            for (int i = 0; i < Slots.Count; i++) snap[i] = Slots[i];
-            s_ServerInventorySnapshot[OwnerClientId] = (snap, ActiveSlot.Value);
+            // EquippableItem (torch vb.) elde tutuluyorsa sahne gecisinde kaybolmasin
+            // diye snapshot ALMADAN ONCE envantere geri ekle. Sonra world objesini
+            // despawn ediyoruz; OnNetworkSpawn yeni sahnede restore edip oyuncu
+            // E-equip ile tekrar elde alabilsin.
+            TryMigrateHeldEquippableToInventory();
+
+            if (Slots != null && Slots.Count > 0)
+            {
+                var snap = new ushort[Slots.Count];
+                for (int i = 0; i < Slots.Count; i++) snap[i] = Slots[i];
+                s_ServerInventorySnapshot[OwnerClientId] = (snap, ActiveSlot.Value);
+            }
         }
 
         if (!IsOwner) return;
 
         Slots.OnListChanged -= OnSlotsChanged;
         ActiveSlot.OnValueChanged -= OnActiveSlotChanged;
+    }
+
+    /// <summary>
+    /// Server-side: oyuncunun elinde EquippableItem (torch vb.) varsa, scene
+    /// gecisinde kaybolmasin diye envantere geri ekle ve world objesini despawn et.
+    /// </summary>
+    private void TryMigrateHeldEquippableToInventory()
+    {
+        if (!IsServer) return;
+
+        PhysicsObject[] all = FindObjectsByType<PhysicsObject>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        int migrated = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            PhysicsObject po = all[i];
+            if (po == null) continue;
+            if (!po.NetIsHeld.Value) continue;
+            if (po.NetGrabberClientId.Value != OwnerClientId) continue;
+            if (po.GetComponent<EquippableItem>() == null) continue;
+
+            BaseItem baseItem = po.GetComponent<BaseItem>();
+            if (baseItem == null) continue;
+            ushort itemId = baseItem.ItemId;
+            if (itemId == 0) continue;
+
+            // Bos slot bul ve ekle. Slots boyutu sabit MaxSlots; 0 = bos.
+            bool added = false;
+            int targetSlot = -1;
+            for (int s = 0; s < Slots.Count; s++)
+            {
+                if (Slots[s] == 0)
+                {
+                    Slots[s] = itemId;
+                    targetSlot = s;
+                    added = true;
+                    break;
+                }
+            }
+            if (!added && Slots.Count < MaxSlots)
+            {
+                Slots.Add(itemId);
+                targetSlot = Slots.Count - 1;
+                added = true;
+            }
+            // Yeni sahnede E ile direkt geri alabilmesi icin aktif slotu torch'a kaydir.
+            if (added && targetSlot >= 0 && targetSlot < MaxSlots)
+                ActiveSlot.Value = (byte)targetSlot;
+
+            if (added)
+            {
+                migrated++;
+                Debug.Log($"[PlayerInventory] Migrated held equippable id={itemId} -> slot {targetSlot} (clientId={OwnerClientId}).");
+            }
+            else
+            {
+                Debug.LogWarning($"[PlayerInventory] Held equippable id={itemId} migration FAILED — envanter dolu, item kayboldu.");
+            }
+
+            // World objesini despawn et: yeni sahnede yeni instance spawn edilecek.
+            NetworkObject netObj = po.NetworkObject;
+            if (netObj != null && netObj.IsSpawned)
+                netObj.Despawn(true);
+        }
+
+        if (migrated > 0)
+            Debug.Log($"[PlayerInventory] OnNetworkDespawn migrated {migrated} equippable(s) to inventory for client {OwnerClientId}.");
     }
 
     private void OnSlotsChanged(Unity.Netcode.NetworkListEvent<ushort> changeEvent) => TriggerUIUpdate();
@@ -241,11 +316,28 @@ public class PlayerInventory : NetworkBehaviour
     public void RequestMarketFlashbangPurchase(Vector3 deliveryPosition, Vector3 deliveryForward)
     {
         if (!IsOwner) return;
-        RequestMarketFlashbangPurchaseServerRpc(deliveryPosition, deliveryForward);
+        RequestMarketItemPurchase(flashbangItemId, deliveryPosition, deliveryForward);
+    }
+
+    public void RequestMarketItemPurchase(ushort itemId, Vector3 deliveryPosition, Vector3 deliveryForward)
+    {
+        if (!IsOwner) return;
+        RequestMarketItemPurchaseServerRpc(itemId, deliveryPosition, deliveryForward);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
     private void RequestMarketFlashbangPurchaseServerRpc(Vector3 deliveryPosition, Vector3 deliveryForward, RpcParams rpcParams = default)
+    {
+        ServerHandleMarketItemPurchase(flashbangItemId, deliveryPosition, deliveryForward);
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+    private void RequestMarketItemPurchaseServerRpc(ushort itemId, Vector3 deliveryPosition, Vector3 deliveryForward, RpcParams rpcParams = default)
+    {
+        ServerHandleMarketItemPurchase(itemId, deliveryPosition, deliveryForward);
+    }
+
+    private void ServerHandleMarketItemPurchase(ushort itemId, Vector3 deliveryPosition, Vector3 deliveryForward)
     {
         if (!IsServer) return;
         if (float.IsNaN(deliveryPosition.x) || float.IsNaN(deliveryPosition.y) || float.IsNaN(deliveryPosition.z)) return;
@@ -258,11 +350,16 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         ItemCatalog catalog = ItemCatalog.Instance;
-        ItemDefinition flashDef = catalog != null ? catalog.GetById(flashbangItemId) : null;
-        int price = flashDef != null ? flashDef.MarketPrice : 0;
-        if (flashDef == null)
+        ItemDefinition itemDef = catalog != null ? catalog.GetById(itemId) : null;
+        int price = itemDef != null ? itemDef.MarketPrice : 0;
+        if (itemDef == null)
         {
-            SendInventoryMarketMessageRpc("Flashbang not in ItemCatalog.");
+            SendInventoryMarketMessageRpc("Item is not in ItemCatalog.");
+            return;
+        }
+        if (!itemDef.IsBuyable)
+        {
+            SendInventoryMarketMessageRpc($"{itemDef.DisplayName} cannot be bought.");
             return;
         }
         if (s_ServerMarketCredits < price)
@@ -272,8 +369,8 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         s_ServerMarketCredits -= price;
-        ServerSpawnFlashbangPickup(deliveryPosition, deliveryForward);
-        SendInventoryMarketMessageRpc($"Bought Flashbang. Team Credits: {s_ServerMarketCredits}");
+        ServerSpawnMarketPickup(itemDef.Id, itemDef.DisplayName, deliveryPosition, deliveryForward);
+        SendInventoryMarketMessageRpc($"Bought {itemDef.DisplayName}. Team Credits: {s_ServerMarketCredits}");
     }
 
     // ── Corpse Carry (Sprint 2 — Yasin) ──────────────────────────────────────
@@ -373,11 +470,16 @@ public class PlayerInventory : NetworkBehaviour
 
     private void ServerSpawnFlashbangPickup(Vector3 position, Vector3 forward)
     {
+        ServerSpawnMarketPickup(flashbangItemId, "Flashbang", position, forward);
+    }
+
+    private void ServerSpawnMarketPickup(ushort itemId, string itemName, Vector3 position, Vector3 forward)
+    {
         ItemCatalog catalog = ItemCatalog.Instance;
-        GameObject prefab = catalog != null ? catalog.GetPrefab(flashbangItemId) : null;
+        GameObject prefab = catalog != null ? catalog.GetPrefab(itemId) : null;
         if (prefab == null)
         {
-            SendInventoryMarketMessageRpc("Flashbang prefab missing from ItemCatalog.");
+            SendInventoryMarketMessageRpc($"{itemName} prefab missing from ItemCatalog.");
             return;
         }
         if (forward.sqrMagnitude < 0.0001f) forward = transform.forward;
@@ -388,7 +490,7 @@ public class PlayerInventory : NetworkBehaviour
         {
             netObject.Spawn(true);
             if (pickup.TryGetComponent(out PhysicsObject physicsObject))
-                physicsObject.ServerConfigureInventoryPickup(true, flashbangItemId);
+                physicsObject.ServerConfigureInventoryPickup(true, itemId);
         }
 
         Rigidbody rb = pickup.GetComponent<Rigidbody>();

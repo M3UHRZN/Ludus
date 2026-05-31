@@ -141,39 +141,23 @@ public class MarketTransactionService : NetworkBehaviour
 
     private bool TryBuyInternal(ushort itemId, out string message)
     {
-        if (catalog == null)
-        {
-            message = "Market catalog is missing.";
-            return false;
-        }
-
         if (wallet == null)
         {
             message = "Market wallet is missing.";
             return false;
         }
 
-        if (!catalog.TryGetItem(itemId, out MarketCatalogItem item))
+        if (catalog != null && catalog.TryGetItem(itemId, out MarketCatalogItem item))
+            return TryBuyCatalogItem(item, out message);
+
+        ItemDefinition definition = ItemCatalog.Instance != null ? ItemCatalog.Instance.GetById(itemId) : null;
+        if (definition == null)
         {
             message = "Item is not in the market catalog.";
             return false;
         }
 
-        if (!item.CanBuy)
-        {
-            message = $"{item.DisplayName} cannot be bought.";
-            return false;
-        }
-
-        if (!wallet.TrySpend(item.BuyPrice))
-        {
-            message = "Not enough credits.";
-            return false;
-        }
-
-        SpawnPurchasedItem(item);
-        message = $"Bought {item.DisplayName}.";
-        return true;
+        return TryBuyCatalogDefinition(definition, out message);
     }
 
     public bool TrySellOne(PlayerInventory inventory, int slotIndex, out string message)
@@ -296,6 +280,54 @@ public class MarketTransactionService : NetworkBehaviour
 
     private void SpawnPurchasedItem(MarketCatalogItem item)
     {
+        GameObject deliveryPrefab = item.DeliveryPrefab != null ? item.DeliveryPrefab : fallbackDeliveryPrefab;
+        // Sadece fallback prefab kullanildiginda placeholder scale'i zorla; eger
+        // catalog item'in kendi delivery prefab'i varsa o prefabin native scale'i
+        // korunsun (orn. torch, kendi 0.65 scale'iyle gelmeli).
+        bool forceScale = item.DeliveryPrefab == null;
+        SpawnPurchasedItem(item.ItemId, item.DisplayName, deliveryPrefab, forceScale);
+    }
+
+    private bool TryBuyCatalogItem(MarketCatalogItem item, out string message)
+    {
+        if (!item.CanBuy)
+        {
+            message = $"{item.DisplayName} cannot be bought.";
+            return false;
+        }
+
+        if (!wallet.TrySpend(item.BuyPrice))
+        {
+            message = "Not enough credits.";
+            return false;
+        }
+
+        SpawnPurchasedItem(item);
+        message = $"Bought {item.DisplayName}.";
+        return true;
+    }
+
+    private bool TryBuyCatalogDefinition(ItemDefinition definition, out string message)
+    {
+        if (!definition.IsBuyable)
+        {
+            message = $"{definition.DisplayName} cannot be bought.";
+            return false;
+        }
+
+        if (!wallet.TrySpend(definition.MarketPrice))
+        {
+            message = "Not enough credits.";
+            return false;
+        }
+
+        SpawnPurchasedItem(definition.Id, definition.DisplayName, definition.WorldPrefab, false);
+        message = $"Bought {definition.DisplayName}.";
+        return true;
+    }
+
+    private void SpawnPurchasedItem(ushort itemId, string displayName, GameObject deliveryPrefab, bool forceCatalogScale)
+    {
         Vector3 position = deliveryPoint != null
             ? deliveryPoint.position
             : transform.position + transform.forward * 1.25f + Vector3.up * 0.5f;
@@ -303,17 +335,16 @@ public class MarketTransactionService : NetworkBehaviour
         Quaternion rotation = deliveryPoint != null ? deliveryPoint.rotation : Quaternion.identity;
         GameObject spawned;
 
-        GameObject deliveryPrefab = item.DeliveryPrefab != null ? item.DeliveryPrefab : fallbackDeliveryPrefab;
-
         if (deliveryPrefab != null)
         {
             spawned = Instantiate(deliveryPrefab, position, rotation);
-            spawned.transform.localScale = new Vector3(0.28f, 0.18f, 0.45f);
+            if (forceCatalogScale)
+                spawned.transform.localScale = new Vector3(0.28f, 0.18f, 0.45f);
         }
         else
         {
             spawned = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            spawned.name = $"{item.DisplayName} Delivery";
+            spawned.name = $"{displayName} Delivery";
             spawned.transform.SetPositionAndRotation(position, rotation);
             spawned.transform.localScale = new Vector3(0.25f, 0.25f, 0.45f);
 
@@ -331,11 +362,11 @@ public class MarketTransactionService : NetworkBehaviour
         {
             netObject.Spawn(true);
             if (spawned.TryGetComponent(out PhysicsObject physicsObject))
-                physicsObject.ServerConfigureInventoryPickup(true, item.ItemId);
+                physicsObject.ServerConfigureInventoryPickup(true, itemId);
         }
         else if (IsServer && netObject == null)
         {
-            Debug.LogWarning($"[Market] Delivery prefab for {item.DisplayName} is missing NetworkObject.");
+            Debug.LogWarning($"[Market] Delivery prefab for {displayName} is missing NetworkObject.");
         }
 
         rb.AddForce((Vector3.up + transform.forward * 0.4f) * deliveryImpulse, ForceMode.Impulse);

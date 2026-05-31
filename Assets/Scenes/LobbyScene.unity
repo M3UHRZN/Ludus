@@ -2000,6 +2000,17 @@ MonoBehaviour:
     canSell: 1
     maxStock: -1
     deliveryPrefab: {fileID: 0}
+  - itemId: 3
+    displayName: Torch
+    description: Tactical flashlight. Stuns enemies briefly when the beam catches
+      them. Cannot be sold back.
+    icon: {fileID: 0}
+    buyPrice: 40
+    sellValue: 0
+    canBuy: 1
+    canSell: 0
+    maxStock: -1
+    deliveryPrefab: {fileID: 7400000000000000100, guid: 4f9d50a02cbd47a498d3e07f1e91fd7c, type: 3}
 --- !u!114 &879318355
 MonoBehaviour:
   m_ObjectHideFlags: 0
