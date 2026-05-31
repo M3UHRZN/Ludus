@@ -3,11 +3,18 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement; // Sahne deðiþtirmek için eklendi
 using Unity.Netcode; // Sunucudan güvenli çýkýþ yapmak için eklendi
+using UnityEngine.Audio; // AudioMixer kütüphanesi eklendi!
 
 public class UniversalSettings : MonoBehaviour
 {
     [Header("Görsel Panel")]
     public GameObject settingsPanel;
+
+    [Header("DJ Masasý ve Ses Ayarlarý (Sliderlar)")]
+    public AudioMixer mainMixer;     // Ürettiðimiz MainMixer buraya sürüklenecek
+    public Slider musicSlider;       // Lobi/Arka plan müziði için
+    public Slider sfxSlider;         // Ayak sesi, düþman, zýplama için
+    public Slider uiSlider;          // Buton, satýn alma vs. için
 
     [Header("Ayarlar (Sliderlar)")]
     public Slider volumeSlider;
@@ -20,14 +27,42 @@ public class UniversalSettings : MonoBehaviour
     {
         if (settingsPanel != null) settingsPanel.SetActive(false);
 
-        // --- SES YÜKLEME ---
-        float savedVolume = PlayerPrefs.GetFloat("GameVolume", 1f);
-        AudioListener.volume = savedVolume;
-        if (volumeSlider != null) volumeSlider.value = savedVolume;
+        // --- SESLERÝ YÜKLEME ---
+        float savedMusic = PlayerPrefs.GetFloat("MusicVolume", 1f);
+        float savedSFX = PlayerPrefs.GetFloat("SFXVolume", 1f);
+        float savedUI = PlayerPrefs.GetFloat("UIVolume", 1f);
+
+        // Müzik Slider'ýný Ayarla ve Dinlemeye Baþla
+        if (musicSlider != null)
+        {
+            musicSlider.value = savedMusic;
+            musicSlider.onValueChanged.AddListener(SetMusicVolume);
+            SetMusicVolume(savedMusic); // Oyun açýlýr açýlmaz sesi DJ masasýna uygula
+        }
+
+        // SFX Slider'ýný Ayarla ve Dinlemeye Baþla
+        if (sfxSlider != null)
+        {
+            sfxSlider.value = savedSFX;
+            sfxSlider.onValueChanged.AddListener(SetSFXVolume);
+            SetSFXVolume(savedSFX);
+        }
+
+        // UI Slider'ýný Ayarla ve Dinlemeye Baþla
+        if (uiSlider != null)
+        {
+            uiSlider.value = savedUI;
+            uiSlider.onValueChanged.AddListener(SetUIVolume);
+            SetUIVolume(savedUI);
+        }
 
         // --- HASSASÝYET YÜKLEME ---
-        float savedSens = PlayerPrefs.GetFloat("MouseSensitivity", 2f); // Varsayýlan hýz 2.0 olsun
-        if (sensitivitySlider != null) sensitivitySlider.value = savedSens;
+        float savedSens = PlayerPrefs.GetFloat("MouseSensitivity", 2f);
+        if (sensitivitySlider != null)
+        {
+            sensitivitySlider.value = savedSens;
+            sensitivitySlider.onValueChanged.AddListener(OnSensitivityChanged);
+        }
     }
 
     private void Update()
@@ -61,13 +96,26 @@ public class UniversalSettings : MonoBehaviour
         }
     }
 
-    // --- SLIDER FONKSÝYONLARI ---
-    public void OnVolumeChanged(float volume)
+    // --- 3'LÜ SES FONKSÝYONLARI ---
+    public void SetMusicVolume(float sliderValue)
     {
-        AudioListener.volume = volume;
-        PlayerPrefs.SetFloat("GameVolume", volume);
+        if (mainMixer != null) mainMixer.SetFloat("MusicVol", Mathf.Log10(sliderValue) * 20);
+        PlayerPrefs.SetFloat("MusicVolume", sliderValue);
     }
 
+    public void SetSFXVolume(float sliderValue)
+    {
+        if (mainMixer != null) mainMixer.SetFloat("SFXVol", Mathf.Log10(sliderValue) * 20);
+        PlayerPrefs.SetFloat("SFXVolume", sliderValue);
+    }
+
+    public void SetUIVolume(float sliderValue)
+    {
+        if (mainMixer != null) mainMixer.SetFloat("UIVol", Mathf.Log10(sliderValue) * 20);
+        PlayerPrefs.SetFloat("UIVolume", sliderValue);
+    }
+
+    // --- HASSASÝYET FONKSÝYONU ---
     public void OnSensitivityChanged(float sens)
     {
         // Hassasiyeti diske kaydediyoruz.

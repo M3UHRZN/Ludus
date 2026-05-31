@@ -46,6 +46,13 @@ public class LobbyRoomManager : NetworkBehaviour
             ? cm.DisplayName
             : $"Player-{NetworkManager.LocalClientId}";
         RegisterNameServerRpc(name);
+
+        // --- LOBÝYE GÝRÝNCE SES ÇALIÞIR ---
+        if (AudioManager.Instance != null && AudioManager.Instance.lobbyMusic != null)
+        {
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.lobbyMusic);
+        }
+        // ---------------------------------------------------
     }
 
     public override void OnNetworkDespawn()

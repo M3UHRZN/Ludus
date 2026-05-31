@@ -2,78 +2,84 @@ using UnityEngine;
 
 public class PlayerAudioController : MonoBehaviour
 {
-    private AudioSource footstepSource;
-    private AudioSource combatSource;
+    public UnityEngine.Audio.AudioMixerGroup sfxMixerGroup; // DJ Masasýndaki SFX kanalý
 
-    [Header("Ses Kasetleri (Clips)")]
+    [Header("SES KASETLERÝ")]
     public AudioClip footstepClip;
-    public AudioClip fallClip;
-    public AudioClip deathClip;
-    public AudioClip bloodyClip; // Stamina bitip can gidince calacak
-    public AudioClip punchClip;  // Dusman 1 (Yakin dovus) vurdugunda
-    public AudioClip shotClip;   // Dusman 2 (Menzilli) vurdugunda
+    public AudioClip jumpLandClip; // YENÝ: Yere inme (Düþme) sesi!
+
+    [Header("Ayarlar")]
+    public float stepDistance = 1.5f;
+
+    private AudioSource zrhliHoparlor;
+    private Vector3 lastStepPosition;
+
+    // Zýplama tespiti için karakterin kendi motoru
+    private CharacterController characterController;
+    private bool wasGrounded;
 
     private void Start()
     {
-        // 1. Karakterin Root objesine cik (PlayerV0.3)
-        Transform rootObj = transform.root;
+        lastStepPosition = transform.position;
 
-        // 2. O objenin altindaki "AudioHolder" isimli klasoru bul
-        Transform audioHolder = rootObj.Find("AudioHolder");
-
-        if (audioHolder != null)
+        // Karakterin fizik motorunu (PlayerV0.5'in üstündeki) buluyoruz
+        characterController = GetComponent<CharacterController>();
+        if (characterController != null)
         {
-            // 3. AudioHolder'in icindeki hoparlorleri otomatik al ve yerlestir
-            AudioSource[] sources = audioHolder.GetComponents<AudioSource>();
-            if (sources.Length >= 2)
+            wasGrounded = characterController.isGrounded;
+        }
+
+        // --- ZIRHLI HOPARLÖR ---
+        zrhliHoparlor = gameObject.AddComponent<AudioSource>();
+        zrhliHoparlor.spatialBlend = 0f; // %100 2D
+        zrhliHoparlor.volume = 1f;       // Full Ses
+        zrhliHoparlor.mute = false;
+        zrhliHoparlor.playOnAwake = false;
+
+        zrhliHoparlor.outputAudioMixerGroup = sfxMixerGroup; // Sesi SFX kanalýna yolla
+    }
+
+    private void Update()
+    {
+        // --- 1. ZIPLAMA VE YERE ÝNME KONTROLÜ ---
+        if (characterController != null)
+        {
+            bool isGroundedNow = characterController.isGrounded;
+
+            // Eðer geçen frame havadaysa (wasGrounded == false) ve þu an yerdeyse -> YERE ÝNDÝ!
+            if (!wasGrounded && isGroundedNow)
             {
-                footstepSource = sources[0]; // Ilk hoparlor ayak sesi
-                combatSource = sources[1];   // Ikinci hoparlor combat/dusme
+                if (jumpLandClip != null)
+                {
+                    zrhliHoparlor.pitch = Random.Range(0.9f, 1.1f); // Her zýplayýþta ses azýcýk deðiþsin
+                    zrhliHoparlor.PlayOneShot(jumpLandClip);
+                }
+
+                // Yere iner inmez ekstra bir ayak sesi çalmasýn diye sayacý sýfýrlýyoruz
+                lastStepPosition = transform.position;
+            }
+
+            wasGrounded = isGroundedNow; // Durumu sonraki frame için kaydet
+        }
+
+        // --- 2. YÜRÜYÜÞ KONTROLÜ ---
+        if (footstepClip == null) return;
+
+        // Karakter yerdeyse adým saysýn (Havadayken adým sesi çýkmasýn)
+        if (characterController == null || characterController.isGrounded)
+        {
+            // Sadece X ve Z eksenindeki hareketi ölç (Zýplamayý adým saymasýn)
+            Vector3 currentPos = new Vector3(transform.position.x, 0, transform.position.z);
+            Vector3 lastPos = new Vector3(lastStepPosition.x, 0, lastStepPosition.z);
+            float distanceWalked = Vector3.Distance(currentPos, lastPos);
+
+            if (distanceWalked >= stepDistance)
+            {
+                zrhliHoparlor.pitch = Random.Range(0.85f, 1.15f);
+                zrhliHoparlor.PlayOneShot(footstepClip);
+
+                lastStepPosition = transform.position;
             }
         }
-        else
-        {
-            Debug.LogWarning("AudioHolder objesini bulamadim!");
-        }
-    }
-
-    public void PlayFootstep()
-    {
-        // Sesi hafif kalinlastirip incelterek (pitch) robotikligini aliyoruz
-        if (footstepSource != null && footstepClip != null && !footstepSource.isPlaying)
-        {
-            footstepSource.pitch = Random.Range(0.85f, 1.15f);
-            footstepSource.PlayOneShot(footstepClip);
-        }
-    }
-
-    public void PlayFallSound()
-    {
-        if (combatSource != null && fallClip != null)
-            combatSource.PlayOneShot(fallClip);
-    }
-
-    public void PlayDeathSound()
-    {
-        if (combatSource != null && deathClip != null)
-            combatSource.PlayOneShot(deathClip);
-    }
-
-    public void PlayBloodySound()
-    {
-        if (combatSource != null && bloodyClip != null)
-            combatSource.PlayOneShot(bloodyClip);
-    }
-
-    public void PlayPunchSound()
-    {
-        if (combatSource != null && punchClip != null)
-            combatSource.PlayOneShot(punchClip);
-    }
-
-    public void PlayShotSound()
-    {
-        if (combatSource != null && shotClip != null)
-            combatSource.PlayOneShot(shotClip);
     }
 }

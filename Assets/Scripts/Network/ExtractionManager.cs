@@ -30,6 +30,14 @@ public class ExtractionManager : NetworkBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        // --- OYUN BAŞLAYINCA LOBİ MÜZİĞİNi KAPAT ---
+        if (AudioManager.Instance != null)
+        {
+            // Eğer oyun içinde SIFIR müzik olsun, sadece ayak sesleri ve canavar duyulsun:
+            AudioManager.Instance.StopMusic();
+        }
+        // ------------------------------------------------------------------
     }
 
     public override void OnNetworkDespawn()
@@ -48,6 +56,9 @@ public class ExtractionManager : NetworkBehaviour
                   $"+{creditValue} kredi | Toplam: {ExtractedItemCount.Value} eşya, {TotalCredits.Value} kredi");
 
         NotifyClientsRpc(itemId, creditValue, TotalCredits.Value);
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.coinSound);
     }
 
     [Rpc(SendTo.Everyone)]
