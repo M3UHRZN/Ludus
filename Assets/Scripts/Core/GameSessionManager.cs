@@ -49,13 +49,11 @@ public class GameSessionManager : NetworkBehaviour
 
     private void OnEnable()
     {
-        GameEventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);
         GameEventBus.Subscribe<PlayerDiedEvent>(OnPlayerDied);
     }
 
     private void OnDisable()
     {
-        GameEventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);
         GameEventBus.Unsubscribe<PlayerDiedEvent>(OnPlayerDied);
     }
 
@@ -131,7 +129,12 @@ public class GameSessionManager : NetworkBehaviour
         GameEventBus.Publish(new TimerEventTriggered(NetRemainingTime.Value, sessionDuration));
 
         if (NetRemainingTime.Value <= 0f)
-            EndSession(SessionEndReason.TimeUp);
+        {
+            if (ExtractionService.Instance != null)
+                ExtractionService.Instance.ForceExtraction(); // tek sonlandırma yolu
+            else
+                EndSession(SessionEndReason.TimeUp);           // güvenlik fallback
+        }
     }
 
     private void OnTimerChanged(float previous, float current)
@@ -145,15 +148,24 @@ public class GameSessionManager : NetworkBehaviour
             GameEventBus.Publish(new SessionStartedEvent(NetPlayerCount.Value, sessionDuration));
     }
 
-    private void OnItemPickedUp(ItemPickedUpEvent evt)
-    {
-        if (!IsServer) return;
-        NetTotalCredit.Value += evt.CreditValue;
-    }
-
     private void OnPlayerDied(PlayerDiedEvent evt)
     {
-        // Ölüm takibi — ceset tesiste bırakılırsa RegisterAbandonedCorpse() çağrılır
+        if (!IsServer) return;
+        if (!NetIsActive.Value) return;
+
+        // Tüm bağlı oyuncular öldüyse → wipe (toplam kayıp).
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return;
+        foreach (var kvp in nm.ConnectedClients)
+        {
+            var po = kvp.Value.PlayerObject;
+            if (po == null) continue;
+            var machine = po.GetComponent<PlayerStateMachine>();
+            if (machine != null && machine.IsAlive) return; // en az bir canlı var
+        }
+
+        if (ExtractionService.Instance != null)
+            ExtractionService.Instance.TriggerWipe();
     }
 
     // ── Abandonment Penalty (Sprint 3 — Yasin #41) ───────────────────────────
@@ -178,20 +190,13 @@ public class GameSessionManager : NetworkBehaviour
         if (!IsServer) return 0f;
         if (_abandonedCorpseCount == 0) return 0f;
 
-        int   playerCount      = NetPlayerCount.Value;
-        float penaltyPerCorpse = Mathf.Max(0.25f, playerCount / 100f);
-        float totalDeduction   = Mathf.Min(
-            grossCredits * penaltyPerCorpse * _abandonedCorpseCount,
-            grossCredits);
+        int deduction = Ludus.Extraction.Core.AbandonmentPenalty.Calculate(
+            Mathf.RoundToInt(grossCredits), _abandonedCorpseCount, NetPlayerCount.Value);
 
-        Debug.Log($"[GameSessionManager] Abandonment penalty: " +
-                  $"{_abandonedCorpseCount} ceset x {penaltyPerCorpse:P0} = " +
-                  $"{totalDeduction} kesinti | net={grossCredits - totalDeduction}");
-
-        GameEventBus.Publish(new CorpseAbandonedEvent(0, penaltyPerCorpse));
+        GameEventBus.Publish(new CorpseAbandonedEvent(0, Mathf.Max(0.25f, NetPlayerCount.Value / 100f)));
 
         _abandonedCorpseCount = 0;
-        return totalDeduction;
+        return deduction;
     }
 
     /// <summary>

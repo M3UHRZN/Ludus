@@ -1,0 +1,173 @@
+using System.Collections;
+using Ludus.Extraction.Core;
+using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// Extraction'ın TEK otoritesi. Lever / timer / all-dead tetikleri tek FinalizeRun yoluna akar.
+/// Gross LootSellZone'dan gelir; ceza GDD §6.4; net MarketCreditBank'a yazılır; sonuç RunResultEvent
+/// ile yayınlanır; ardından lobi yüklenir. (Eski ExtractionManager + ExitZoneInteractable.PerformExtraction
+/// muhasebesinin yeniden yazımı.)
+/// </summary>
+public class ExtractionService : NetworkBehaviour
+{
+    public static ExtractionService Instance { get; private set; }
+
+    [Header("Scene")]
+    [SerializeField] private string lobbySceneName = "LobbyScene";
+
+    [Header("Akış")]
+    [Tooltip("Sonuç paneli gösterildikten sonra lobiye yükleme gecikmesi (sn).")]
+    [SerializeField] private float lobbyLoadDelay = 5f;
+
+    private bool _runEnding;
+
+    public override void OnNetworkSpawn()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.StopMusic();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (Instance == this) Instance = null;
+    }
+
+    public void ResetForNewRun()
+    {
+        if (!IsServer) return;
+        _runEnding = false;
+    }
+
+    // ── Tetikler ──────────────────────────────────────────────────────────────
+
+    /// <summary>Lever çekilince (herhangi bir client).</summary>
+    [Rpc(SendTo.Server)]
+    public void RequestTeamExtractionServerRpc()
+    {
+        FinalizeRun(SessionEndReason.Escaped);
+    }
+
+    /// <summary>Timer dolunca GameSessionManager (server) çağırır.</summary>
+    public void ForceExtraction()
+    {
+        FinalizeRun(SessionEndReason.TimeUp);
+    }
+
+    /// <summary>Tüm takım ölünce GameSessionManager (server) çağırır → wipe.</summary>
+    public void TriggerWipe()
+    {
+        FinalizeRun(SessionEndReason.AllDead);
+    }
+
+    // ── Tek sonlandırma yolu ────────────────────────────────────────────────────
+
+    private void FinalizeRun(SessionEndReason reason)
+    {
+        if (!IsServer) return;
+        if (_runEnding) return;
+        _runEnding = true;
+
+        bool isWipe = reason == SessionEndReason.AllDead;
+
+        // 1) Gross — wipe ise 0, değilse loot zone içeriği.
+        int grossRaw = (!isWipe && LootSellZone.Instance != null)
+            ? LootSellZone.Instance.ComputeGross()
+            : 0;
+
+        // 2) Rescue / abandon say.
+        int rescuedAlive = 0, rescuedCorpses = 0, abandoned = 0;
+        var zone = ExtractionZone.Instance;
+        var nm = NetworkManager.Singleton;
+        if (nm != null)
+        {
+            foreach (var kvp in nm.ConnectedClients)
+            {
+                var po = kvp.Value.PlayerObject;
+                if (po == null) continue;
+                var machine = po.GetComponent<PlayerStateMachine>();
+                if (machine == null) continue;
+
+                bool alive = machine.IsAlive;
+                bool inZone = zone != null && zone.ContainsPlayer(machine);
+
+                if (alive && inZone)
+                {
+                    rescuedAlive++;
+                }
+                else if (!alive)
+                {
+                    var corpse = zone != null ? zone.FindCorpseForClient(kvp.Key) : null;
+                    if (corpse != null)
+                    {
+                        rescuedCorpses++;
+                        var cno = corpse.GetComponent<NetworkObject>();
+                        if (cno != null && cno.IsSpawned) cno.Despawn(true);
+                    }
+                    else
+                    {
+                        abandoned++;
+                    }
+                }
+                else // alive && !inZone
+                {
+                    abandoned++;
+                }
+            }
+        }
+
+        int playerCount = GameSessionManager.Instance != null
+            ? GameSessionManager.Instance.PlayerCount
+            : (nm != null ? nm.ConnectedClients.Count : 1);
+
+        // 3) Hesap.
+        CreditBreakdown b = ExtractionMath.Compute(grossRaw, abandoned, playerCount, isWipe);
+
+        // 4) Para → market kasası (bekletilen bağlantı).
+        MarketCreditBank.AddRunEarnings(b.Net);
+
+        // 5) Satılan loot'u despawn et.
+        if (!isWipe && LootSellZone.Instance != null)
+            LootSellZone.Instance.ConsumeAndDespawn();
+
+        Debug.Log($"[ExtractionService] reason={reason} gross={b.Gross} penalty={b.Penalty} net={b.Net} " +
+                  $"alive={rescuedAlive} corpses={rescuedCorpses} abandoned={abandoned}");
+
+        // 6) Sonucu herkese yayınla.
+        BroadcastRunResultRpc(b.Gross, b.Penalty, b.Net, rescuedAlive, rescuedCorpses, abandoned, (byte)reason);
+
+        // 7) Session'ı bitir.
+        if (GameSessionManager.Instance != null)
+            GameSessionManager.Instance.EndSession(reason);
+
+        // 8) Panel gösterilirken gecikmeli lobi yükü.
+        StartCoroutine(LoadLobbyAfterDelay());
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void BroadcastRunResultRpc(int gross, int penalty, int net,
+        int rescuedAlive, int rescuedCorpses, int abandoned, byte reason)
+    {
+        GameEventBus.Publish(new RunResultEvent
+        {
+            Gross = gross,
+            Penalty = penalty,
+            Net = net,
+            RescuedAlive = rescuedAlive,
+            RescuedCorpses = rescuedCorpses,
+            Abandoned = abandoned,
+            Reason = (SessionEndReason)reason
+        });
+    }
+
+    private IEnumerator LoadLobbyAfterDelay()
+    {
+        yield return new WaitForSeconds(lobbyLoadDelay);
+        if (IsServer && NetworkManager.Singleton != null)
+            NetworkManager.Singleton.SceneManager.LoadScene(lobbySceneName, LoadSceneMode.Single);
+    }
+}
