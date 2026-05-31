@@ -48,10 +48,7 @@ public static class GameEventBus
         // Listeyi kopyala - yayin sirasinda abonelik degisirse sorun cikmasin
         var handlers = new List<Delegate>(_handlers[type]);
 
-        // Defensive dispatch: bir subscriber exception atarsa diger subscriber'lar
-        // event'i almaya devam etmeli. Onceden tek bir InventoryUIController NRE'si
-        // tum publish zincirini koparıp FlashbangCounter / AI listener'larini
-        // sessizce sakatliyordu.
+        // Tek subscriber NRE atinca digerleri etkilenmesin diye try/catch
         foreach (var handler in handlers)
         {
             try

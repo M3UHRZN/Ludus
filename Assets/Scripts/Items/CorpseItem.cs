@@ -1,23 +1,15 @@
-// CorpseItem.cs
-// Assets/Scripts/Items/CorpseItem.cs
-
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 
-
 [RequireComponent(typeof(PhysicsObject))]
 public class CorpseItem : NetworkBehaviour
 {
-    // ------------------------------------------------------------------ Kimlik
-
     [Header("Corpse Identity")]
-    [SerializeField] private string _ownerName     = "Unknown";
-    [SerializeField] private ulong  _ownerClientId = 0;
+    [SerializeField] private string _ownerName = "Unknown";
+    [SerializeField] private ulong _ownerClientId = 0;
 
-    // Cesedin uzerine runtime'da yazilacak isim etiketi icin agir sync
-    // gerekmedigi icin server'da owner name belirlendikten sonra herkese
-    // Rpc ile gondeririz; her client lokal olarak floating text yaratir.
+    // Ceset uzerindeki isim icin agir sync gerek yok, server'da yazip herkese yayariz.
     public readonly NetworkVariable<Unity.Collections.FixedString64Bytes> NetOwnerName = new(
         default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
@@ -29,17 +21,13 @@ public class CorpseItem : NetworkBehaviour
     private GameObject _nameplateGo;
     private TextMeshPro _nameplateText;
 
-    public string OwnerName     => _ownerName;
-    public ulong  CorpseOwnerClientId => _ownerClientId;
-
-    // ------------------------------------------------------------------ Durum
+    public string OwnerName => _ownerName;
+    public ulong CorpseOwnerClientId => _ownerClientId;
 
     public bool IsRevived { get; private set; } = false;
 
-    private PhysicsObject   _physObj;
-    private ulong           _lastCarrierId = ulong.MaxValue;
-
-    // ------------------------------------------------------------------ Spawn
+    private PhysicsObject _physObj;
+    private ulong _lastCarrierId = ulong.MaxValue;
 
     public override void OnNetworkSpawn()
     {
@@ -48,7 +36,6 @@ public class CorpseItem : NetworkBehaviour
 
         BuildNameplate();
         NetOwnerName.OnValueChanged += OnNameChanged;
-        // Network'ten gelen ad varsa hemen yansit
         if (!string.IsNullOrEmpty(NetOwnerName.Value.ToString()))
             UpdateNameplateText(NetOwnerName.Value.ToString());
     }
@@ -68,7 +55,7 @@ public class CorpseItem : NetworkBehaviour
     {
         if (_nameplateGo == null) return;
         // Nameplate her zaman ana kameraya bakar (billboard).
-        // Camera.main her frame FindGameObjectWithTag yapar → cache'le, sadece null'sa tazele.
+        // Camera.main her frame FindGameObjectWithTag yapar, cache'le, sadece null'sa tazele.
         if (_cam == null) _cam = Camera.main;
         if (_cam == null) return;
         _nameplateGo.transform.position = transform.position + Vector3.up * _nameplateHeight;
@@ -102,12 +89,10 @@ public class CorpseItem : NetworkBehaviour
         UpdateNameplateText(current.ToString());
     }
 
-    // ------------------------------------------------------------------ NetIsHeld hook
-
     private void OnHeldStateChanged(bool previous, bool current)
     {
         if (current) OnCorpsePickedUp();
-        else         OnCorpseDropped();
+        else OnCorpseDropped();
     }
 
     private void OnCorpsePickedUp()
@@ -119,22 +104,20 @@ public class CorpseItem : NetworkBehaviour
 
         if (inventory != null && inventory.IsFull())
         {
-            // Carry slot dolu — grab'i iptal et (sadece server)
             if (IsServer)
                 _physObj.ServerStopHold();
 
-            Debug.Log("[CorpseItem] Carry slot dolu — ceset alınamadı.");
+            Debug.Log("[CorpseItem] Carry slot dolu, ceset alinamadi.");
             return;
         }
 
         _lastCarrierId = carrierClientId;
 
-        // Owner client'ının inventory'sine ServerRpc üzerinden yaz
         if (inventory != null)
             inventory.SetCarryingCorpse(true);
 
         GameEventBus.Publish(new CorpsePickedUpEvent(_ownerClientId, carrierClientId));
-        Debug.Log($"[CorpseItem] {_ownerName}'in cesedi alındı (carrier: {carrierClientId})");
+        Debug.Log($"[CorpseItem] {_ownerName} cesedi alindi (carrier: {carrierClientId})");
     }
 
     private void OnCorpseDropped()
@@ -145,26 +128,24 @@ public class CorpseItem : NetworkBehaviour
             inventory.SetCarryingCorpse(false);
 
         GameEventBus.Publish(new CorpseDroppedEvent(_ownerClientId));
-        Debug.Log($"[CorpseItem] {_ownerName}'in cesedi bırakıldı.");
+        Debug.Log($"[CorpseItem] {_ownerName} cesedi birakildi.");
 
         _lastCarrierId = ulong.MaxValue;
     }
-
-    // ------------------------------------------------------------------ Yardımcı
 
     private static PlayerInventory GetInventory(ulong clientId)
     {
         var nm = NetworkManager.Singleton;
         if (nm == null || clientId == ulong.MaxValue) return null;
         if (!nm.ConnectedClients.TryGetValue(clientId, out var client)) return null;
-        
+
         if (client.PlayerObject != null)
         {
             var inv = client.PlayerObject.GetComponent<PlayerInventory>();
             if (inv != null) return inv;
         }
 
-        // Fallback for manually placed or custom spawned players where PlayerObject is null
+        // PlayerObject null ise (custom spawn) tum PlayerInventory'leri tara
         var allInventories = FindObjectsByType<PlayerInventory>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var inv in allInventories)
         {
@@ -175,32 +156,23 @@ public class CorpseItem : NetworkBehaviour
         return null;
     }
 
-    // ------------------------------------------------------------------ Revival
-
-    /// <summary>
-    /// InfirmaryPod trigger'ı, ceset pod'a bırakılınca bunu çağırır.
-    /// </summary>
+    // InfirmaryPod trigger cesedi pod'a birakinca bunu cagirir.
     public void OnRevived()
     {
         if (IsRevived) return;
         IsRevived = true;
 
         GameEventBus.Publish(new PlayerRevivedEvent((int)_ownerClientId));
-        Debug.Log($"[CorpseItem] {_ownerName} canlandı!");
+        Debug.Log($"[CorpseItem] {_ownerName} canlandi!");
         Destroy(gameObject, 0.5f);
     }
 
-    // ------------------------------------------------------------------ Init
-
-    /// <summary>
-    /// PlayerDiedEvent handler'ı ceset prefab'ı spawn ettikten sonra bunu çağırır.
-    /// </summary>
+    // PlayerDiedEvent handler ceset prefab'i spawn ettikten sonra bunu cagirir.
     public void Initialize(string ownerName, ulong ownerClientId)
     {
-        _ownerName     = ownerName;
+        _ownerName = ownerName;
         _ownerClientId = ownerClientId;
 
-        // Network sync — clientlar OnNameChanged'de nameplate'i guncellesin
         if (IsServer)
             NetOwnerName.Value = new Unity.Collections.FixedString64Bytes(ownerName ?? "?");
     }
