@@ -89,7 +89,7 @@ MonoBehaviour:
   _projectilePrefab: {fileID: 0}
   _firePoint: {fileID: 0}
   _muzzleFlashPrefab: {fileID: 0}
-  _priestAmbientClip: {fileID: 8300000, guid: 09f2b3963b02dc942b1988ba4948255b, type: 3}
+  _priestAmbientClip: {fileID: 8300000, guid: a5ea5ea59f9f64c389fd2e5c91d3c7da, type: 3}
   _priestAmbientVolume: 0.55
   _priestAmbientMinDistance: 2
   _priestAmbientMaxDistance: 18
@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 714704458
+  GlobalObjectIdHash: 3376866533
   InScenePlacedSourceGlobalObjectIdHash: 714704458
   DeferredDespawnTick: 0
   Ownership: 1
