@@ -210,16 +210,29 @@ public class PlayerInteraction : NetworkBehaviour
             if (_heldObject != null)
             {
                 TryStashObject(); // Elim doluysa çantaya at (E ile)
+                // Eger swap senaryosu ise (TryStashObject sonrasi el bos kaldi ve
+                // hala bir item'a bakiyorsak) ayni E basisi yeni item'i da alsin.
             }
-            else
+
+            if (_heldObject == null)
             {
                 if (_lookedInteractable != null)
                 {
                     var component = _lookedInteractable as Component;
                     if (component != null && TryGetPhysicsObject(component, out var physObj))
                     {
-                        // Interact can only pick up items to inventory, NOT hold them physically in hands.
-                        if (physObj.CanPickupToInventory && physObj.NetworkObject != null)
+                        // EquippableItem (torch vb.) -> direkt fiziksel ele al, envanteri atla.
+                        // Bu itemlar bir "ekipman slotu" gibi davranir; envantere konmaz.
+                        if (physObj.GetComponent<EquippableItem>() != null
+                            && physObj.NetworkObject != null
+                            && physObj.NetworkObject.IsSpawned
+                            && !physObj.NetIsHeld.Value)
+                        {
+                            _isGrabbingFromGround = true;
+                            RequestGrabServerRpc(new NetworkObjectReference(physObj.NetworkObject));
+                        }
+                        // Diger itemlar -> envantere al.
+                        else if (physObj.CanPickupToInventory && physObj.NetworkObject != null)
                         {
                             RequestInventoryPickupServerRpc(new NetworkObjectReference(physObj.NetworkObject));
                         }
@@ -309,6 +322,18 @@ public class PlayerInteraction : NetworkBehaviour
         {
             if (debugInteraction)
                 Debug.Log("[PlayerInteraction] Aktive edilmis item cantaya atilamaz.", this);
+            return;
+        }
+
+        // EquippableItem (torch vb.) sadece bos seye bakarken E basildiginda
+        // "kaza ile cantaya atma"yi engellemek icin korunur. Ama oyuncu BASKA bir
+        // item'a bakarak E basiyorsa swap olarak gor: torch'u cantaya, yeni item'i
+        // ele al (TryStashObject -> TryGrabAfterStash sonrasinda swap mantigi).
+        bool isEquippable = _heldObject.TryGetComponent<EquippableItem>(out _);
+        if (isEquippable && _lookedInteractable == null)
+        {
+            if (debugInteraction)
+                Debug.Log("[PlayerInteraction] EquippableItem bos baktiginda cantaya atilmaz; G ile dusur.", this);
             return;
         }
 
