@@ -299,7 +299,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 208421215}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 327018815}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -365,6 +365,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6971dba5809a4658afeb1612e570f355, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbySpawnPoint
+--- !u!134 &327018815
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!1 &332386079
 GameObject:
   m_ObjectHideFlags: 0
@@ -553,6 +566,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 613358150}
     m_Modifications:
+    - target: {fileID: 317213832598582407, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 317213832598582407, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 317213832598582407, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 317213832598582407, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 611798513989745694, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 611798513989745694, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 611798513989745694, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 611798513989745694, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1391975823000800179, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
       propertyPath: m_Name
       value: Esmanur_HUD_Lobby
@@ -635,6 +680,54 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1646631205893850129, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4165769606585867516, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4165769606585867516, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4165769606585867516, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4165769606585867516, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5633815907129638734, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5633815907129638734, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5633815907129638734, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5633815907129638734, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8102942604781036524, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8102942604781036524, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8102942604781036524, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8102942604781036524, guid: 910784cd81c25dc44a676bf9d73d7051, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -2008,7 +2101,6 @@ GameObject:
   - component: {fileID: 879318356}
   - component: {fileID: 879318351}
   - component: {fileID: 879318355}
-  - component: {fileID: 879318354}
   - component: {fileID: 879318353}
   - component: {fileID: 879318352}
   m_Layer: 0
@@ -2058,8 +2150,8 @@ MonoBehaviour:
   wallet: {fileID: 879318355}
   inventory: {fileID: 0}
   creditsToAdd: 100
-  debugItemId: 1
-  flashbangItemId: 100
+  debugItemId: 2
+  flashbangItemId: 1
 --- !u!114 &879318353
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2073,35 +2165,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MarketTransactionService
   ShowTopMostFoldoutHeaderGroup: 1
-  catalog: {fileID: 879318354}
   wallet: {fileID: 879318355}
   deliveryPoint: {fileID: 1722981683}
   fallbackDeliveryPrefab: {fileID: 0}
   deliveryImpulse: 1.5
---- !u!114 &879318354
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 879318350}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 909772fd6231f4f14ad60132f2b430f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MarketCatalog
-  items:
-  - itemId: 1
-    displayName: Flashbang
-    description: Temporary buyable flashbang item. It cannot be sold back to the
-      market.
-    icon: {fileID: -1542460328, guid: a01ae78f7d833fe43958ef496c205019, type: 3}
-    buyPrice: 40
-    sellValue: 10
-    canBuy: 1
-    canSell: 1
-    maxStock: -1
-    deliveryPrefab: {fileID: 0}
 --- !u!114 &879318355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3581,11 +3648,9 @@ MonoBehaviour:
   creditsText: {fileID: 1939868602}
   selectedItemText: {fileID: 1915319474}
   statusText: {fileID: 1607368938}
-  buyFlashbangButton: {fileID: 945020085}
-  flashbangItemId: 100
-  sellSelectedButton: {fileID: 1029834008}
+  buyListContent: {fileID: 0}
+  sellListContent: {fileID: 0}
   sellAllButton: {fileID: 1149919616}
-  sellSlotInput: {fileID: 1699884605}
   closeButton: {fileID: 700027413}
 --- !u!114 &1609786495
 MonoBehaviour:
