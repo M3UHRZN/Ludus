@@ -18,16 +18,26 @@ public class MarketWallet : NetworkBehaviour
 
     private void Awake()
     {
-        if (!IsSpawned && currentCredits <= 0 && startingCredits > 0)
-            SetCredits(startingCredits);
+        // Network'e baglanmadan (local/test) once: kasadan oku. Kasa bos ise startingCredits ile kur.
+        if (!IsSpawned)
+        {
+            MarketCreditBank.EnsureInitialized(startingCredits);
+            currentCredits = MarketCreditBank.Credits;
+        }
     }
 
     public override void OnNetworkSpawn()
     {
         NetCredits.OnValueChanged += OnNetCreditsChanged;
 
-        if (IsServer && NetCredits.Value <= 0 && startingCredits > 0)
-            SetCredits(startingCredits);
+        // Para kasada (MarketCreditBank) durur; wallet sahneyle dogup olse de bakiye korunur.
+        // Ilk acilista startingCredits ile kur, run'dan donuste mevcut bakiyeyi oku.
+        // (Eskiden burada 100'e resetleniyordu — yasanan bug'in kaynagi buydu.)
+        if (IsServer)
+        {
+            MarketCreditBank.EnsureInitialized(startingCredits);
+            NetCredits.Value = MarketCreditBank.Credits;
+        }
 
         CreditsChanged?.Invoke(CurrentCredits);
     }
@@ -73,10 +83,12 @@ public class MarketWallet : NetworkBehaviour
                 return;
 
             NetCredits.Value = safeAmount;
+            MarketCreditBank.Set(safeAmount); // kasayi senkron tut — donuste bu bakiye okunur
         }
         else
         {
             currentCredits = safeAmount;
+            MarketCreditBank.Set(safeAmount);
             CreditsChanged?.Invoke(currentCredits);
         }
     }
