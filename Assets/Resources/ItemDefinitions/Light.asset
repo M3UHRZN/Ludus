@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c5053c37b7e49b41bce511b4a1e959d, type: 3}
-  m_Name: Flashbang 1
+  m_Name: Light
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   id: 3
-  displayName: xxxx
+  displayName: Light
   size: 0
   creditValue: 1
-  icon: {fileID: -1542460328, guid: a01ae78f7d833fe43958ef496c205019, type: 3}
+  icon: {fileID: -1785421693, guid: fcdb4f12e1e10e3448f9b908cfd62761, type: 3}
   worldPrefab: {fileID: 7869045618340365188, guid: e6eb6c6b56e23994b9fd24f69eaa7077, type: 3}
   isBuyable: 1
   marketPrice: 1

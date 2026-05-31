@@ -46,6 +46,8 @@ public class MarketUIController : MonoBehaviour
     private MarketTransactionService _service;
     private PlayerInventory _inventory;
     private TestPlayer _testPlayer;
+    private PlayerStateMachine _player;
+    private string _previousActionMap;
 
     private Coroutine _openCo;
     private Coroutine _creditTickCo;
@@ -104,6 +106,18 @@ public class MarketUIController : MonoBehaviour
 
         if (panelRoot != null) panelRoot.SetActive(true);
 
+        // Player input'unu InteractState ile ayni pattern'de UI map'ine cevir.
+        // Movement/Look/Interaction/Inventory disable — karakter durur, kamera donmez.
+        _player = inventory != null ? inventory.GetComponentInParent<PlayerStateMachine>() : null;
+        if (_player != null)
+        {
+            _previousActionMap = _player.PlayerInput != null && _player.PlayerInput.currentActionMap != null
+                ? _player.PlayerInput.currentActionMap.name
+                : "Gameplay";
+            _player.SwitchActionMap("UI");
+            _player.SetComponentsEnabled(movement: false, look: false, interaction: false, inventory: false, spectator: false);
+        }
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible   = true;
         if (_testPlayer != null) _testPlayer.SetInputEnabled(false);
@@ -132,6 +146,14 @@ public class MarketUIController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible   = false;
         if (_testPlayer != null) _testPlayer.SetInputEnabled(true);
+
+        if (_player != null)
+        {
+            _player.SwitchActionMap(string.IsNullOrEmpty(_previousActionMap) ? "Gameplay" : _previousActionMap);
+            _player.SetComponentsEnabled(movement: true, look: true, interaction: true, inventory: true, spectator: false);
+            _player = null;
+            _previousActionMap = null;
+        }
     }
 
     private void ForceClosedState()

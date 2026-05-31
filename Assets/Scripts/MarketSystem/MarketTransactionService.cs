@@ -7,7 +7,6 @@ public class MarketTransactionService : NetworkBehaviour
 {
     [SerializeField] private MarketWallet wallet;
     [SerializeField] private Transform deliveryPoint;
-    [SerializeField] private GameObject fallbackDeliveryPrefab;
     [SerializeField] private float deliveryImpulse = 1.5f;
 
     private readonly List<ItemDefinition> _buyableCache = new();
@@ -158,6 +157,13 @@ public class MarketTransactionService : NetworkBehaviour
             return false;
         }
 
+        if (def.WorldPrefab == null)
+        {
+            message = $"{def.DisplayName} is missing a world prefab.";
+            Debug.LogError($"[Market] {def.DisplayName} cannot be bought because ItemDefinition.WorldPrefab is missing.");
+            return false;
+        }
+
         if (!wallet.TrySpend(def.MarketPrice))
         {
             message = "Not enough credits.";
@@ -221,11 +227,6 @@ public class MarketTransactionService : NetworkBehaviour
     public void SetDeliveryPoint(Transform value)
     {
         deliveryPoint = value;
-    }
-
-    public void SetFallbackDeliveryPrefab(GameObject value)
-    {
-        fallbackDeliveryPrefab = value;
     }
 
     /// <summary>UI buy listesini doldurmak icin; her cagrida tazelenir.</summary>
@@ -319,27 +320,8 @@ public class MarketTransactionService : NetworkBehaviour
             : transform.position + transform.forward * 1.25f + Vector3.up * 0.5f;
 
         Quaternion rotation = deliveryPoint != null ? deliveryPoint.rotation : Quaternion.identity;
-        GameObject spawned;
-
-        GameObject deliveryPrefab = def.WorldPrefab != null ? def.WorldPrefab : fallbackDeliveryPrefab;
-
-        if (deliveryPrefab != null)
-        {
-            spawned = Instantiate(deliveryPrefab, position, rotation);
-            // localScale prefab'tan miras alinir (1f); item-specific scale uygulamiyoruz.
-        }
-        else
-        {
-            Debug.LogError($"[Market] {def.DisplayName} icin WorldPrefab atanmamis ve fallback yok — capsule fallback'a dusuluyor (client'larda gorunmeyecek).");
-            spawned = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            spawned.name = $"{def.DisplayName} Delivery";
-            spawned.transform.SetPositionAndRotation(position, rotation);
-            spawned.transform.localScale = new Vector3(0.25f, 0.25f, 0.45f);
-
-            Renderer renderer = spawned.GetComponent<Renderer>();
-            if (renderer != null)
-                renderer.material.color = new Color(0.92f, 0.95f, 1f);
-        }
+        GameObject spawned = Instantiate(def.WorldPrefab, position, rotation);
+        // localScale prefab'tan miras alinir (1f); item-specific scale uygulamiyoruz.
 
         Rigidbody rb = spawned.GetComponent<Rigidbody>();
         if (rb == null)
