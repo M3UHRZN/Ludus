@@ -134,6 +134,21 @@ public class ExtractionService : NetworkBehaviour
         if (!isWipe && LootSellZone.Instance != null)
             LootSellZone.Instance.ConsumeAndDespawn();
 
+        // 5b) Satılmayan item'ları (zone içi, sell zone dışı — eldeki dahil) lobide geri döndürmek
+        //     için ID'lerini tampona yaz ve orijinalleri despawn et (sahne-persist duplikasyonu önlenir).
+        //     Sold item'lar yukarıda despawn olduğu için GetItemsInside'da null/atlanır.
+        if (!isWipe && ExtractionZone.Instance != null)
+        {
+            foreach (var po in ExtractionZone.Instance.GetItemsInside())
+            {
+                if (po == null) continue;
+                if (!po.TryGetComponent<BaseItem>(out var item)) continue;
+                ExtractedItemReturnBuffer.Add(item.ItemId);
+                var no = po.NetworkObject;
+                if (no != null && no.IsSpawned) no.Despawn(true);
+            }
+        }
+
         Debug.Log($"[ExtractionService] reason={reason} gross={b.Gross} penalty={b.Penalty} net={b.Net} " +
                   $"alive={rescuedAlive} corpses={rescuedCorpses} abandoned={abandoned}");
 

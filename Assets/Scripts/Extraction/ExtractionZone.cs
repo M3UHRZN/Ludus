@@ -11,6 +11,7 @@ public class ExtractionZone : MonoBehaviour
 
     private readonly List<PlayerStateMachine> _playersInZone = new();
     private readonly List<CorpseItem> _corpsesInZone = new();
+    private readonly List<PhysicsObject> _itemsInZone = new();
 
     private void Awake()
     {
@@ -32,7 +33,16 @@ public class ExtractionZone : MonoBehaviour
             return;
         }
         var corpse = other.GetComponent<CorpseItem>() ?? other.GetComponentInParent<CorpseItem>();
-        if (corpse != null && !_corpsesInZone.Contains(corpse)) _corpsesInZone.Add(corpse);
+        if (corpse != null)
+        {
+            if (!_corpsesInZone.Contains(corpse)) _corpsesInZone.Add(corpse);
+            return;
+        }
+
+        // Satilabilir/tasinabilir esya (BaseItem) — extraction'da satilmayanlar lobide geri donecek.
+        var po = other.GetComponent<PhysicsObject>() ?? other.GetComponentInParent<PhysicsObject>();
+        if (po != null && po.GetComponent<BaseItem>() != null && !_itemsInZone.Contains(po))
+            _itemsInZone.Add(po);
     }
 
     private void OnTriggerExit(Collider other)
@@ -40,7 +50,26 @@ public class ExtractionZone : MonoBehaviour
         var machine = other.GetComponent<PlayerStateMachine>() ?? other.GetComponentInParent<PlayerStateMachine>();
         if (machine != null) { _playersInZone.Remove(machine); return; }
         var corpse = other.GetComponent<CorpseItem>() ?? other.GetComponentInParent<CorpseItem>();
-        if (corpse != null) _corpsesInZone.Remove(corpse);
+        if (corpse != null) { _corpsesInZone.Remove(corpse); return; }
+        var po = other.GetComponent<PhysicsObject>() ?? other.GetComponentInParent<PhysicsObject>();
+        if (po != null) _itemsInZone.Remove(po);
+    }
+
+    /// <summary>
+    /// Zone icindeki gecerli BaseItem PhysicsObject'leri (held dahil). Extraction'da
+    /// satilmayanlar bu listeden lobide geri dondurulur.
+    /// </summary>
+    public List<PhysicsObject> GetItemsInside()
+    {
+        var result = new List<PhysicsObject>();
+        for (int i = _itemsInZone.Count - 1; i >= 0; i--)
+        {
+            var po = _itemsInZone[i];
+            if (po == null) { _itemsInZone.RemoveAt(i); continue; }
+            if (po.GetComponent<BaseItem>() == null) continue;
+            result.Add(po);
+        }
+        return result;
     }
 
     public bool ContainsPlayer(PlayerStateMachine machine)
