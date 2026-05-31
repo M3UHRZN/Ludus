@@ -10,13 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c5053c37b7e49b41bce511b4a1e959d, type: 3}
-  m_Name: TestTorch
+  m_Name: Flashlight
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   id: 3
-  displayName: Torch
+  displayName: Flashlight
   size: 0
   creditValue: 15
-  icon: {fileID: 0}
+  icon: {fileID: -1785421693, guid: fcdb4f12e1e10e3448f9b908cfd62761, type: 3}
   worldPrefab: {fileID: 7400000000000000100, guid: 4f9d50a02cbd47a498d3e07f1e91fd7c, type: 3}
   isBuyable: 1
-  marketPrice: 40
+  marketPrice: 15
+  isSellable: 1
+  sellPrice: 5
