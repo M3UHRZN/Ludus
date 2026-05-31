@@ -5,8 +5,6 @@ using UnityEngine.InputSystem;
 public class PlayerInventory : NetworkBehaviour
 {
     public const int MaxSlots = 4;
-    private const int DefaultMarketStartingCredits = 100;
-    private static int s_ServerMarketCredits = DefaultMarketStartingCredits;
 
     // PlayerSpawnCoordinator sahne gecisinde player'i despawn+respawn ediyor
     // (lobby prefab != gameplay prefab). Bu yuzden NetworkList<ushort> Slots
@@ -29,10 +27,6 @@ public class PlayerInventory : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
     // ─────────────────────────────────────────────────────────────────────────
-
-    [Header("Usable Items")]
-    [Tooltip("Pazardan alinan flashbang'in ItemCatalog id'si. Fiyat ItemDefinition.MarketPrice'tan okunur.")]
-    [SerializeField] private ushort flashbangItemId = 1;
 
     private InputAction _scrollAction;
     private InputAction _useAction;
@@ -238,44 +232,6 @@ public class PlayerInventory : NetworkBehaviour
         return true;
     }
 
-    public void RequestMarketFlashbangPurchase(Vector3 deliveryPosition, Vector3 deliveryForward)
-    {
-        if (!IsOwner) return;
-        RequestMarketFlashbangPurchaseServerRpc(deliveryPosition, deliveryForward);
-    }
-
-    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
-    private void RequestMarketFlashbangPurchaseServerRpc(Vector3 deliveryPosition, Vector3 deliveryForward, RpcParams rpcParams = default)
-    {
-        if (!IsServer) return;
-        if (float.IsNaN(deliveryPosition.x) || float.IsNaN(deliveryPosition.y) || float.IsNaN(deliveryPosition.z)) return;
-        if (float.IsNaN(deliveryForward.x) || float.IsNaN(deliveryForward.y) || float.IsNaN(deliveryForward.z)) return;
-
-        if (Vector3.Distance(transform.position, deliveryPosition) > 8f)
-        {
-            SendInventoryMarketMessageRpc("Delivery point is too far away.");
-            return;
-        }
-
-        ItemCatalog catalog = ItemCatalog.Instance;
-        ItemDefinition flashDef = catalog != null ? catalog.GetById(flashbangItemId) : null;
-        int price = flashDef != null ? flashDef.MarketPrice : 0;
-        if (flashDef == null)
-        {
-            SendInventoryMarketMessageRpc("Flashbang not in ItemCatalog.");
-            return;
-        }
-        if (s_ServerMarketCredits < price)
-        {
-            SendInventoryMarketMessageRpc("Not enough team credits.");
-            return;
-        }
-
-        s_ServerMarketCredits -= price;
-        ServerSpawnFlashbangPickup(deliveryPosition, deliveryForward);
-        SendInventoryMarketMessageRpc($"Bought Flashbang. Team Credits: {s_ServerMarketCredits}");
-    }
-
     // ── Corpse Carry (Sprint 2 — Yasin) ──────────────────────────────────────
 
     /// <summary>
@@ -369,45 +325,6 @@ public class PlayerInventory : NetworkBehaviour
 
         var context = new UsableActivationContext(OwnerClientId, NetworkObject, transform.position, transform.forward);
         usable.ServerActivate(context);
-    }
-
-    private void ServerSpawnFlashbangPickup(Vector3 position, Vector3 forward)
-    {
-        ItemCatalog catalog = ItemCatalog.Instance;
-        GameObject prefab = catalog != null ? catalog.GetPrefab(flashbangItemId) : null;
-        if (prefab == null)
-        {
-            SendInventoryMarketMessageRpc("Flashbang prefab missing from ItemCatalog.");
-            return;
-        }
-        if (forward.sqrMagnitude < 0.0001f) forward = transform.forward;
-
-        GameObject pickup = Instantiate(prefab, position, Quaternion.LookRotation(forward.normalized));
-        NetworkObject netObject = pickup.GetComponent<NetworkObject>();
-        if (netObject != null)
-        {
-            netObject.Spawn(true);
-            if (pickup.TryGetComponent(out PhysicsObject physicsObject))
-                physicsObject.ServerConfigureInventoryPickup(true, flashbangItemId);
-        }
-
-        Rigidbody rb = pickup.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.AddForce((Vector3.up + forward.normalized * 0.4f) * 1.5f, ForceMode.Impulse);
-        }
-    }
-
-    [Rpc(SendTo.Owner)]
-    private void SendInventoryMarketMessageRpc(string message)
-    {
-        MarketUIController ui = FindFirstObjectByType<MarketUIController>();
-        if (ui != null)
-            ui.SetExternalStatus(message);
-        else
-            Debug.Log($"[Market] {message}");
     }
 
     /// <summary>Cantadaki aktif esyayi siler ve ID'sini doner. UI extraction akisinda kullanilir.</summary>
