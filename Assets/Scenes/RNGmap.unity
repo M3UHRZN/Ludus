@@ -1021,11 +1021,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1239333964}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 119455c8614a640e7a70c0fffeedf900, type: 3}
+  m_Script: {fileID: 11500000, guid: 9e44cbda66673c44b9df5cf2ae0651b4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ExtractionManager
+  m_EditorClassIdentifier: Assembly-CSharp::ExtractionService
   ShowTopMostFoldoutHeaderGroup: 1
   lobbySceneName: LobbyScene
+  lobbyLoadDelay: 8
 --- !u!1001 &1313478268
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3070,8 +3071,16 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
+      propertyPath: _exitZonePrefab
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
       propertyPath: _maxPropsPerRoom
       value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 2411607401240497955, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
+      propertyPath: _extractZonePrefab
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 4316964319486497241, guid: 2cb55a7dd2a400e40af6f3b96b2bfd90, type: 3}
       propertyPath: m_Name
