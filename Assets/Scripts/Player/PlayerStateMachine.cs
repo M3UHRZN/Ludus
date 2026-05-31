@@ -380,11 +380,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         }
     }
 
-    /// <summary>
-    /// Server-only: oyuncu elinde tuttugu PhysicsObject varsa ServerStopHold
-    /// cagirarak birakir. Boylece NetIsHeld false olur, baska oyuncular
-    /// (veya priest LureBehavior'in HeldItems registry'si) dogru state'i okur.
-    /// </summary>
+    // Elinde tuttugu nesneyi birakir, NetIsHeld false olur.
     private void ServerDropHeldObjectOnDeath()
     {
         if (Interaction == null) return;
@@ -394,12 +390,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         held.ServerStopHold();
     }
 
-    /// <summary>
-    /// Server-only: PlayerInventory.Slots'taki tum item ID'leri icin
-    /// ItemCatalog'dan prefab cek, olum pozisyonu civarinda rastgele
-    /// noktalarda NetworkObject.Spawn et. Sonra Slots'u temizle.
-    /// Slot bos veya ItemCatalog null ise sessizce atlanir.
-    /// </summary>
+    // Envanterdeki item'lari olum noktasi cevresine sacar, slotlari temizler.
     private void ServerDropInventoryItemsOnDeath()
     {
         if (Inventory == null) return;
@@ -421,7 +412,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             var prefab = catalog.GetPrefab(itemId);
             if (prefab == null) continue;
 
-            // Rastgele yatay sapma — esyalar tek noktada ust uste yigilmasin
+            // Yatay sapma, ust uste yigilmasin
             Vector2 planar = Random.insideUnitCircle * _itemDropScatterRadius;
             Vector3 pos = origin + new Vector3(planar.x, 0f, planar.y);
 
@@ -444,19 +435,12 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             Debug.Log($"[PlayerStateMachine] Olum sirasinda {dropped} esya yere dokuldu.");
     }
 
-    /// <summary>
-    /// Server-only: ceset prefab'i olum pozisyonunda spawn eder, CorpseItem.Initialize
-    /// cagirarak owner identity yazar. Diger oyuncular ceseti kaldirip Yasin'in
-    /// extraction/infirmary akisini calistirabilir.
-    /// </summary>
+    // Ceset prefab'ini spawn eder, CorpseItem.Initialize ile owner ismini yazar.
     private void ServerSpawnCorpse()
     {
         if (_corpsePrefab == null) return;
 
-        // Olen oyuncunun baktigi yone gore cesedi yere yatir: yaw'i koruyup
-        // pitch=90 vererek "sirt ustu / yuzu yukari" yatik pozisyon olusur.
-        // Prefab'in kendi LocalRotation'i da +90 X ile geldigi icin "lie down"
-        // kompoze edilir.
+        // Olen oyuncunun yonune gore cesedi yere yatir. Prefab kendi 90 X rotasyonuyla geliyor.
         float yaw = transform.eulerAngles.y;
         Quaternion lieDown = Quaternion.Euler(0f, yaw, 0f);
 
@@ -484,20 +468,15 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
     [Rpc(SendTo.Everyone)]
     private void HidePlayerVisualOnAllClientsRpc()
     {
-        // Olen oyuncunun GORUNUR alt-modelini ve nameplate'ini gizle. PlayerStateMachine
-        // gibi mantik component'leri aktif kalir (Spectator vb. icin), sadece "Mesh +
-        // nickname etiketi" gorunmez olur. Ceset prefab'i kendi mesh + label'ini
-        // gosterir ve sahnede "iki Alp" gibi yanlis okunmaz.
+        // Olu oyuncunun mesh + nameplate'ini gizle. Sahnede sadece ceset gozuksun.
         HideVisualChildren(transform);
     }
 
     private static void HideVisualChildren(Transform root)
     {
-        // 1) Tum MeshRenderer / SkinnedMeshRenderer'lari kapat
         var renderers = root.GetComponentsInChildren<Renderer>(true);
         for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = false;
 
-        // 2) Nameplate (TextMeshPro World) varsa kapat
         var tmp = root.GetComponentsInChildren<TMPro.TextMeshPro>(true);
         for (int i = 0; i < tmp.Length; i++) tmp[i].enabled = false;
 
