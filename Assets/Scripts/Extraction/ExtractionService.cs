@@ -21,6 +21,21 @@ public class ExtractionService : NetworkBehaviour
     [Tooltip("Sonuç paneli gösterildikten sonra lobiye yükleme gecikmesi (sn).")]
     [SerializeField] private float lobbyLoadDelay = 5f;
 
+    [Header("Mission / Kota")]
+    [Tooltip("Mission 1 kotasi (kredi).")]
+    [SerializeField] private int baseQuota = 300;
+    [Tooltip("Her mission kotasi bu oranda artar (0.30 = +%30).")]
+    [SerializeField] private float quotaGrowthRate = 0.30f;
+    [Tooltip("Bir mission kac run'dan olusur.")]
+    [SerializeField] private int runsPerMission = 3;
+
+    private Ludus.Extraction.Core.MissionConfig MissionConfig => new Ludus.Extraction.Core.MissionConfig
+    {
+        BaseQuota = baseQuota,
+        GrowthRate = quotaGrowthRate,
+        RunsPerMission = runsPerMission
+    };
+
     private bool _runEnding;
 
     public override void OnNetworkSpawn()
@@ -130,6 +145,24 @@ public class ExtractionService : NetworkBehaviour
         // 4) Para → market kasası (bekletilen bağlantı).
         MarketCreditBank.AddRunEarnings(b.Net);
 
+        // 4b) Mission/kota ilerleyisi — 3 run = 1 mission. Banka GUNCEL bakiyesiyle yargila.
+        var missionResult = MissionState.RegisterRunCompleted(MarketCreditBank.Credits, MissionConfig);
+        if (missionResult == Ludus.Extraction.Core.MissionResult.Failed)
+        {
+            // Kota dolmadi → para sifir (wallet sonraki lobi spawn'inda startingCredits ile kurar).
+            // Dönecek loot iptali 5b tamponu DOLDUKTAN sonra yapilir (asagi bak).
+            MarketCreditBank.Reset();
+
+            // Oyuncu envanterlerini SIMDI (despawn'dan ONCE, run sahnesinde) bosalt. Boylece
+            // PlayerInventory.OnNetworkDespawn bos snapshot kaydeder ve lobide bos restore edilir.
+            // (Lobide temizlemek snapshot-restore ile yaris kosuluna girerdi.)
+            foreach (var inv in FindObjectsByType<PlayerInventory>(FindObjectsSortMode.None))
+            {
+                if (inv != null) inv.ClearInventory();
+            }
+        }
+        var missionSnapshot = MissionState.Snapshot;
+
         // 5) Satılan loot'u despawn et.
         if (!isWipe && LootSellZone.Instance != null)
             LootSellZone.Instance.ConsumeAndDespawn();
@@ -149,11 +182,20 @@ public class ExtractionService : NetworkBehaviour
             }
         }
 
+        // Kota dolmadiysa bu run'da toplanan hicbir sey lobide geri DONMEZ (her sey sifir).
+        // Item'lar yukarida yine despawn edildi (sahne-persist duplikasyonu onlenir); burada
+        // sadece tampon bosaltilir, boylece LobbyLootDispenser hicbir sey firlatmaz.
+        if (missionResult == Ludus.Extraction.Core.MissionResult.Failed)
+            ExtractedItemReturnBuffer.Clear();
+
         Debug.Log($"[ExtractionService] reason={reason} gross={b.Gross} penalty={b.Penalty} net={b.Net} " +
-                  $"alive={rescuedAlive} corpses={rescuedCorpses} abandoned={abandoned}");
+                  $"alive={rescuedAlive} corpses={rescuedCorpses} abandoned={abandoned} " +
+                  $"mission={missionSnapshot.Mission} runs={missionSnapshot.RunsInMission} quota={missionSnapshot.Quota} missionResult={missionResult}");
 
         // 6) Sonucu herkese yayınla.
         BroadcastRunResultRpc(b.Gross, b.Penalty, b.Net, rescuedAlive, rescuedCorpses, abandoned, (byte)reason);
+        BroadcastMissionStateRpc(missionSnapshot.Mission, missionSnapshot.Quota,
+            missionSnapshot.RunsInMission, runsPerMission, MarketCreditBank.Credits, (byte)missionResult);
 
         // 7) Session'ı bitir.
         if (GameSessionManager.Instance != null)
@@ -176,6 +218,20 @@ public class ExtractionService : NetworkBehaviour
             RescuedCorpses = rescuedCorpses,
             Abandoned = abandoned,
             Reason = (SessionEndReason)reason
+        });
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void BroadcastMissionStateRpc(int mission, int quota, int runsInMission, int runsPerMission, int bankCredits, byte result)
+    {
+        GameEventBus.Publish(new MissionStateEvent
+        {
+            Mission = mission,
+            Quota = quota,
+            RunsInMission = runsInMission,
+            RunsPerMission = runsPerMission,
+            BankCredits = bankCredits,
+            Result = (Ludus.Extraction.Core.MissionResult)result
         });
     }
 
