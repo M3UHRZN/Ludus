@@ -242,7 +242,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MarketTerminal
   marketUI: {fileID: 613358151}
   transactionService: {fileID: 879318353}
-  prompt: E - Open Market
+  prompt: Market
 --- !u!23 &208421218
 MeshRenderer:
   m_ObjectHideFlags: 0
