@@ -116,9 +116,9 @@ public class MissionHUD : MonoBehaviour
         {
             // Kota dolduysa banka degerini yesil goster (tek bakista "doldurduk mu" okunur).
             string col = _bank >= _quota ? "#5f5" : "#fff";
-            bank = $" — Banka: <color={col}>{_bank}</color>";
+            bank = $" \nBank: <color={col}>{_bank}</color>";
         }
 
-        label.text = $"Mission {_mission} — Kota: {_quota}{bank} — Run {_runsInMission}/{_runsPerMission}{suffix}";
+        label.text = $"Mission {_mission}  \nquota: {_quota}{bank} \nRun {_runsInMission}/{_runsPerMission}{suffix}";
     }
 }
