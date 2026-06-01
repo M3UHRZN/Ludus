@@ -356,22 +356,19 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
         if (NetHealth.Value <= 0f)
         {
-            // Co-op kurtarma akisinin temeli: olunce elindeki + envanterdeki
-            // esyalari yere dok ve ceset prefab'ini spawn et. Sira onemli —
-            // event PUBLISH'ten ONCE drop ki dinleyiciler (ExtractionManager,
-            // priest LureBehavior, vs.) "olu oyuncunun yere dokulen esyalari"
-            // gorebilsin.
+            // Ceset olen anin TAM AYNI frame'inde spawn olsun, gozle gorulur gecikme olmasin.
+            // Sira: 1) ceset spawn et (en goz onunde) 2) elindekini birak 3) envanteri sac
+            //       4) visual hide RPC 5) event + state
+            if (_spawnCorpseOnDeath)
+                ServerSpawnCorpse();
+
             if (_dropItemsOnDeath)
             {
                 ServerDropHeldObjectOnDeath();
                 ServerDropInventoryItemsOnDeath();
             }
-            if (_spawnCorpseOnDeath)
-                ServerSpawnCorpse();
 
-            // Ceset spawn olduktan sonra olen oyuncunun GORUNUR modelini ve
-            // nameplate'ini gizle ki sahnede iki tane "Alp" gozukmesin.
-            // RPC'yle tum client'larda lokal olarak SetActive(false).
+            // Canli mesh + nameplate'i tum client'larda gizle, sahnede iki "Alp" gozukmesin.
             HidePlayerVisualOnAllClientsRpc();
 
             GameEventBus.Publish(new PlayerDiedEvent(
@@ -444,9 +441,11 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         float yaw = transform.eulerAngles.y;
         Quaternion lieDown = Quaternion.Euler(0f, yaw, 0f);
 
+        // Ceset DOGRUDAN player'in oldugu yere dussun, yukseklik offset'i koymuyoruz.
+        // Boylece olunce ANINDA o pozisyonda gozukur, "havadan dusme" gecikmesi olmaz.
         var corpseGo = Instantiate(
             _corpsePrefab,
-            transform.position + Vector3.up * _itemDropHeightOffset,
+            transform.position,
             lieDown);
 
         // Owner ismini Spawn ONCESI yaz, boylece initial network snapshot dogru gider
