@@ -186,7 +186,10 @@ public class ExtractionService : NetworkBehaviour
         // Item'lar yukarida yine despawn edildi (sahne-persist duplikasyonu onlenir); burada
         // sadece tampon bosaltilir, boylece LobbyLootDispenser hicbir sey firlatmaz.
         if (missionResult == Ludus.Extraction.Core.MissionResult.Failed)
+        {
             ExtractedItemReturnBuffer.Clear();
+            LobbyItemBuffer.Clear(); // run-öncesi snapshot'lanan lobi item'ları da iptal (her şey sıfır)
+        }
 
         Debug.Log($"[ExtractionService] reason={reason} gross={b.Gross} penalty={b.Penalty} net={b.Net} " +
                   $"alive={rescuedAlive} corpses={rescuedCorpses} abandoned={abandoned} " +

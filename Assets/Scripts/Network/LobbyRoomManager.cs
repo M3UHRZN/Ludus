@@ -47,7 +47,7 @@ public class LobbyRoomManager : NetworkBehaviour
             : $"Player-{NetworkManager.LocalClientId}";
         RegisterNameServerRpc(name);
 
-        // --- LOBÝYE GÝRÝNCE SES ÇALIÞIR ---
+        // --- LOBï¿½YE Gï¿½Rï¿½NCE SES ï¿½ALIï¿½IR ---
         if (AudioManager.Instance != null && AudioManager.Instance.lobbyMusic != null)
         {
             AudioManager.Instance.PlayMusic(AudioManager.Instance.lobbyMusic);
@@ -84,15 +84,20 @@ public class LobbyRoomManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Loading Ekranýni cagiriyoruz
+        // Lobideki loose item'larÄ± konumuyla snapshot'la + despawn et (sahne kapanmadan Ã–NCE).
+        // Geri dÃ¶nÃ¼nce LobbyLootDispenser tam yerlerine geri basar. Aksi halde Spawn(true)'lar
+        // sahne kapanÄ±nca yok oluyordu, Spawn()'lar ise run sahnesine sÄ±zÄ±yordu.
+        CaptureLooseLobbyItems();
+
+        // Loading Ekranï¿½ni cagiriyoruz
         if (LoadingManager.Instance != null)
         {
             LoadingManager.Instance.LoadSceneNetwork("RNGMap");
         }
         else
         {
-            // GÜVENLÝK: Eðer test yaparken LoadingManager'ý sahneye koymayý unutursanýz
-            // oyun çökmesin, eski usül takým arkadaþýnýn yazdýðý sistemden devam etsin.
+            // Gï¿½VENLï¿½K: Eï¿½er test yaparken LoadingManager'ï¿½ sahneye koymayï¿½ unutursanï¿½z
+            // oyun ï¿½ï¿½kmesin, eski usï¿½l takï¿½m arkadaï¿½ï¿½nï¿½n yazdï¿½ï¿½ï¿½ sistemden devam etsin.
             if (PlayerSpawnCoordinator.Instance != null)
             {
                 PlayerSpawnCoordinator.Instance.StartGameTransition();
@@ -101,6 +106,24 @@ public class LobbyRoomManager : NetworkBehaviour
             {
                 Debug.LogWarning($"[{nameof(LobbyRoomManager)}] {nameof(PlayerSpawnCoordinator)} was not found.");
             }
+        }
+    }
+
+    // Lobideki loose (held olmayan) BaseItem'larÄ± konumuyla LobbyItemBuffer'a alÄ±r ve despawn eder.
+    // YalnÄ±z lobi sahnesi yÃ¼klÃ¼ olduÄŸundan FindObjectsByType sadece lobi item'larÄ±nÄ± bulur.
+    private static void CaptureLooseLobbyItems()
+    {
+        foreach (var item in FindObjectsByType<BaseItem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (item == null) continue;
+            var po = item.GetComponent<PhysicsObject>();
+            if (po != null && po.IsHeld) continue; // elde tutulanÄ± atla (transition'da nadir)
+
+            var t = item.transform;
+            LobbyItemBuffer.Add(item.ItemId, t.position, t.rotation);
+
+            var no = item.GetComponent<NetworkObject>();
+            if (no != null && no.IsSpawned) no.Despawn(true);
         }
     }
 
