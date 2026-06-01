@@ -449,6 +449,13 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             transform.position + Vector3.up * _itemDropHeightOffset,
             lieDown);
 
+        // Owner ismini Spawn ONCESI yaz, boylece initial network snapshot dogru gider
+        // ve tum client'lar ceseti gordugu an dogru nickname ile gorur.
+        string ownerName = DisplayName;
+        var corpseItem = corpseGo.GetComponent<CorpseItem>();
+        if (corpseItem != null)
+            corpseItem.Initialize(ownerName, OwnerClientId);
+
         var netObj = corpseGo.GetComponent<NetworkObject>();
         if (netObj == null)
         {
@@ -458,11 +465,11 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         }
         netObj.Spawn(true);
 
-        var corpseItem = corpseGo.GetComponent<CorpseItem>();
+        // Spawn sonrasi guvenlik: yeniden yaz ki gecikmis client'lar da kesin almis olsun
         if (corpseItem != null)
-            corpseItem.Initialize(DisplayName, OwnerClientId);
+            corpseItem.RefreshOwnerName(ownerName);
 
-        Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {DisplayName} (clientId={OwnerClientId}, yaw={yaw:F0}).");
+        Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {ownerName} (clientId={OwnerClientId}, yaw={yaw:F0}).");
     }
 
     [Rpc(SendTo.Everyone)]

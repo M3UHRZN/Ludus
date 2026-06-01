@@ -34,10 +34,17 @@ public class CorpseItem : NetworkBehaviour
         _physObj = GetComponent<PhysicsObject>();
         _physObj.NetIsHeld.OnValueChanged += OnHeldStateChanged;
 
+        // Network snapshot'tan gelen ismi BuildNameplate'ten ONCE okuyup _ownerName'e
+        // yazariz; boylece nameplate dogru isimle olusturulur, "Unknown" flash olmaz.
+        string snapshotName = NetOwnerName.Value.ToString();
+        if (!string.IsNullOrEmpty(snapshotName))
+            _ownerName = snapshotName;
+
         BuildNameplate();
         NetOwnerName.OnValueChanged += OnNameChanged;
-        if (!string.IsNullOrEmpty(NetOwnerName.Value.ToString()))
-            UpdateNameplateText(NetOwnerName.Value.ToString());
+        // Late join veya gec gelen update'leri yakala
+        if (!string.IsNullOrEmpty(snapshotName))
+            UpdateNameplateText(snapshotName);
     }
 
     public override void OnNetworkDespawn()
@@ -167,13 +174,35 @@ public class CorpseItem : NetworkBehaviour
         Destroy(gameObject, 0.5f);
     }
 
-    // PlayerDiedEvent handler ceset prefab'i spawn ettikten sonra bunu cagirir.
+    // Spawn ONCESI cagrilir. NetworkVariable'in initial snapshot'i bu degerle gider,
+    // tum client'lar ilk gordukleri an dogru nickname ile gorur.
     public void Initialize(string ownerName, ulong ownerClientId)
     {
         _ownerName = ownerName;
         _ownerClientId = ownerClientId;
 
-        if (IsServer)
-            NetOwnerName.Value = new Unity.Collections.FixedString64Bytes(ownerName ?? "?");
+        // IsServer NetworkObject Spawn olmadan once de dogru deger doner (NetworkManager.IsServer)
+        // NGO 2.x'te NetworkVariable.Value Spawn'dan once yazilabilir, ilk snapshot'a dahil edilir.
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            NetOwnerName.Value = new Unity.Collections.FixedString64Bytes(SanitizeName(ownerName));
+    }
+
+    // Spawn SONRASI ek guvenlik cagrisi. Gecikmis client'lara veya late join'lere
+    // ismi tekrar publish eder; degisiklik yoksa NGO no-op yapar.
+    public void RefreshOwnerName(string ownerName)
+    {
+        if (!IsServer) return;
+        var safe = new Unity.Collections.FixedString64Bytes(SanitizeName(ownerName));
+        if (!NetOwnerName.Value.Equals(safe))
+            NetOwnerName.Value = safe;
+        _ownerName = ownerName;
+    }
+
+    private static string SanitizeName(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "?";
+        // FixedString64Bytes 61 byte UTF-8 + null icin guvenli sinir
+        if (raw.Length > 32) raw = raw.Substring(0, 32);
+        return raw;
     }
 }
