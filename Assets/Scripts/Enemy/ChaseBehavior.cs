@@ -1,30 +1,20 @@
 using UnityEngine;
 
-/// <summary>
-/// Oyuncuyu kovalar. Gorus varsa dogrudan kovalar, menzile girince saldiriya gecer
-/// (Type A ranged / Type B melee). Gorus kaybolursa once son gorulen yere (ya da ses
-/// kaynagina) gider, orada bir sure etrafa bakar, bulamazsa devriyeye/gezmeye doner.
-///
-/// "Once ize git, sonra vazgec" yaklasimi hem gercekci stealth (oyuncu gorusu kesip
-/// saklanirsa dusman vazgecer) hem de Patrol&lt;-&gt;Chase flapping'ini onler: Chase bir
-/// kez basladiginda ize varana + sure dolana kadar surekli gidip-gelmez.
-/// </summary>
+// Oyuncuyu kovalar. LOS varsa direkt takip + AttackTriggerRange'e girince saldiri.
+// LOS kayboldugunda son gorulen yere veya ses kaynagina gider, etrafa bakar, sonra default'a doner.
 public class ChaseBehavior : IEnemyBehavior
 {
-    private const float GiveUpDelay    = 4f;    // ize varip etrafa baktiktan sonra vazgecme suresi
-    private const float ReachThreshold = 1.5f;  // ipucuna "varildi" sayilan mesafe
+    private const float GiveUpDelay = 4f;
+    private const float ReachThreshold = 1.5f;
 
-    // Yolu temizleme (kovalama sirasinda onumuze cikan fizikli objeleri it)
-    // — NavMeshObstacle carving yuzunden agent her ufak objenin etrafindan
-    // dolasmaya calisip duraklamak yerine kucuk objeleri (varil vb.) yolundan
-    // iter; daha akici ve "kararli" bir kovalama gorunusu olusur.
-    private const float PushScanRange   = 1.45f; // onumuzde ne kadar uzaga bakariz
-    private const float PushScanRadius  = 0.45f; // SphereCast yaricapi (agent capsuluna yaklasik)
-    private const float PushForce       = 110f;  // sustained force (anlik degil)
-    private const float MaxPushableMass = 30f;   // bunun ustundeki cisimleri itmeyiz (buyuk objeyi sallamak yapay durur)
-    private const float MinAgentSpeedToPush = 0.2f; // agent neredeyse duruyorsa itmeyi gerek yok
+    // Onumuze cikan kucuk fizikli objeleri it (path takilmasi olmasin)
+    private const float PushScanRange = 1.45f;
+    private const float PushScanRadius = 0.45f;
+    private const float PushForce = 110f;
+    private const float MaxPushableMass = 30f;
+    private const float MinAgentSpeedToPush = 0.2f;
 
-    private const float CarrierHintHoldDuration = 8f; // Lure'dan devralinan carrier ne kadar oncelikli kalir
+    private const float CarrierHintHoldDuration = 8f;
 
     private readonly Vector3? _noisePosition;
     private readonly ulong? _carrierHintClientId;
@@ -35,17 +25,11 @@ public class ChaseBehavior : IEnemyBehavior
 
     public ChaseBehavior() { }
 
-    /// <summary>Ses duyma sebebiyle Chase'e gecildiyse, aranacak hedef konum verilir.</summary>
     public ChaseBehavior(Vector3 noisePosition)
     {
         _noisePosition = noisePosition;
     }
 
-    /// <summary>
-    /// LureBehavior'dan devredilirken kullanilir: takip edilen carrier'i Chase
-    /// boyunca da hedef tutmak icin EnemyController'a carrier hint olarak yazar.
-    /// Boylece priest tasiyiciyi gorur gormez baska bir oyuncuya kaymaz.
-    /// </summary>
     public ChaseBehavior(ulong carrierHintClientId)
     {
         _carrierHintClientId = carrierHintClientId;
@@ -55,8 +39,7 @@ public class ChaseBehavior : IEnemyBehavior
     {
         _lostSightTimer = GiveUpDelay;
 
-        // Lure'dan devralindiysa, taşıyıcıyı carrier hint olarak isaretle —
-        // CanSeePlayer'da/PlayerTransform'da carrier oncelikli olur.
+        // Lure'dan devralindiysa, carrier hint olarak isaretle
         if (_carrierHintClientId.HasValue)
             enemy.SetCarrierTargetHint(_carrierHintClientId.Value, CarrierHintHoldDuration);
 
@@ -70,7 +53,6 @@ public class ChaseBehavior : IEnemyBehavior
         }
         else
         {
-            // Gorerek baslamis olabiliriz; son gorulen yeri ipucu olarak sakla.
             if (enemy.CanSeePlayer())
             {
                 _searchPoint = enemy.PlayerTransform.position;
@@ -80,23 +62,16 @@ public class ChaseBehavior : IEnemyBehavior
         }
     }
 
-    private const float DeadPlayerDisengageGrace = 1.5f; // tum oyuncular oldukten sonra kalan azami sure
+    private const float DeadPlayerDisengageGrace = 1.5f;
 
     public void Tick(EnemyController enemy)
     {
         if (!enemy.Agent.isOnNavMesh) return;
 
-        // Hareket halindeyken onumuze cikan kucuk fizikli objeleri it ki path
-        // recompute donmalari ya da "etrafindan dolasmaya calisirken duraklama"
-        // hissi olusmasin. Sadece hafif rigidbody'ler (varil, kasa) itilir;
-        // oyuncu, diger dusmanlar ve UCAN firlatilmis objeler (hasar veriyor olabilir)
-        // dokunulmaz.
         if (enemy.Agent.velocity.sqrMagnitude > MinAgentSpeedToPush * MinAgentSpeedToPush)
             PushObstaclesAhead(enemy);
 
-        // Canli hicbir oyuncu kalmadi (hepsi oldu): mevcut izi tuketmeye devam et
-        // ama vazgecme sayacini kucuk bir grace'e siktir ki dusman cesedin etrafinda
-        // takilip kalmasin, hemen default davranisina donsun.
+        // Tum oyuncular oldu, kisa grace ile vazgec
         if (enemy.PlayerTransform == null)
         {
             if (_lostSightTimer > DeadPlayerDisengageGrace)
@@ -105,7 +80,7 @@ public class ChaseBehavior : IEnemyBehavior
             return;
         }
 
-        // --- Oyuncuyu goruyor: dogrudan kovala, son konumu hatirla, sayaci sifirla ---
+        // LOS varsa direkt kovala
         if (enemy.CanSeePlayer())
         {
             _lostSightTimer = GiveUpDelay;
@@ -124,7 +99,7 @@ public class ChaseBehavior : IEnemyBehavior
             return;
         }
 
-        // --- Goremiyor: once son ize (ses / son gorulen yer) dogru git, yoksa vazgec ---
+        // LOS yok, son ize git, yoksa vazgec
         TickSearchOrGiveUp(enemy);
     }
 
@@ -135,17 +110,17 @@ public class ChaseBehavior : IEnemyBehavior
             enemy.Agent.SetDestination(_searchPoint);
             if (!enemy.Agent.pathPending && enemy.Agent.remainingDistance < ReachThreshold)
             {
-                _hasSearchPoint = false;   // ize varildi; artik etrafa bak ve sayaci baslat
+                _hasSearchPoint = false;
                 if (_huntingNoise)
                 {
                     _huntingNoise = false;
                     Debug.Log("[ChaseBehavior] Ize varildi, etrafa bakiliyor.");
                 }
             }
-            return;   // ize giderken vazgecme sayaci islemez -> flapping olmaz
+            return;
         }
 
-        // --- Iz tuketildi: bir sure etrafa bak, sonra devriyeye/gezmeye don ---
+        // Iz tuketildi, bir sure etrafa bak, sonra default
         _lostSightTimer -= Time.deltaTime;
         if (_lostSightTimer <= 0f)
             enemy.SwitchBehavior(enemy.CreateDefaultBehavior());
@@ -157,13 +132,7 @@ public class ChaseBehavior : IEnemyBehavior
             enemy.Agent.ResetPath();
     }
 
-    /// <summary>
-    /// Agent'in mevcut hareket yonunde kucuk fizikli engelleri bulup hafif
-    /// surekli kuvvet uygular. NavMeshObstacle.carving yuzunden ufak bir
-    /// varilin etrafindan dolasmaya calisilmasi yerine, dusman objeyi
-    /// yolundan ittirir; bu hem path recompute donmasini engeller hem de
-    /// gorsel olarak daha kararli bir kovalama hissi verir.
-    /// </summary>
+    // Kucuk fizikli engelleri yoldan it (varil, kasa). Buyukleri, oyuncuyu, dusmani ve aktif firlatilmis cisimleri atla.
     private static void PushObstaclesAhead(EnemyController enemy)
     {
         Vector3 fwd = enemy.Agent.velocity;
@@ -182,18 +151,12 @@ public class ChaseBehavior : IEnemyBehavior
         if (rb.isKinematic) return;
         if (rb.mass > MaxPushableMass) return;
 
-        // Oyuncuyu ya da baska dusmani itme — sadece "serbest" sahne objeleri
         if (hit.transform.GetComponentInParent<PlayerStateMachine>() != null) return;
         if (hit.transform.GetComponentInParent<EnemyController>() != null) return;
 
-        // Oyuncunun firlattigi (hasar verecek olan) objeyi itme: yoksa hasar
-        // tetiklenmeden once saptiririz. PhysicsObject firlatma penceresinde
-        // IsActiveThrow true doner; pencere bittiginde yere oturmus sayilir
-        // ve normal "yolundan it" davranisina dahil olur.
         var po = hit.transform.GetComponentInParent<PhysicsObject>();
         if (po != null && po.IsActiveThrow) return;
 
-        // Surekli kuvvet (ForceMode.Force her frame deltaTime ile carpilir)
         rb.AddForce(fwd * PushForce, ForceMode.Force);
     }
 }
