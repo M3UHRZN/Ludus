@@ -25,7 +25,8 @@ public class LobbyLootDispenser : NetworkBehaviour
     private void DispenseReturnedItems()
     {
         var ids = ExtractedItemReturnBuffer.Drain();
-        if (ids.Count == 0) return;
+        var saved = LobbyItemBuffer.Drain();
+        if (ids.Count == 0 && saved.Count == 0) return;
 
         ItemCatalog catalog = ItemCatalog.Instance;
         if (catalog == null)
@@ -65,6 +66,32 @@ public class LobbyLootDispenser : NetworkBehaviour
             Rigidbody rb = spawned.GetComponent<Rigidbody>();
             if (rb != null)
                 rb.AddForce((Vector3.up + point.forward * 0.4f) * launchImpulse, ForceMode.Impulse);
+        }
+
+        // Lobi-persist item'lar — tam bırakıldıkları konum/rotasyona geri bas (impulse YOK).
+        foreach (var e in saved)
+        {
+            GameObject prefab = catalog.GetPrefab(e.id);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[LobbyLootDispenser] id={e.id} için prefab bulunamadı, atlandı.");
+                continue;
+            }
+
+            GameObject spawned = Instantiate(prefab, e.pos, e.rot);
+
+            NetworkObject netObject = spawned.GetComponent<NetworkObject>();
+            if (netObject == null)
+            {
+                Debug.LogWarning($"[LobbyLootDispenser] '{prefab.name}' üzerinde NetworkObject yok.");
+                Destroy(spawned);
+                continue;
+            }
+
+            netObject.Spawn(true);
+
+            if (spawned.TryGetComponent(out PhysicsObject physicsObject))
+                physicsObject.ServerConfigureInventoryPickup(true, e.id);
         }
     }
 }
