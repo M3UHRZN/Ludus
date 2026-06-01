@@ -333,7 +333,7 @@ GameObject:
   - component: {fileID: 286753415}
   - component: {fileID: 286753417}
   m_Layer: 0
-  m_Name: quota
+  m_Name: missionReset
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
