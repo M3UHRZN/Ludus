@@ -2375,7 +2375,7 @@ MonoBehaviour:
   maxHealth: 100
   _dropItemsOnDeath: 1
   _spawnCorpseOnDeath: 1
-  _corpsePrefab: {fileID: 0}
+  _corpsePrefab: {fileID: 7400000000000000001, guid: 46461b7334904e67b3c7c2489f16dc71, type: 3}
   _itemDropScatterRadius: 1.5
   _itemDropHeightOffset: 0.6
 --- !u!114 &2494656452920728769
