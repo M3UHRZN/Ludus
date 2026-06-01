@@ -463,6 +463,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyNetState
   ShowTopMostFoldoutHeaderGroup: 1
+  _shootSfx: {fileID: 8300000, guid: 73e5eb7a76d07f948b01a4ca49c108bf, type: 3}
+  _punchSfx: {fileID: 8300000, guid: fd30874dd7d7f9748abc79c089d48199, type: 3}
+  _sfxVolume: 0.85
+  _sfxMinDistance: 4
+  _sfxMaxDistance: 25
 --- !u!136 &4980901525323588654
 CapsuleCollider:
   m_ObjectHideFlags: 0

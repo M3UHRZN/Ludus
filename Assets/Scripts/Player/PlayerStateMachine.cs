@@ -441,11 +441,14 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
         float yaw = transform.eulerAngles.y;
         Quaternion lieDown = Quaternion.Euler(0f, yaw, 0f);
 
-        // Ceset DOGRUDAN player'in oldugu yere dussun, yukseklik offset'i koymuyoruz.
-        // Boylece olunce ANINDA o pozisyonda gozukur, "havadan dusme" gecikmesi olmaz.
+        // GARANTI: Ceset havada kalmasin diye spawn pozisyonundan asagi raycast atip
+        // ilk gectigi zemine yapistir. CharacterController disabled olmadan once
+        // player'in ayak/origin pozisyonu kullanilir.
+        Vector3 spawnPos = ResolveCorpseGroundPosition(transform.position);
+
         var corpseGo = Instantiate(
             _corpsePrefab,
-            transform.position,
+            spawnPos,
             lieDown);
 
         // Owner ismini Spawn ONCESI yaz, boylece initial network snapshot dogru gider
@@ -469,6 +472,22 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
             corpseItem.RefreshOwnerName(ownerName);
 
         Debug.Log($"[PlayerStateMachine] Ceset spawn edildi: {ownerName} (clientId={OwnerClientId}, yaw={yaw:F0}).");
+    }
+
+    // Ceset havada kalmasin diye yere yapistirir.
+    // Player.transform.position'undan 0.5m yukaridan asagi 10m raycast atar, ilk
+    // statik yuzeyi bulunca oraya snap eder. Bulamazsa orijinal pozisyona dusurur
+    // (rigidbody zaten gravity ile dusuracek).
+    private static Vector3 ResolveCorpseGroundPosition(Vector3 playerPos)
+    {
+        Vector3 start = playerPos + Vector3.up * 0.5f;
+        const float maxDistance = 10f;
+        if (Physics.Raycast(start, Vector3.down, out RaycastHit hit, maxDistance, ~0, QueryTriggerInteraction.Ignore))
+        {
+            // 5cm yukari ofset, collider overlap'i engelle
+            return hit.point + Vector3.up * 0.05f;
+        }
+        return playerPos;
     }
 
     [Rpc(SendTo.Everyone)]

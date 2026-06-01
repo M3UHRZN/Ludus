@@ -59,6 +59,58 @@ public class EnemyNetState : NetworkBehaviour
         NetIsAiming.Value = false;
     }
 
+    [Header("Sound")]
+    [SerializeField] private AudioClip _shootSfx;
+    [SerializeField] private AudioClip _punchSfx;
+    [Range(0f, 1f)]
+    [SerializeField] private float _sfxVolume = 0.85f;
+    [SerializeField] private float _sfxMinDistance = 4f;
+    [SerializeField] private float _sfxMaxDistance = 25f;
+
+    // Type A robot ates ettiginde server bunu cagirir, tum client'lar 3D ses duyar
+    public void ServerPlayShootSfx()
+    {
+        if (!IsServer) return;
+        PlayShootSfxRpc();
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void PlayShootSfxRpc()
+    {
+        PlayOneShotAt(_shootSfx);
+    }
+
+    // Type B priest yumruk attiginda server bunu cagirir
+    public void ServerPlayPunchSfx()
+    {
+        if (!IsServer) return;
+        PlayPunchSfxRpc();
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void PlayPunchSfxRpc()
+    {
+        PlayOneShotAt(_punchSfx);
+    }
+
+    private void PlayOneShotAt(AudioClip clip)
+    {
+        if (clip == null) return;
+        // Gecici GameObject'te 3D AudioSource - oyuncuya gore ses uzakliga gore solar
+        var go = new GameObject($"SFX_{clip.name}");
+        go.transform.position = transform.position;
+        var src = go.AddComponent<AudioSource>();
+        src.clip = clip;
+        src.spatialBlend = 1f;
+        src.minDistance = _sfxMinDistance;
+        src.maxDistance = _sfxMaxDistance;
+        src.rolloffMode = AudioRolloffMode.Linear;
+        src.volume = _sfxVolume;
+        src.dopplerLevel = 0f;
+        src.Play();
+        Destroy(go, clip.length + 0.1f);
+    }
+
     public override void OnNetworkDespawn()
     {
         // Runtime olusturulan kaynaklari sizdirma; objeyi kapat + materyali yok et.

@@ -75,6 +75,10 @@ public class AttackBehavior : IEnemyBehavior
         Vector3 hitPoint = enemy.PlayerTransform.position;
         dmg.TakeDamage(DamagePerHit, hitPoint, 0UL);
 
+        // Punch sesi - tum client'larda hasar ile es zamanli duyulur
+        var netState = enemy.GetComponent<EnemyNetState>();
+        if (netState != null) netState.ServerPlayPunchSfx();
+
         // PlayerTransform'u tekrar okumayalim, oldurucu vurusta null donebilir
         var knock = dmg as IKnockbackable;
         knock?.ApplyKnockback(enemy.transform.position, KnockbackForce, PlayerStunDuration);

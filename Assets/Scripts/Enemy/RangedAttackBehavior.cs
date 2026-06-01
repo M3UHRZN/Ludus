@@ -129,6 +129,10 @@ public class RangedAttackBehavior : IEnemyBehavior
             Object.Destroy(flash, 0.15f);
         }
 
+        // Ates sesi - tum client'larda 3D ses olarak duyulur
+        var netState = enemy.GetComponent<EnemyNetState>();
+        if (netState != null) netState.ServerPlayShootSfx();
+
         // Mermi prefab atanmissa gorunur mermi spawn et (hasar mermi carptiginda verilir)
         if (enemy.ProjectilePrefab != null)
         {
