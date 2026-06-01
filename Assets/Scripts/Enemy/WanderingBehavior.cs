@@ -1,14 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-/// <summary>
-/// Patrol'den farkli olarak sabit waypoint'lere bagli kalmaz; NavMesh uzerinde
-/// rastgele uzak noktalara giderek tum haritada dolasir. Type B (gezgin/wanderer)
-/// dusman bu davranisla spawn olur.
-///
-/// Strategy pattern'in 5. concrete davranisi. Gorus ve ses tetikleyicileri
-/// PatrolBehavior ile aynidir (CanSeePlayer -> Chase, HeardNoise -> Chase).
-/// </summary>
+// Type B icin. NavMesh'te rastgele uzak noktalara gider. Gorus/ses tetikleyicileri Patrol ile ayni.
 public class WanderingBehavior : IEnemyBehavior
 {
     private const float MinWanderDistance = 8f;
@@ -27,14 +20,14 @@ public class WanderingBehavior : IEnemyBehavior
     {
         if (!enemy.Agent.isOnNavMesh) return;
 
-        // Gorus oncelikli — oyuncuyu gorursen kovala
+        // Gorus oncelikli
         if (enemy.CanSeePlayer())
         {
             enemy.SwitchBehavior(new ChaseBehavior());
             return;
         }
 
-        // Ses duydu — ses konumuna giderek aramaya basla
+        // Ses duydu, kaynaga git
         if (enemy.HeardNoise)
         {
             enemy.HeardNoise = false;
@@ -54,10 +47,7 @@ public class WanderingBehavior : IEnemyBehavior
             enemy.Agent.ResetPath();
     }
 
-    /// <summary>
-    /// NavMesh uzerinde mevcut konumdan 8-25 birim uzakta gecerli bir nokta bulur.
-    /// Birkac deneme yapar; bulamazsa o frame atlar, sonraki Tick tekrar dener.
-    /// </summary>
+    // 8-25 birim uzakta gecerli bir nokta bul, bulamazsa frame atla
     private static void PickNewDestination(EnemyController enemy)
     {
         Vector3 origin = enemy.transform.position;

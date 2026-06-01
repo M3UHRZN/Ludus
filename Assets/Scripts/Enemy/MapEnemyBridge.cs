@@ -3,52 +3,25 @@ using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEngine;
 
-/// <summary>
-/// Anil'in DungeonGeneratorRunner'i ile bizim EnemySpawner pipeline'ini
-/// birbirine baglayan adaptor.
-///
-/// DungeonGeneratorRunner.Start icinde dungeon spawn olur. Bir frame
-/// bekledikten sonra:
-///   1) "DungeonLayout" child'i altindaki her oda parent'ina
-///      EnemySpawnPoint marker'i ekler (oda merkezine).
-///   2) Her odaya PatrolWaypointGroup ekler ve oda kose yakinlarinda
-///      waypoint child'lari uretir (oda boyutuna gore).
-///   3) Runtime'da NavMesh bake eder (NavMeshSurface).
-///   4) GameEventBus.Publish(new MapReadyEvent(...)) yayinlar — bu sayede
-///      EnemySpawner kendi OnMapReady akisini calistirir.
-///
-/// Aynı GameObject'te DungeonGeneratorRunner ve DungeonVisualizer bulunmali.
-/// </summary>
+// DungeonGenerator ile EnemySpawner arasi adapter: spawn marker + patrol waypoint ekler, NavMesh bake eder, MapReadyEvent yayinlar.
 [RequireComponent(typeof(DungeonGeneratorRunner))]
 public class MapEnemyBridge : MonoBehaviour
 {
     [Header("Spawn Point")]
-    [Tooltip("Kucuk odalara (1x1) konulacak EnemySpawnPoint sayisi")]
     [SerializeField] private int _spawnPointsPerSmallRoom = 1;
-
-    [Tooltip("Buyuk odalara (1x3 / 3x1 / 2x2) konulacak EnemySpawnPoint sayisi")]
     [SerializeField] private int _spawnPointsPerLargeRoom = 1;
 
     [Header("Patrol Waypoint")]
-    [Tooltip("Her odaya PatrolWaypointGroup ekle")]
     [SerializeField] private bool _createPatrolGroups = true;
-
-    [Tooltip("Oda yarim-boyutunun yuzde kaci waypoint'leri kaplasin")]
     [Range(0.3f, 0.9f)]
     [SerializeField] private float _waypointSpreadFactor = 0.6f;
 
     [Header("NavMesh")]
-    [Tooltip("Sahne yuklendiginde NavMesh'i runtime bake et")]
     [SerializeField] private bool _bakeNavMeshAtRuntime = true;
-
-    [Tooltip("NavMesh bake'i kac frame sonra calistir (dungeon spawn'a vakit tani)")]
     [SerializeField] private int _bakeDelayFrames = 1;
-
-    [Tooltip("Runtime bake icin collider kullan. Render mesh kullanmak Read/Write kapali meshlerde build uyarisi verir.")]
     [SerializeField] private bool _usePhysicsCollidersForRuntimeBake = true;
 
     [Header("Map Ready Event")]
-    [Tooltip("DungeonLayout hazirlaninca MapReadyEvent yayinla")]
     [SerializeField] private bool _publishMapReadyEvent = true;
 
     [Header("Debug")]
@@ -100,16 +73,13 @@ public class MapEnemyBridge : MonoBehaviour
         }
     }
 
-    // ------------------------------------------------------------------
-    // Oda iyileme: marker ekle
-    // ------------------------------------------------------------------
-
     private int SetupRooms(Transform dungeonRoot, out List<Bounds> roomBoundsList)
     {
         int processed = 0;
         roomBoundsList = new List<Bounds>();
 
-        // Snapshot al — child collection runtime'da degisiyor (waypoint ekledigimiz icin)
+        // Snapshot al, child collection runtime'da degisiyor
+        // (waypoint ekledigimiz icin enumeration sirasinda mutate olur)
         var rooms = new List<Transform>(dungeonRoot.childCount);
         foreach (Transform child in dungeonRoot)
             rooms.Add(child);
@@ -188,23 +158,7 @@ public class MapEnemyBridge : MonoBehaviour
         group.SetWaypoints(waypoints);
     }
 
-    // ------------------------------------------------------------------
-    // Yardimcilar
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// Oda parent'i altindaki SADECE Floor renderer'larinin birlesik bounds'ini doner.
-    ///
-    /// Onceden tum renderer'lari (Floor + Wall + Door) topluyordu — Wall ve ozellikle
-    /// Door mesh'leri oda outline'inin disina tasip bounds'i sisiriyordu, bu yuzden
-    /// NetworkedItemSpawner'in X/Z guard'i "bounds icinde ama gercekte koridorda" gibi
-    /// kotu noktalari kabul ediyordu (item disarida spawn bug'i).
-    ///
-    /// Floor prefab konvansiyonu: GameObject adlarinda "Floor" gecer (Floor / Floor1x3 /
-    /// Floor2x2 / Floor3x1). Case-insensitive eslestiriyoruz. Hicbir Floor bulunamazsa
-    /// eski davranisa (tum renderer'lar) fallback yapiyoruz ki test sahnelerinde sessizce
-    /// patlamasin.
-    /// </summary>
+    // Sadece "Floor" isimli renderer'lardan bounds hesapla, yoksa fallback olarak hepsini al
     private static Bounds EstimateRoomBounds(Transform room)
     {
         var renderers = room.GetComponentsInChildren<Renderer>();
@@ -261,12 +215,7 @@ public class MapEnemyBridge : MonoBehaviour
             Debug.Log("[MapEnemyBridge] Runtime NavMesh bake tamamlandi.");
     }
 
-    /// <summary>
-    /// DungeonGeneratorRunner seed bilgisini dogrudan expose etmiyor; biz
-    /// MapReadyEvent'in seed parametresi icin sadece bilgilendirme amacli
-    /// degerini -1 verirsek de spawner pipeline'ini bozmaz. Ileride Anil
-    /// Runner'a LastSeed property eklerse buraya bagliyabiliriz.
-    /// </summary>
+    // DungeonGeneratorRunner seed'i expose etmiyor, MapReadyEvent icin -1 yeterli
     private int ExtractSeedSafe()
     {
         return -1;
