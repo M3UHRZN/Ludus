@@ -1027,6 +1027,9 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   lobbySceneName: LobbyScene
   lobbyLoadDelay: 8
+  baseQuota: 300
+  quotaGrowthRate: 0.3
+  runsPerMission: 3
 --- !u!1001 &1313478268
 PrefabInstance:
   m_ObjectHideFlags: 0

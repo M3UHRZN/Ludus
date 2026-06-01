@@ -468,4 +468,29 @@ public class DungeonGeneratorTests
         Assert.AreEqual(data.RoomCount, visited.Count,
             "newestBias=1 (DFS) ile de tüm odalar ulaşılabilir olmalı");
     }
+
+    // End odası (entry/extraction) ASLA birleştirilmemeli — Start gibi korunmalı.
+    // Merge once, End atamasi sonra calistiginda en-uzak oda bir gruba dusebiliyordu;
+    // bu da gorselde 1x3/3x1/2x2 ya da hic spawn olmayan End odasina yol aciyordu.
+    [Test]
+    public void EndRoom_IsNeverMerged_AcrossManySeeds()
+    {
+        for (int seed = 0; seed < 200; seed++)
+        {
+            var cfg = MakeConfig(maxRooms: 25, seed: seed);
+            cfg.enableRoomMerging = true;
+            cfg.extraConnectionChance = 1f; // loop'lar → 2x2 merge'leri mümkün olsun
+            var data = new DungeonGenerator(cfg).Generate();
+
+            RoomNode end = null;
+            foreach (var r in data.AllRooms)
+                if (r.Type == RoomType.End) { end = r; break; }
+
+            Assert.IsNotNull(end, $"seed {seed}: bir End odası atanmalı");
+            Assert.AreEqual(RoomSize.Small_1x1, end.Size,
+                $"seed {seed}: End odası 1x1 kalmalı, {end.Size} oldu @ {end.Coordinates}");
+            Assert.AreEqual(-1, end.MergeGroupId,
+                $"seed {seed}: End odası merge grubuna girmemeli @ {end.Coordinates}");
+        }
+    }
 }

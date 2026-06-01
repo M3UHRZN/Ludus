@@ -23,9 +23,12 @@ public class DungeonGenerator
         Phase1_PlaceStart(data);
         Phase2_GrowMaze(data);
         Phase3_AddLoops(data);
+        // End odası merge'den ÖNCE atanmalı ki Start gibi korunabilsin. Aksi halde en-uzak oda
+        // bir merge grubuna düşüp 1x3/3x1/2x2 olabiliyor ya da görselde hiç spawn olmuyordu.
+        // Merge, oda kümesini/koordinatları değiştirmediği için en-uzak seçimi birebir aynı kalır.
+        Phase5_AssignEndRoom(data);
         if (_config.enableRoomMerging)
             ApplyMerging(data);
-        Phase5_AssignEndRoom(data);
         return data;
     }
 
@@ -101,6 +104,10 @@ public class DungeonGenerator
         Phase4_MergeLinear(data);
     }
 
+    // Start ve End merge edilmez — ikisi de temiz, tek-hücreli (1x1) çapa oda olmalı.
+    private static bool IsMergeProtected(RoomNode room) =>
+        room.Type == RoomType.Start || room.Type == RoomType.End;
+
     private void Phase4_Merge2x2(DungeonData data)
     {
         foreach (var room in new List<RoomNode>(data.AllRooms))
@@ -115,8 +122,8 @@ public class DungeonGenerator
             if (bl.Size != RoomSize.Small_1x1 || br.Size != RoomSize.Small_1x1 ||
                 tl.Size != RoomSize.Small_1x1 || tr.Size != RoomSize.Small_1x1) continue;
 
-            if (bl.Type == RoomType.Start || br.Type == RoomType.Start ||
-                tl.Type == RoomType.Start || tr.Type == RoomType.Start) continue;
+            if (IsMergeProtected(bl) || IsMergeProtected(br) ||
+                IsMergeProtected(tl) || IsMergeProtected(tr)) continue;
 
             if (!bl.HasConnection(ConnectionDirection.East)  || !bl.HasConnection(ConnectionDirection.North)) continue;
             if (!br.HasConnection(ConnectionDirection.West)  || !br.HasConnection(ConnectionDirection.North)) continue;
@@ -141,7 +148,7 @@ public class DungeonGenerator
                 data.TryGetRoom(c + Vector2Int.right,    out var rb) &&
                 data.TryGetRoom(c + new Vector2Int(2,0), out var rc) &&
                 ra.Size == RoomSize.Small_1x1 && rb.Size == RoomSize.Small_1x1 && rc.Size == RoomSize.Small_1x1 &&
-                ra.Type != RoomType.Start && rb.Type != RoomType.Start && rc.Type != RoomType.Start &&
+                !IsMergeProtected(ra) && !IsMergeProtected(rb) && !IsMergeProtected(rc) &&
                 ra.HasConnection(ConnectionDirection.East) &&
                 rb.HasConnection(ConnectionDirection.West) && rb.HasConnection(ConnectionDirection.East) &&
                 rc.HasConnection(ConnectionDirection.West))
@@ -157,7 +164,7 @@ public class DungeonGenerator
                 data.TryGetRoom(c + Vector2Int.up,       out var re) &&
                 data.TryGetRoom(c + new Vector2Int(0,2), out var rf) &&
                 rd.Size == RoomSize.Small_1x1 && re.Size == RoomSize.Small_1x1 && rf.Size == RoomSize.Small_1x1 &&
-                rd.Type != RoomType.Start && re.Type != RoomType.Start && rf.Type != RoomType.Start &&
+                !IsMergeProtected(rd) && !IsMergeProtected(re) && !IsMergeProtected(rf) &&
                 rd.HasConnection(ConnectionDirection.North) &&
                 re.HasConnection(ConnectionDirection.South) && re.HasConnection(ConnectionDirection.North) &&
                 rf.HasConnection(ConnectionDirection.South))
