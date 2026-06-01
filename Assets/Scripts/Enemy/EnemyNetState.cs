@@ -36,7 +36,7 @@ public class EnemyNetState : NetworkBehaviour
         NetBlindUntilServerTime.Value = (float)NetworkManager.Singleton.ServerTime.Time + duration;
     }
 
-    /// <summary>Server-only: lazer nisani baslat + ilk hedefi yaz.</summary>
+    // Lazer nisani baslat + ilk hedefi yaz
     public void ServerStartAim(Vector3 initialTarget)
     {
         if (!IsServer) return;
@@ -44,7 +44,7 @@ public class EnemyNetState : NetworkBehaviour
         NetIsAiming.Value = true;
     }
 
-    /// <summary>Server-only: lazer hedefini guncelle (RangedAimBehavior her Tick'te cagirir).</summary>
+    // Lazer hedefini guncelle (her Tick'te cagrilir)
     public void ServerUpdateAimTarget(Vector3 target)
     {
         if (!IsServer) return;
@@ -52,7 +52,7 @@ public class EnemyNetState : NetworkBehaviour
         NetAimTarget.Value = target;
     }
 
-    /// <summary>Server-only: lazer nisani kapat.</summary>
+    // Lazer nisani kapat
     public void ServerStopAim()
     {
         if (!IsServer) return;
@@ -90,10 +90,7 @@ public class EnemyNetState : NetworkBehaviour
             NetIsBlinded.Value = false;
     }
 
-    /// <summary>
-    /// Her client'ta calisir: NetIsAiming true ise FirePoint -> NetAimTarget arasinda
-    /// kirmizi cizgi cizer. LineRenderer ilk ihtiyac aninda olusturulur, despawn'da temizlenir.
-    /// </summary>
+    // Tum client'larda calisir, FirePoint -> NetAimTarget arasinda kirmizi cizgi cizer
     private void UpdateAimVisual()
     {
         if (!NetIsAiming.Value)
@@ -138,8 +135,7 @@ public class EnemyNetState : NetworkBehaviour
         _aimLine.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
         _aimLine.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
 
-        // URP/Built-in iki tarafta da calisan, depth/lighting'den bagimsiz sprite shader.
-        // Bulamazsa pembe gozukur (acik bir hata isareti) — sessizce kaybolmaz.
+        // URP + Built-in calisan sprite shader, bulamazsa fallback
         Shader shader = Shader.Find("Sprites/Default");
         _aimLineMaterial = new Material(shader != null ? shader : Shader.Find("Unlit/Color"));
         _aimLineMaterial.color = Color.red;

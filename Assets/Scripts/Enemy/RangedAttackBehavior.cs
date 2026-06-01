@@ -1,29 +1,21 @@
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Uzaktan saldiri davranisi (Type A / robot). Belirli menzilde durup oyuncuya
-/// gorunur mermi (EnemyProjectile) atar; mermi prefab yoksa gorunmez hitscan'e
-/// duser. Sarjor (magazine) bitince reload yapar — reload sirasinda ates edemez,
-/// bu oyuncuya saldiri/kacis penceresi acar. Oyuncu menzil disina cikarsa veya
-/// gorus kaybolursa Chase'e doner.
-///
-/// Strategy pattern'in 6. concrete davranisi.
-/// </summary>
+// Type A robot uzaktan mermi atar. Sarjor + reload. Mermi prefab yoksa hitscan fallback.
 public class RangedAttackBehavior : IEnemyBehavior
 {
-    private const float DamagePerShot  = 7f;    // azaltildi (oyuncu uzerindeki baskiyi dusur)
-    private const float DisengageRange = 16f;   // bu mesafeden uzaklasirsa Chase'e don
-    private const float AimTurnSpeed   = 8f;
-    private const float LostSightGrace = 0.8f;  // gorus anlik kaybolursa hemen Chase'e gecme toleransi
+    private const float DamagePerShot = 7f;
+    private const float DisengageRange = 16f;
+    private const float AimTurnSpeed = 8f;
+    private const float LostSightGrace = 0.8f;
 
-    private const float FireCooldown   = 1.5f;  // sarjor icinde iki atis arasi (yavaslatildi)
-    private const int   MagazineSize   = 5;     // bir sarjordeki atis sayisi
-    private const float ReloadTime     = 2.5f;  // reload suresi (atessiz pencere)
+    private const float FireCooldown = 1.5f;
+    private const int MagazineSize = 5;
+    private const float ReloadTime = 2.5f;
 
     private float _cooldown;
-    private int   _shotsLeft;
-    private bool  _reloading;
+    private int _shotsLeft;
+    private bool _reloading;
     private float _reloadTimer;
     private float _lostSightGrace;
 
@@ -41,8 +33,7 @@ public class RangedAttackBehavior : IEnemyBehavior
 
     public void Tick(EnemyController enemy)
     {
-        // Hedef yok / oldu — Chase'e devret; Chase tum-oyuncular-olu durumunda
-        // kisa grace ile default davranisa doner, dusman cesedin ustunde takilmaz.
+        // Hedef yok, Chase'e devret
         if (enemy.PlayerTransform == null)
         {
             enemy.SwitchBehavior(new ChaseBehavior());
@@ -143,7 +134,7 @@ public class RangedAttackBehavior : IEnemyBehavior
         {
             var proj = Object.Instantiate(enemy.ProjectilePrefab, origin, Quaternion.LookRotation(dir));
             var netObj = proj.GetComponent<NetworkObject>();
-            // destroyWithScene: true — in-flight mermi de sahne gecisinde NGO tarafindan despawn edilsin.
+            // destroyWithScene true, sahne gecisinde in-flight mermi de despawn
             if (netObj != null) netObj.Spawn(true);
 
             var projScript = proj.GetComponent<EnemyProjectile>();

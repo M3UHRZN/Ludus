@@ -4,92 +4,45 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 
-/// <summary>
-/// Server-only enemy spawner. MapReadyEvent yayinlandiginda sahnedeki
-/// EnemySpawnPoint marker'larini havuz olarak alir, ardisik dalgalar halinde
-/// (wave) enemy uretir. Toplam alive enemy sayisi budget'la sinirlidir.
-///
-/// Mimari kararlar:
-///   - Budget: targetCount = Min(maxAlive, roomCount / roomsPerEnemy)
-///   - Wave: ilk spawn delay sonra, sabit interval ile yeni enemy gelir
-///   - EnemyDiedEvent Observer: enemy oldukce alive count azalir, yeni slot acilir
-///
-/// Anil ile kontrat: harita uretildikten sonra GameEventBus.Publish(new MapReadyEvent(...))
-/// cagirilir, bu spawner devreye girer.
-/// </summary>
+// Server-only spawner. MapReadyEvent gelince sahnedeki spawn point'leri tarayip dalgalar halinde enemy uretir.
 [RequireComponent(typeof(NetworkObject))]
 public class EnemySpawner : NetworkBehaviour
 {
     [Header("Enemy Prefablari")]
-    [Tooltip("Spawn icin kullanilacak enemy prefablari (her biri NetworkObject olmali). Bos ise spawn olmaz.")]
     [SerializeField] private GameObject[] _enemyPrefabs;
 
     [Header("Spawn Budget")]
-    [Tooltip("Ayni anda sahnede en fazla kac enemy olabilir (orn. 5 Type A + 1 Type B icin 6)")]
     [SerializeField] private int _maxAliveEnemies = 6;
-
-    [Tooltip("Budget formulu: target = roomCount / roomsPerEnemy (sonra maxAlive ile sinirlanir)")]
     [SerializeField] private int _roomsPerEnemy = 7;
 
     [Header("Nadir Dusman (Type B)")]
-    [Tooltip("Element 1 = nadir dusman (Type B). Her haritada en fazla bu kadar spawn olur. Gerisi Element 0 (Type A).")]
     [SerializeField] private int _rareEnemyMaxCount = 1;
-
-    [Tooltip("MapReadyEvent gelmezse fallback hedef enemy sayisi")]
     [SerializeField] private int _fallbackTargetCount = 3;
 
     [Header("Wave Spawn")]
-    [Tooltip("MapReadyEvent'ten sonra ilk enemy ne kadar sure sonra cikar")]
     [SerializeField] private float _firstSpawnDelay = 5f;
-
-    [Tooltip("INITIAL FILL fazinda iki ardisik spawn arasi sure (saniye). Bu sirada " +
-             "harita hizli doldurulur (oyuncu daha sahneyi tanirken).")]
     [SerializeField] private float _spawnInterval = 8f;
-
-    [Tooltip("RESPAWN fazinda (initial fill tamamlandiktan sonra) bir Type A oldukten " +
-             "sonra yenisinin gelmesi icin bekleme suresi. Priest (Type B) yine respawn " +
-             "etmez - cap-1 (_rareEnemyMaxCount).")]
     [SerializeField] private float _respawnDelay = 35f;
-
-    [Tooltip("True ise canli oyuncunun GORUS HATTINDA olan spawn point'ler tercih " +
-             "edilmez (dusman oyuncunun gozunun onunde belirmesin). LOS-blocked nokta " +
-             "yoksa fallback olarak normal mesafe filtresi kullanilir.")]
     [SerializeField] private bool _avoidLineOfSight = true;
-
-    [Tooltip("LOS kontrolu icin maksimum kontrol mesafesi. Bu mesafenin uzaginda olan " +
-             "spawn point'ler 'oyuncu gormez' kabul edilir (raycast atilmaz).")]
     [SerializeField] private float _losCheckRange = 35f;
 
     [Header("Patrol Bagi")]
-    [Tooltip("Spawn'da yakin patrol grubu aramak icin maks. mesafe")]
     [SerializeField] private float _patrolGroupSearchRadius = 20f;
 
     [Header("Player Mesafe Kontrolu")]
-    [Tooltip("Player'a bu mesafeden daha yakin spawn olmaz (jump scare riskini onler)")]
     [SerializeField] private float _minDistanceFromPlayer = 20f;
-
-    [Tooltip("Player'a bu mesafeden daha uzak spawn olmaz. 0 = limit yok.")]
     [SerializeField] private float _maxDistanceFromPlayer = 0f;
 
     [Header("Test / Fallback")]
-    [Tooltip("MapReadyEvent gelmese bile sahnede EnemySpawnPoint varsa wave loop'u baslat")]
     [SerializeField] private bool _spawnOnStartIfNoMapEvent = false;
-
-    [Tooltip("Fallback durumda Start'tan sonra ne kadar bekle")]
     [SerializeField] private float _fallbackStartDelay = 2f;
 
-    [Header("Loot Room Guardian (Feature 2)")]
-    [Tooltip("Loot odalarinda dedicated robot bekciler spawn edilsin mi (oyuncuya zorluk + 'oh dusunmusler' hissi).")]
+    [Header("Loot Room Guardian")]
     [SerializeField] private bool _spawnLootGuardians = true;
-    [Tooltip("MapReadyEvent'ten sonra item'larin spawn olmasini beklemek icin gecikme.")]
     [SerializeField] private float _lootGuardianDelay = 3f;
-    [Tooltip("Toplam max kac loot guardian doganlir (cok olmasin, oyuncu nefes alsin).")]
     [SerializeField] private int _lootGuardianCap = 3;
-    [Tooltip("Bir odaya guardian uretebilmek icin oda icindeki minimum item sayisi.")]
     [SerializeField] private int _minItemsPerLootRoom = 2;
-    [Tooltip("Guardian'in gorus mesafesi (varsayilan 15m'den dusuk; sneak'e izin verir).")]
     [SerializeField] private float _guardianSightRange = 11f;
-    [Tooltip("Guardian'in ranged saldiri tetik mesafesi (varsayilan 12m'den dusuk).")]
     [SerializeField] private float _guardianAttackRange = 9f;
 
     private int _targetEnemyCount;
@@ -127,11 +80,7 @@ public class EnemySpawner : NetworkBehaviour
         if (_waveLoop != null) StopCoroutine(_waveLoop);
     }
 
-    /// <summary>
-    /// Observer: enemy oldukce alive count azalir. Wave loop bir sonraki interval'de
-    /// bos slot'u gorur ve yeni enemy spawn eder. Boylece "bir oldu, biri geldi" akisi
-    /// loose-coupled saglanir.
-    /// </summary>
+    // Enemy oldukce alive count azalir, wave loop bos slot'a yeni enemy alir
     private void OnEnemyDied(EnemyDiedEvent evt)
     {
         _aliveCount = Mathf.Max(0, _aliveCount - 1);
@@ -146,19 +95,12 @@ public class EnemySpawner : NetworkBehaviour
         Debug.Log($"[EnemySpawner] MapReadyEvent alindi (rooms={evt.RoomCount}). Target enemy count: {_targetEnemyCount}.");
         StartWaveLoop();
 
-        // Item'lar genelde MapReadyEvent ile yakin zamanda spawn olur ama
-        // exact siralama garanti degil — kucuk bir gecikmeyle loot odalarini
-        // tariyoruz. Wave loop'undan AYRI (extra) guardian'lar uretilir.
+        // Item spawn'i bekleyip loot odalarini tara, ayri guardian'lar uret
         if (_spawnLootGuardians && evt.RoomBounds != null && evt.RoomBounds.Length > 0)
             StartCoroutine(SpawnLootGuardiansDelayed(evt.RoomBounds));
     }
 
-    /// <summary>
-    /// Item'lar spawn olduktan sonra hangi odalarda item oldugunu tespit eder
-    /// ve top-N odanin merkezine 1 robot guardian doğurur. Bu robotlar
-    /// SetupAsLootGuardian ile yapilandirilir: oda disina cikmazlar, gorus
-    /// kisa, oyuncu sneak edebilir; ama gorurse lazer + ates yapar.
-    /// </summary>
+    // Loot odalarini bulup top-N odaya guardian uret, oda disina cikmazlar
     private IEnumerator SpawnLootGuardiansDelayed(Bounds[] roomBounds)
     {
         yield return new WaitForSeconds(_lootGuardianDelay);
@@ -166,7 +108,7 @@ public class EnemySpawner : NetworkBehaviour
         var items = FindObjectsByType<BaseItem>(FindObjectsSortMode.None);
         if (items == null || items.Length == 0)
         {
-            Debug.Log("[EnemySpawner] Loot guardian icin item bulunamadi — atlandi.");
+            Debug.Log("[EnemySpawner] Loot guardian icin item bulunamadi, atlandi.");
             yield break;
         }
 
@@ -198,13 +140,7 @@ public class EnemySpawner : NetworkBehaviour
             SpawnLootGuardianInRoom(roomBounds[ranked[i].idx]);
     }
 
-    /// <summary>
-    /// Oda merkezi yakininda NavMesh'e snap'lenmis bir noktada robot (Type A)
-    /// instantiate eder, NetworkObject.Spawn ile replicate eder, sonra
-    /// SetupAsLootGuardian ile guardian moduna gecirir. Bu robotlar EnemyDied
-    /// event'ini de tetikler (alive count azalir) ama wave loop'una sayilmaz
-    /// (counter ayri); wave bagimsiz devam eder.
-    /// </summary>
+    // Oda merkezinde Type A guardian uret, SetupAsLootGuardian ile oda disina cikmasin
     private void SpawnLootGuardianInRoom(Bounds roomBounds)
     {
         if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return;
@@ -241,11 +177,7 @@ public class EnemySpawner : NetworkBehaviour
         Debug.Log($"[EnemySpawner] Loot guardian spawn edildi (oda merkezi={roomBounds.center}). Alive: {_aliveCount}.");
     }
 
-    /// <summary>
-    /// Oda Bounds'inin 4 kose noktasinda runtime Transform'lar uretip patrol
-    /// waypoint'leri olarak doner. Y'yi spawn pos'undan alir (multi-level
-    /// olabilir). Robot bu kose listesi arasinda turlayarak odayi "korur".
-    /// </summary>
+    // Oda kose noktalarinda waypoint Transform'lari uret, guardian bu noktalar arasinda turlar
     private Transform[] BuildRoomCornerWaypoints(Bounds roomBounds, Transform parent)
     {
         Vector3 c = roomBounds.center;
@@ -349,8 +281,7 @@ public class EnemySpawner : NetworkBehaviour
             return false;
         }
 
-        // destroyWithScene: true — RNGmap unload olunca NGO bu enemy'yi otomatik despawn etsin.
-        // (NGO 2.11 Spawn() varsayilani false; false objeler sahne gecisinde lobiye/yeni run'a tasiniyor.)
+        // destroyWithScene true, sahne gecisinde NGO despawn etsin
         netObj.Spawn(true);
 
         // Her enemy'ye farkli avoidance priority ver. Ayni priority'de iki agent
@@ -370,8 +301,7 @@ public class EnemySpawner : NetworkBehaviour
 
         _aliveCount++;
 
-        // Initial fill bittiyse faz gecisi yap — bundan sonra wave loop respawn delay'e
-        // baglanir (35sn default). Bir kez true, hep true (ölum gelse de respawn modu).
+        // Initial fill bittiyse RESPAWN moduna gec, wave loop respawn delay kullanir
         string phase = _initialFillComplete ? "RESPAWN" : "INITIAL_FILL";
         if (!_initialFillComplete && _aliveCount >= _targetEnemyCount)
         {
@@ -383,13 +313,7 @@ public class EnemySpawner : NetworkBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Nadir dusman limitli prefab secimi.
-    /// Element 0 = yaygin dusman (Type A), Element 1 = nadir dusman (Type B).
-    /// Once _rareEnemyMaxCount kadar Type B spawn edilir (genelde 1), sonra
-    /// tum spawn'lar Type A olur. Boylece her haritada tek bir guclu Type B,
-    /// gerisi yaygin Type A cikar.
-    /// </summary>
+    // Element 0 = Type A (common), Element 1 = Type B (rare, _rareEnemyMaxCount kadar)
     private GameObject PickPrefab()
     {
         if (_enemyPrefabs == null || _enemyPrefabs.Length == 0) return null;
@@ -402,13 +326,7 @@ public class EnemySpawner : NetworkBehaviour
         return _enemyPrefabs[0]; // yaygin (Type A)
     }
 
-    /// <summary>
-    /// Spawn point secim zinciri:
-    ///   1. Mesafe filtresi (TUM canli oyunculardan min-max araliginda olanlar)
-    ///   2. LOS filtresi (hicbir oyuncunun gormedigi noktalar tercih edilir)
-    ///   3. Filtre bos donerse soft fallback (mesafe-only, sonra rastgele)
-    /// Multiplayer'da TUM oyunculara karsi check yapilir — bir oyuncu gorse bile elenir.
-    /// </summary>
+    // Mesafe filtresi -> LOS filtresi -> mesafe-only fallback -> rastgele
     private EnemySpawnPoint PickSpawnPoint(EnemySpawnPoint[] candidates)
     {
         var players = PlayerStateMachine.ServerPlayers;
@@ -447,7 +365,7 @@ public class EnemySpawner : NetworkBehaviour
 
         if (losBlocked.Count > 0) return losBlocked[Random.Range(0, losBlocked.Count)];
 
-        // 3) Hicbir LOS-blocked nokta yok — distance-only fallback
+        // 3) LOS-blocked nokta yok, distance-only fallback
         Debug.LogWarning("[EnemySpawner] Tum mesafe-OK spawn noktalari LOS'ta. Distance-only fallback.");
         return distanceOk[Random.Range(0, distanceOk.Count)];
     }
@@ -480,17 +398,14 @@ public class EnemySpawner : NetworkBehaviour
             if (dist > _losCheckRange) continue;
             if (dist < 0.01f) return true;
 
-            // Engelsiz yol varsa oyuncu gorur — kotu nokta
+            // Engelsiz yol varsa oyuncu gorur, kotu nokta
             if (!Physics.Raycast(playerEye, dir.normalized, dist))
                 return true;
         }
         return false;
     }
 
-    /// <summary>
-    /// Onceligi: en yakin PatrolWaypointGroup. Yoksa SpawnPoint kendi
-    /// GenerateWaypointPositions ile uretilen runtime waypoint'leri olarak doner.
-    /// </summary>
+    // Once en yakin PatrolWaypointGroup, yoksa SpawnPoint kendi runtime waypoint'lerini doner
     private Transform[] ResolveWaypointsFor(EnemySpawnPoint sp, PatrolWaypointGroup[] groups)
     {
         PatrolWaypointGroup nearest = null;
@@ -513,10 +428,7 @@ public class EnemySpawner : NetworkBehaviour
         return BuildRuntimeWaypoints(sp);
     }
 
-    /// <summary>
-    /// SpawnPoint cevresindeki Vector3 noktalari runtime'da Transform listesine
-    /// cevir. Sahnede gercek GameObject yaratir, parent SpawnPoint olur.
-    /// </summary>
+    // Vector3 noktalari runtime Transform listesine cevir, parent SpawnPoint olur
     private Transform[] BuildRuntimeWaypoints(EnemySpawnPoint sp)
     {
         var positions = sp.GenerateWaypointPositions();
