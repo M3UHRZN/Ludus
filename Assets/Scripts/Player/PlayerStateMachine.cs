@@ -73,6 +73,7 @@ public class PlayerStateMachine : NetworkBehaviour, IDamageable, ISpectatable, I
 
     public bool IsAlive => NetHealth.Value > 0f;
     public float CurrentHealth => NetHealth.Value;
+    public float MaxHealth => maxHealth;
     // Owner tarafinda input/interaction kararlari icin "anlik" state.
     // NetState server'dan roundtrip ile gelir; owner local state ise aninda guncellenir.
     public PlayerStateEnum LocalState => _currentState != null ? StateToEnum(_currentState) : (PlayerStateEnum)NetState.Value;
