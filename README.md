@@ -1,13 +1,20 @@
-# VoidHaul
+# HAUL
 
-**Takim:** LUDUS
-**Ders:** CENG 454 — Game Programming, Bahar 2025-2026
+**Takim:** LUDUS (Group 6)
+**Ders:** CENG 454 - Game Programming, Bahar 2025-2026
 **Repo:** https://github.com/M3UHRZN/Ludus
 
-VoidHaul, 4-6 oyunculu co-op extraction horror prototipi. Karanlik bir tesise iniyorsun,
-esyalari topluyorsun, agirlik seni yavaslatiyor, dusmanlardan kaciyorsun ve sayac
-sifirlanmadan ekstraksiyon noktasina ulasmaya calisiyorsun. Lethal Company / R.E.P.O.
-ilhamli, Unity 6 + NGO uzerinde calisiyor.
+HAUL, 4-6 oyunculu co-op extraction horror prototipi. Karanlik bir tesise iniyorsun,
+prosedurel uretilen dungeon icinde oda oda gezerek degerli esyalari topluyorsun,
+agirlik seni yavaslatiyor, dusmanlardan kaciyor veya catismaya giriyorsun ve
+extraction noktasindan tahliye ediyorsun. Unity 6 + Netcode for GameObjects (NGO)
+uzerinde, server-authoritative host-client mimarisiyle calisir.
+
+## Kazanma / Kaybetme
+
+- **Kazanma:** Takim, 3 ardisik run (gun) icinde belirlenen kredi kotasini doldurursa kazanir.
+- **Kaybetme:** 3 gun sonunda kota dolmamissa veya tum takim oldurulurse run kaybedilir.
+- **Restart:** Lobi sahnesine geri donus ile yeni 3 gunluk dongu baslar.
 
 ## Takim
 
@@ -16,7 +23,7 @@ ilhamli, Unity 6 + NGO uzerinde calisiyor.
 | Metin Enes Ufuk | Tech Lead, Network (NGO), GameSession |
 | Esmanur Tetik | Scrum Master, EventBus, HUD |
 | Mehmet Anil Ulku | Harita / Lobby |
-| Alp Doruk Sengun | Enemy AI (Strategy) |
+| Alp Doruk Sengun | Enemy AI (Strategy), body-drop / corpse, multiplayer adaptasyon |
 | Yasin Kapaklikaya | Item sistemi, ObjectPool, Inventory |
 | Beyza Nur Elitok | Decorator, korku mekanikleri |
 | Deniz Ozan Tatar | Audio, VFX, Lore |
@@ -31,7 +38,7 @@ ilhamli, Unity 6 + NGO uzerinde calisiyor.
    ```
 3. Unity Hub'da `Add project from disk` ile klasoru ac.
 4. Ilk acilista paketler restore olur (NGO, URP, Cinemachine, Input System, ProBuilder).
-5. `Assets/Scenes/SampleScene.unity` veya `Lobby` sahnesini ac.
+5. Lobby sahnesini ac.
 
 ## Calistirma (Editor)
 
@@ -47,7 +54,7 @@ ilhamli, Unity 6 + NGO uzerinde calisiyor.
 | Hareket | W A S D |
 | Bakis | Mouse |
 | Zipla | Space |
-| Cömelme | Left Ctrl |
+| Comelme (sessiz) | Left Ctrl |
 | Kosma | Left Shift |
 | Etkilesim / Kavra | E |
 | Birak | G |
@@ -63,8 +70,9 @@ serbest kamera.
 
 ## Kullanilan Unity paketleri
 
-- Unity Netcode for GameObjects (NGO)
+- Unity Netcode for GameObjects (NGO) 2.x
 - Universal Render Pipeline (URP)
+- AI Navigation (NavMesh)
 - Cinemachine
 - Input System
 - ProBuilder
@@ -74,41 +82,52 @@ Tam liste icin `Packages/manifest.json`.
 
 ## Mimari ozet
 
-- `Assets/Scripts/Core/` — `GameEventBus` (Observer), `ObjectPool`, `Singleton`,
+- `Assets/Scripts/Core/` - `GameEventBus` (Observer), `ObjectPool`, `Singleton`,
   `GameSessionManager`.
-- `Assets/Scripts/Enemy/` — `IEnemyBehavior` + `Patrol/Chase/Flee/Attack` (Strategy),
-  `EnemyController`, network state.
-- `Assets/Scripts/Items/` — `IItem`, `BaseItem`, `ItemPickup`, `Decorators/`
+- `Assets/Scripts/Enemy/` - `IEnemyBehavior` + 9 concrete davranis
+  (Patrol, Wandering, Chase, Attack, RangedAttack, RangedAim, Lure, Flee) (Strategy),
+  `EnemyController`, `EnemyNetState` (network state).
+- `Assets/Scripts/Items/` - `IItem`, `BaseItem`, `ItemPickup`, `Decorators/`
   (Decorator pattern).
-- `Assets/Scripts/Player/` — Hareket, etkilesim, envanter, state machine.
-- `Assets/Scripts/UI/` — HUD ekranlari.
+- `Assets/Scripts/Player/` - hareket, etkilesim, envanter, `PlayerStateMachine`
+  (State pattern), body-drop / corpse.
+- `Assets/Scripts/UI/` - HUD ekranlari.
 
 ## Smoke-test akisi
 
-1. SampleScene'i ac, `Host` butonu.
+1. Lobby sahnesini ac, `Host` butonu.
 2. Ikinci editor / build'dan `Join 127.0.0.1`.
 3. WASD ile hareket, agirlik gostergesi gorunur olmali.
 4. E ile bir item kavra, agirlik artmali, hiz dusmeli.
 5. Patrol eden bir dusman gorus alanina girince Chase'e gecer; yakinlasinca
-   Attack'a gecer ve hasar verir.
+   Attack veya RangedAim/RangedAttack'a gecer ve hasar verir.
 6. Flashbang item'ini al -> dusman Flee'ye gecer ve uzaklasir.
-7. Sayac biter -> session sona erer, extraction ozeti acilir.
+7. Bir oyuncu olunce cesedi yere duser; takim arkadasi cesedi ExitZone'a tasiyabilir.
+8. Sayac biter / kota degerlendirilir -> session sona erer, extraction ozeti acilir.
+9. Restart: Lobi'ye don, yeni run baslat.
 
-## Bilinen sorunlar / TODO
+## Bilinen sorunlar / sinirlamalar
 
-- AudioManager ve ses efektleri sprint 2'de tamamlanacak.
-- MapGenerator (prosedurel oda baglantisi) sprint 2'de devrede olacak.
-- Patrol "ses duyma" tepkisi henuz pasif (HeardNoise flag yazili, dinleyici eklenecek).
-- Permadeath save/load akisi sprint 3'e biraktik.
+- `EnemyController` halen server-only MonoBehaviour olarak calisir; tam NetworkBehaviour
+  migrasyonu ileri bir asamaya birakilmistir.
+- Prosedurel oda yerlesiminde nadiren bir item spawn noktasi oda tavanina yakin
+  olusabilir (kozmetik; tavan mesh'i kapatir).
+- Ceset tasima ve birlikte tahliye akisinin gozlemlenmesi en az iki aktif client gerektirir.
 
 ## Asset & 3rd-party krediler
 
-> Bu liste sprint 3 sonunda final formuna alinacak. Kullandigimiz indirilen asset
-> varsa (model, animasyon, ses, shader) buraya kaynak linki ile beraber ekliyoruz.
+| Varlik | Tur | Kullanim |
+| --- | --- | --- |
+| Paperman.fbx (Sci-Fi Robots Bundle, "Same Gev Dudios") | 3D model + animasyon + materyal | Player robot karakteri |
+| Cursed Priest 3D model | 3D model + animasyon | Type B priest dusman (Git LFS) |
+| Engie.fbx, Robert.fbx | 3D model | Yedek robot karakter modelleri |
+| TirgamesAssets dungeon kiti | Dungeon mesh kitleri (oda, kapi, koridor) | DungeonGenerator parcalari |
+| Sci-Fi Styled Modular Pack | Sahne prefab/mesh | Lobby ortami |
+| electricity.mp3, heartbeat.mp3, ambient ses paketi | Audio (free Asset Store) | Ses / atmosfer |
+| Mixamo animasyonlari | Karakter animasyonu | Type B dusman retargeting |
 
-- Karakter modelleri / animasyonlar: (kaynak eklenecek)
-- Lobby uzay arka plani: (kaynak eklenecek)
-- Ses efektleri: (kaynak eklenecek)
+Her varligin repoya hangi uye tarafindan eklendigi git history uzerinden gorulebilir.
+Ucuncu parti varliklarin kendi lisans kosullari gecerlidir.
 
 ## Lisans
 
